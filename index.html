@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Angajați MTC Transport</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<style>
+:root{
+  --bg:#F6F7F9;
+  --surface:#FFFFFF;
+  --surface-alt:#EEF1F5;
+  --text:#1B2430;
+  --text-muted:#5B6472;
+  --border:#E2E5EA;
+  --primary:#1E3A5F;
+  --primary-hover:#16293F;
+  --primary-soft:#E7EDF4;
+  --amber:#D98E04;
+  --amber-soft:#FBF1DC;
+  --red:#C0392B;
+  --red-soft:#FBE7E4;
+  --green:#2F855A;
+  --green-soft:#E5F3EC;
+  --radius:10px;
+  --shadow:0 1px 2px rgba(27,36,48,.06), 0 4px 12px rgba(27,36,48,.05);
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Inter',sans-serif;
+  font-size:14px;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,.display{font-family:'Space Grotesk',sans-serif;}
+.mono{font-family:'JetBrains Mono',monospace; letter-spacing:.02em;}
+
+/* ---------- PIN GATE ---------- */
+#pinGate{
+  position:fixed; inset:0; background:var(--primary);
+  display:flex; align-items:center; justify-content:center; z-index:999;
+  background-image: radial-gradient(circle at 20% 20%, rgba(255,255,255,.06), transparent 40%),
+                     radial-gradient(circle at 80% 80%, rgba(255,255,255,.05), transparent 40%);
+}
+.pinCard{
+  background:var(--surface); border-radius:16px; padding:40px 36px;
+  width:320px; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,.35);
+}
+.pinCard .tag{
+  display:inline-block; font-family:'JetBrains Mono',monospace; font-size:11px;
+  letter-spacing:.12em; color:var(--primary); background:var(--primary-soft);
+  padding:4px 10px; border-radius:100px; margin-bottom:14px; text-transform:uppercase;
+}
+.pinCard h1{font-size:20px; margin:0 0 6px;}
+.pinCard p{color:var(--text-muted); font-size:13px; margin:0 0 20px;}
+#pinInput{
+  width:100%; padding:12px; font-size:20px; text-align:center; letter-spacing:.3em;
+  border:1.5px solid var(--border); border-radius:8px; font-family:'JetBrains Mono',monospace;
+  margin-bottom:12px;
+}
+#pinInput:focus{outline:none; border-color:var(--primary);}
+.btn{
+  border:none; border-radius:8px; padding:11px 18px; font-family:'Inter',sans-serif;
+  font-weight:600; font-size:13.5px; cursor:pointer; transition:.15s;
+}
+.btn-primary{background:var(--primary); color:#fff; width:100%;}
+.btn-primary:hover{background:var(--primary-hover);}
+#pinError{color:var(--red); font-size:12.5px; margin-top:10px; min-height:16px;}
+
+/* ---------- APP SHELL ---------- */
+#app{display:none;}
+header.top{
+  background:var(--surface); border-bottom:1px solid var(--border);
+  padding:18px 28px; position:sticky; top:0; z-index:10;
+}
+.top-inner{max-width:1400px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px;}
+.brand{display:flex; align-items:center; gap:12px;}
+.brand-mark{
+  width:38px; height:38px; border-radius:9px; background:var(--primary);
+  color:#fff; display:flex; align-items:center; justify-content:center;
+  font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px;
+}
+.brand h1{font-size:18px; margin:0; line-height:1.1;}
+.brand span{display:block; font-size:11.5px; color:var(--text-muted); font-family:'JetBrains Mono',monospace; letter-spacing:.04em; margin-top:2px;}
+
+.stats{display:flex; gap:10px; flex-wrap:wrap;}
+.stat{
+  background:var(--surface-alt); border-radius:8px; padding:8px 14px;
+  min-width:86px; text-align:center;
+}
+.stat b{display:block; font-family:'Space Grotesk',sans-serif; font-size:19px; line-height:1.1;}
+.stat small{color:var(--text-muted); font-size:10.5px; text-transform:uppercase; letter-spacing:.05em;}
+.stat.alert-red b{color:var(--red);}
+.stat.alert-amber b{color:var(--amber);}
+
+main{max-width:1400px; margin:0 auto; padding:22px 28px 60px;}
+
+/* alert banner */
+#alertBanner{
+  background:var(--red-soft); border:1px solid #F0C7C1; border-radius:var(--radius);
+  padding:14px 18px; margin-bottom:18px; display:none;
+}
+#alertBanner.show{display:block;}
+#alertBanner .ab-head{display:flex; align-items:center; justify-content:space-between; cursor:pointer;}
+#alertBanner .ab-head strong{color:var(--red); font-size:13.5px;}
+#alertBanner ul{margin:10px 0 0; padding-left:18px; font-size:13px; display:none;}
+#alertBanner ul.open{display:block;}
+#alertBanner li{margin-bottom:4px;}
+
+/* toolbar */
+.toolbar{
+  display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+  margin-bottom:16px; justify-content:space-between;
+}
+.toolbar-left{display:flex; gap:10px; flex-wrap:wrap; flex:1;}
+input[type=text], select{
+  border:1.5px solid var(--border); border-radius:8px; padding:9px 12px;
+  font-family:'Inter',sans-serif; font-size:13.5px; background:var(--surface); color:var(--text);
+}
+input[type=text]:focus, select:focus{outline:none; border-color:var(--primary);}
+#searchInput{min-width:220px;}
+.btn-secondary{background:var(--surface-alt); color:var(--text);}
+.btn-secondary:hover{background:#E4E8ED;}
+.checkbtn{display:flex; align-items:center; gap:6px; font-size:13px; color:var(--text-muted); user-select:none; cursor:pointer;}
+
+/* board / table */
+.board-wrap{
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+  overflow-x:auto; box-shadow:var(--shadow);
+}
+table{width:100%; border-collapse:collapse; min-width:1080px;}
+thead th{
+  text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.05em;
+  color:var(--text-muted); padding:12px 14px; border-bottom:1px solid var(--border);
+  background:var(--surface-alt); white-space:nowrap; cursor:pointer;
+}
+thead th:hover{color:var(--text);}
+tbody td{padding:12px 14px; border-bottom:1px solid var(--border); vertical-align:middle; font-size:13.5px;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr{position:relative;}
+tbody tr:hover{background:#FAFBFC;}
+.tab{
+  position:absolute; left:0; top:0; bottom:0; width:4px;
+}
+.tab.red{background:var(--red);}
+.tab.amber{background:var(--amber);}
+.tab.green{background:var(--green);}
+.tab.gray{background:var(--border);}
+
+.id-tag{
+  font-family:'JetBrains Mono',monospace; font-size:11.5px; background:var(--surface-alt);
+  padding:3px 8px; border-radius:5px; letter-spacing:.04em;
+}
+.name-cell b{display:block; font-size:13.5px;}
+.name-cell small{color:var(--text-muted); font-size:11.5px;}
+.chip{
+  display:inline-flex; align-items:center; gap:5px; padding:4px 9px; border-radius:100px;
+  font-size:11.5px; font-weight:600; white-space:nowrap;
+}
+.chip.red{background:var(--red-soft); color:var(--red);}
+.chip.amber{background:var(--amber-soft); color:var(--amber);}
+.chip.green{background:var(--green-soft); color:var(--green);}
+.chip.gray{background:var(--surface-alt); color:var(--text-muted);}
+.cats{display:flex; gap:3px; flex-wrap:wrap; max-width:150px;}
+.cat-pill{
+  font-family:'JetBrains Mono',monospace; font-size:10px; background:var(--primary-soft);
+  color:var(--primary); padding:2px 6px; border-radius:4px;
+}
+.status-pill{padding:3px 9px; border-radius:100px; font-size:11px; font-weight:600;}
+.status-Activ{background:var(--green-soft); color:var(--green);}
+.status-Inactiv{background:var(--amber-soft); color:var(--amber);}
+.status-Arhivat{background:var(--surface-alt); color:var(--text-muted);}
+.row-actions{display:flex; gap:6px;}
+.icon-btn{
+  border:1px solid var(--border); background:var(--surface); border-radius:6px;
+  width:28px; height:28px; display:flex; align-items:center; justify-content:center;
+  cursor:pointer; color:var(--text-muted); font-size:14px;
+}
+.icon-btn:hover{border-color:var(--primary); color:var(--primary);}
+.icon-btn.danger:hover{border-color:var(--red); color:var(--red);}
+.empty-state{text-align:center; padding:60px 20px; color:var(--text-muted);}
+.empty-state h3{color:var(--text); margin-bottom:6px;}
+
+/* modal */
+.modal-backdrop{
+  position:fixed; inset:0; background:rgba(20,26,34,.5); display:none;
+  align-items:flex-start; justify-content:center; z-index:100; padding:40px 16px; overflow-y:auto;
+}
+.modal-backdrop.show{display:flex;}
+.modal{
+  background:var(--surface); border-radius:14px; width:100%; max-width:680px;
+  box-shadow:0 24px 60px rgba(0,0,0,.25); animation:modalIn .15s ease-out;
+}
+@keyframes modalIn{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);}}
+.modal-head{
+  padding:20px 24px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+}
+.modal-head h2{font-size:16px; margin:0;}
+.modal-head .id-tag{margin-left:8px;}
+.modal-close{background:none; border:none; font-size:20px; cursor:pointer; color:var(--text-muted);}
+.modal-body{padding:22px 24px; max-height:70vh; overflow-y:auto;}
+.modal-foot{padding:16px 24px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:10px;}
+.section-label{
+  font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--primary);
+  font-weight:700; margin:22px 0 10px; display:flex; align-items:center; gap:8px;
+}
+.section-label:first-child{margin-top:0;}
+.section-label::after{content:''; flex:1; height:1px; background:var(--border);}
+.form-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+.form-grid.cols-3{grid-template-columns:1fr 1fr 1fr;}
+.field{display:flex; flex-direction:column; gap:5px;}
+.field.full{grid-column:1/-1;}
+.field label{font-size:12px; color:var(--text-muted); font-weight:500;}
+.field input, .field select, .field textarea{
+  border:1.5px solid var(--border); border-radius:7px; padding:9px 10px; font-size:13.5px;
+  font-family:'Inter',sans-serif; color:var(--text); width:100%;
+}
+.field textarea{resize:vertical; min-height:60px;}
+.field input:focus, .field select:focus, .field textarea:focus{outline:none; border-color:var(--primary);}
+.cat-grid{display:flex; flex-wrap:wrap; gap:6px;}
+.cat-check{
+  border:1.5px solid var(--border); border-radius:7px; padding:6px 11px; cursor:pointer;
+  font-family:'JetBrains Mono',monospace; font-size:12.5px; user-select:none; color:var(--text-muted);
+}
+.cat-check.active{background:var(--primary); border-color:var(--primary); color:#fff;}
+.toggle-row{display:flex; align-items:center; gap:8px; margin-bottom:4px; font-size:13px; cursor:pointer;}
+#tahoFields{display:none;}
+#tahoFields.show{display:grid;}
+#terminareField{display:none;}
+#terminareField.show{display:flex;}
+
+.confirm-body{padding:22px 24px; font-size:13.5px; color:var(--text);}
+.btn-danger{background:var(--red); color:#fff;}
+.btn-danger:hover{background:#A5311F;}
+
+footer.note{max-width:1400px; margin:0 auto; padding:0 28px 40px; color:var(--text-muted); font-size:12px;}
+
+@media (max-width:720px){
+  main{padding:16px;}
+  header.top{padding:14px 16px;}
+  .form-grid, .form-grid.cols-3{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ PIN GATE ============ -->
+<div id="pinGate">
+  <div class="pinCard">
+    <span class="tag">MTC Transport</span>
+    <h1>Angajați MTC</h1>
+    <p>Introdu codul PIN pentru acces</p>
+    <input type="password" id="pinInput" maxlength="10" inputmode="numeric" autocomplete="off" placeholder="••••••">
+    <button class="btn btn-primary" onclick="checkPin()">Intră</button>
+    <div id="pinError"></div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app">
+  <header class="top">
+    <div class="top-inner">
+      <div class="brand">
+        <div class="brand-mark">MTC</div>
+        <div>
+          <h1>Angajați MTC Transport</h1>
+          <span>Bază de date centrală · Passau · Ruhstorf · Eiselfing</span>
+        </div>
+      </div>
+      <div class="stats" id="statsRow"></div>
+    </div>
+  </header>
+
+  <main>
+    <div id="alertBanner">
+      <div class="ab-head" onclick="toggleAlertList()">
+        <strong id="alertHeadText"></strong>
+        <span id="alertToggleIcon">▾</span>
+      </div>
+      <ul id="alertList"></ul>
+    </div>
+
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <input type="text" id="searchInput" placeholder="Caută nume, telefon, cod..." oninput="renderBoard()">
+        <select id="filterDepot" onchange="renderBoard()">
+          <option value="">Toate locațiile</option>
+          <option value="Passau (sediu)">Passau (sediu)</option>
+          <option value="Ruhstorf">Ruhstorf</option>
+          <option value="Eiselfing">Eiselfing</option>
+          <option value="Altul">Altul</option>
+        </select>
+        <select id="filterRol" onchange="renderBoard()">
+          <option value="">Toate rolurile</option>
+          <option value="Șofer">Șofer</option>
+          <option value="Dispecer">Dispecer</option>
+          <option value="Administrativ">Administrativ</option>
+          <option value="Mecanic">Mecanic</option>
+          <option value="Altul">Altul</option>
+        </select>
+        <label class="checkbtn"><input type="checkbox" id="filterArhivat" onchange="renderBoard()"> Arată arhivați</label>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn btn-secondary" onclick="exportCSV()">⬇ Export CSV</button>
+        <button class="btn btn-primary" onclick="openModal()">+ Angajat nou</button>
+      </div>
+    </div>
+
+    <div class="board-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th onclick="setSort('employeeId')">Cod</th>
+            <th onclick="setSort('numeComplet')">Nume</th>
+            <th onclick="setSort('rol')">Rol</th>
+            <th onclick="setSort('depot')">Locație</th>
+            <th>Contact</th>
+            <th>Categorii permis</th>
+            <th onclick="setSort('dataExpirarePermis')">Expiră permis</th>
+            <th onclick="setSort('dataExpirareCardTahograf')">Card tahograf</th>
+            <th onclick="setSort('status')">Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="boardBody"></tbody>
+      </table>
+      <div class="empty-state" id="emptyState" style="display:none;">
+        <h3>Niciun angajat înregistrat</h3>
+        <p>Apasă „+ Angajat nou” pentru a adăuga primul șofer în baza de date.</p>
+      </div>
+    </div>
+  </main>
+
+  <footer class="note">Codurile angajaților (ex. MTC-0001) sunt identificatorii folosiți de toate aplicațiile MTC pentru a atribui reclamații, concedii, curse și pontaj acestui angajat.</footer>
+</div>
+
+<!-- ============ MODAL: ADD/EDIT ============ -->
+<div class="modal-backdrop" id="editBackdrop">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="modalTitle">Angajat nou<span class="id-tag" id="modalIdTag" style="display:none;"></span></h2>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="section-label">Date generale</div>
+      <div class="form-grid">
+        <div class="field full"><label>Nume complet *</label><input type="text" id="f_numeComplet"></div>
+        <div class="field"><label>Rol</label>
+          <select id="f_rol">
+            <option>Șofer</option><option>Dispecer</option><option>Administrativ</option><option>Mecanic</option><option>Altul</option>
+          </select>
+        </div>
+        <div class="field"><label>Locație</label>
+          <select id="f_depot">
+            <option>Passau (sediu)</option><option>Ruhstorf</option><option>Eiselfing</option><option>Altul</option>
+          </select>
+        </div>
+        <div class="field"><label>Data nașterii</label><input type="date" id="f_dataNasterii"></div>
+        <div class="field"><label>Telefon</label><input type="text" id="f_telefon" placeholder="+49 ..."></div>
+        <div class="field full"><label>Email</label><input type="text" id="f_email"></div>
+      </div>
+
+      <div class="section-label">Adresă</div>
+      <div class="form-grid">
+        <div class="field"><label>Stradă și număr</label><input type="text" id="f_strada"></div>
+        <div class="field"><label>Cod poștal</label><input type="text" id="f_codPostal"></div>
+        <div class="field"><label>Oraș</label><input type="text" id="f_oras"></div>
+        <div class="field"><label>Țară</label><input type="text" id="f_tara" value="Germania"></div>
+      </div>
+
+      <div class="section-label">Angajare</div>
+      <div class="form-grid cols-3">
+        <div class="field"><label>Data angajării</label><input type="date" id="f_dataAngajare"></div>
+        <div class="field"><label>Status</label>
+          <select id="f_status" onchange="toggleTerminareField()">
+            <option>Activ</option><option>Inactiv</option><option>Arhivat</option>
+          </select>
+        </div>
+        <div class="field" id="terminareField"><label>Data încetării</label><input type="date" id="f_dataIncetare"></div>
+      </div>
+
+      <div class="section-label">Permis de conducere</div>
+      <div class="form-grid">
+        <div class="field full">
+          <label>Categorii</label>
+          <div class="cat-grid" id="catGrid"></div>
+        </div>
+        <div class="field"><label>Număr permis</label><input type="text" id="f_numarPermis"></div>
+        <div class="field"><label>Data eliberării</label><input type="date" id="f_dataEliberarePermis"></div>
+        <div class="field full"><label>Data expirării *</label><input type="date" id="f_dataExpirarePermis"></div>
+      </div>
+
+      <div class="section-label">Card tahograf (Fahrerkarte)</div>
+      <label class="toggle-row"><input type="checkbox" id="f_areTahograf" onchange="toggleTahoFields()"> Angajatul are card tahograf</label>
+      <div class="form-grid" id="tahoFields">
+        <div class="field"><label>Număr card</label><input type="text" id="f_numarTahograf"></div>
+        <div class="field"><label>Data expirării</label><input type="date" id="f_dataExpirareTahograf"></div>
+      </div>
+
+      <div class="section-label">Notițe</div>
+      <div class="field full"><textarea id="f_notite" placeholder="Observații interne..."></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal()">Anulează</button>
+      <button class="btn btn-primary" onclick="saveEmployee()">Salvează</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: DELETE CONFIRM ============ -->
+<div class="modal-backdrop" id="deleteBackdrop">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-head"><h2>Ștergi angajatul?</h2><button class="modal-close" onclick="closeDeleteModal()">✕</button></div>
+    <div class="confirm-body">Această acțiune este permanentă și șterge înregistrarea <b id="deleteName"></b> din baza de date. Recomandare: folosește „Arhivat” la status în loc de ștergere, ca istoricul din celelalte aplicații să rămână valid.</div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeDeleteModal()">Anulează</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">Șterge definitiv</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================= CONFIG ================= */
+// TODO: înlocuiește cu config-ul din Firebase Console → Project settings → General → SDK setup and config
+// Poți crea un proiect nou "angajati-mtc" sau reutiliza unul existent.
+const firebaseConfig = {
+  apiKey: "AIzaSy...",
+  authDomain: "angajati-mtc.firebaseapp.com",
+  projectId: "angajati-mtc",
+  storageBucket: "angajati-mtc.firebasestorage.app",
+  messagingSenderId: "000000000000",
+  appId: "1:000000000000:web:0000000000000000000000"
+};
+const ADMIN_PIN = "060823";
+const CATEGORII_PERMIS = ["AM","A1","A2","A","B","BE","C1","C1E","C","CE","D1","D1E","D","DE"];
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+/* ================= PIN GATE ================= */
+function checkPin(){
+  const val = document.getElementById('pinInput').value.trim();
+  if(val === ADMIN_PIN){
+    sessionStorage.setItem('mtc_angajati_auth','1');
+    document.getElementById('pinGate').style.display='none';
+    document.getElementById('app').style.display='block';
+    initBoard();
+  } else {
+    document.getElementById('pinError').textContent = 'PIN incorect.';
+  }
+}
+document.getElementById('pinInput').addEventListener('keydown', e=>{ if(e.key==='Enter') checkPin(); });
+if(sessionStorage.getItem('mtc_angajati_auth')==='1'){
+  document.getElementById('pinGate').style.display='none';
+  document.getElementById('app').style.display='block';
+  window.addEventListener('DOMContentLoaded', initBoard);
+}
+
+/* ================= STATE ================= */
+let employees = [];
+let editingId = null;
+let deletingId = null;
+let sortField = 'dataExpirarePermis';
+let sortAsc = true;
+let unsub = null;
+
+function initBoard(){
+  buildCatGrid();
+  if(unsub) return;
+  unsub = db.collection('angajati').onSnapshot(snap=>{
+    employees = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+    renderBoard();
+  }, err=>{
+    console.error(err);
+    document.getElementById('boardBody').innerHTML =
+      '<tr><td colspan="11" style="padding:24px; color:var(--red);">Eroare de conectare la Firestore. Verifică firebaseConfig și regulile de securitate.</td></tr>';
+  });
+}
+
+function buildCatGrid(){
+  const grid = document.getElementById('catGrid');
+  grid.innerHTML = CATEGORII_PERMIS.map(c=>
+    `<div class="cat-check" data-cat="${c}" onclick="toggleCat(this)">${c}</div>`
+  ).join('');
+}
+function toggleCat(el){ el.classList.toggle('active'); }
+function getSelectedCats(){
+  return Array.from(document.querySelectorAll('.cat-check.active')).map(e=>e.dataset.cat);
+}
+function setCats(cats){
+  document.querySelectorAll('.cat-check').forEach(el=>{
+    el.classList.toggle('active', (cats||[]).includes(el.dataset.cat));
+  });
+}
+function toggleTahoFields(){
+  document.getElementById('tahoFields').classList.toggle('show', document.getElementById('f_areTahograf').checked);
+}
+function toggleTerminareField(){
+  document.getElementById('terminareField').classList.toggle('show', document.getElementById('f_status').value!=='Activ');
+}
+
+/* ================= DATE / STATUS HELPERS ================= */
+function daysUntil(dateStr){
+  if(!dateStr) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = new Date(dateStr+'T00:00:00');
+  return Math.round((d-today)/86400000);
+}
+function expiryChip(dateStr){
+  if(!dateStr) return `<span class="chip gray">—</span>`;
+  const days = daysUntil(dateStr);
+  const label = new Date(dateStr+'T00:00:00').toLocaleDateString('ro-RO');
+  if(days < 0) return `<span class="chip red">EXPIRAT · ${label}</span>`;
+  if(days <= 30) return `<span class="chip red">${label} · ${days}z</span>`;
+  if(days <= 90) return `<span class="chip amber">${label} · ${days}z</span>`;
+  return `<span class="chip green">${label}</span>`;
+}
+function rowTabClass(emp){
+  const p = daysUntil(emp.dataExpirarePermis);
+  const t = emp.areCardTahograf ? daysUntil(emp.dataExpirareTahograf) : null;
+  const vals = [p,t].filter(v=>v!==null && v!==undefined);
+  if(vals.some(v=>v<=30)) return 'red';
+  if(vals.some(v=>v<=90)) return 'amber';
+  if(vals.length) return 'green';
+  return 'gray';
+}
+
+/* ================= RENDER ================= */
+function renderBoard(){
+  const q = document.getElementById('searchInput').value.toLowerCase().trim();
+  const fDepot = document.getElementById('filterDepot').value;
+  const fRol = document.getElementById('filterRol').value;
+  const showArhivat = document.getElementById('filterArhivat').checked;
+
+  let list = employees.filter(e=>{
+    if(!showArhivat && e.status==='Arhivat') return false;
+    if(fDepot && e.depot!==fDepot) return false;
+    if(fRol && e.rol!==fRol) return false;
+    if(q){
+      const hay = [e.numeComplet,e.telefon,e.email,e.employeeId].filter(Boolean).join(' ').toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  list.sort((a,b)=>{
+    let av=a[sortField], bv=b[sortField];
+    if(sortField==='dataExpirarePermis'||sortField==='dataExpirareCardTahograf'){
+      av = av || '9999-99-99'; bv = bv || '9999-99-99';
+    }
+    av = (av||'').toString().toLowerCase(); bv=(bv||'').toString().toLowerCase();
+    if(av<bv) return sortAsc?-1:1;
+    if(av>bv) return sortAsc?1:-1;
+    return 0;
+  });
+
+  const body = document.getElementById('boardBody');
+  document.getElementById('emptyState').style.display = employees.length? 'none':'block';
+
+  body.innerHTML = list.map(e=>{
+    const cats = (e.categoriiPermis||[]).map(c=>`<span class="cat-pill">${c}</span>`).join('');
+    return `
+    <tr>
+      <td style="padding:0; width:4px;"><div class="tab ${rowTabClass(e)}"></div></td>
+      <td><span class="id-tag mono">${e.employeeId||'—'}</span></td>
+      <td class="name-cell"><b>${escapeHtml(e.numeComplet||'')}</b><small>${escapeHtml(e.oras||e.dataAngajare||'')}</small></td>
+      <td>${e.rol||'—'}</td>
+      <td>${e.depot||'—'}</td>
+      <td>${e.telefon? escapeHtml(e.telefon):'<span style="color:var(--text-muted)">—</span>'}</td>
+      <td><div class="cats">${cats||'—'}</div></td>
+      <td>${expiryChip(e.dataExpirarePermis)}</td>
+      <td>${e.areCardTahograf ? expiryChip(e.dataExpirareTahograf) : '<span class="chip gray">—</span>'}</td>
+      <td><span class="status-pill status-${e.status||'Activ'}">${e.status||'Activ'}</span></td>
+      <td>
+        <div class="row-actions">
+          <div class="icon-btn" onclick="openModal('${e.id}')" title="Editează">✎</div>
+          <div class="icon-btn danger" onclick="openDeleteModal('${e.id}')" title="Șterge">🗑</div>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  renderStats();
+  renderAlerts();
+}
+
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function renderStats(){
+  const active = employees.filter(e=>e.status!=='Arhivat');
+  const soon = active.filter(e=>{
+    const p = daysUntil(e.dataExpirarePermis);
+    const t = e.areCardTahograf ? daysUntil(e.dataExpirareTahograf) : null;
+    return (p!==null && p<=30) || (t!==null && t<=30);
+  });
+  const soferi = active.filter(e=>e.rol==='Șofer');
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat"><b>${active.length}</b><small>Total angajați</small></div>
+    <div class="stat"><b>${soferi.length}</b><small>Șoferi</small></div>
+    <div class="stat ${soon.length?'alert-red':''}"><b>${soon.length}</b><small>Expiră ≤30z</small></div>
+  `;
+}
+
+function renderAlerts(){
+  const active = employees.filter(e=>e.status!=='Arhivat');
+  const items = [];
+  active.forEach(e=>{
+    const p = daysUntil(e.dataExpirarePermis);
+    if(p!==null && p<=30) items.push({name:e.numeComplet, type:'permis', days:p});
+    if(e.areCardTahograf){
+      const t = daysUntil(e.dataExpirareTahograf);
+      if(t!==null && t<=30) items.push({name:e.numeComplet, type:'card tahograf', days:t});
+    }
+  });
+  items.sort((a,b)=>a.days-b.days);
+  const banner = document.getElementById('alertBanner');
+  if(!items.length){ banner.classList.remove('show'); return; }
+  banner.classList.add('show');
+  document.getElementById('alertHeadText').textContent = `⚠ ${items.length} document(e) expiră în curând — apasă pentru detalii`;
+  document.getElementById('alertList').innerHTML = items.map(i=>
+    `<li><b>${escapeHtml(i.name||'—')}</b> — ${i.type} ${i.days<0? `expirat de ${Math.abs(i.days)} zile`:`expiră în ${i.days} zile`}</li>`
+  ).join('');
+}
+function toggleAlertList(){
+  document.getElementById('alertList').classList.toggle('open');
+  document.getElementById('alertToggleIcon').textContent =
+    document.getElementById('alertList').classList.contains('open') ? '▴':'▾';
+}
+
+function setSort(field){
+  if(sortField===field) sortAsc=!sortAsc; else { sortField=field; sortAsc=true; }
+  renderBoard();
+}
+
+/* ================= MODAL: ADD/EDIT ================= */
+function openModal(id){
+  editingId = id || null;
+  document.getElementById('modalIdTag').style.display='none';
+  ['numeComplet','dataNasterii','telefon','email','strada','codPostal','oras','tara',
+   'dataAngajare','dataIncetare','numarPermis','dataEliberarePermis','dataExpirarePermis',
+   'numarTahograf','dataExpirareTahograf','notite'].forEach(f=>document.getElementById('f_'+f).value='');
+  document.getElementById('f_tara').value='Germania';
+  document.getElementById('f_rol').value='Șofer';
+  document.getElementById('f_depot').value='Passau (sediu)';
+  document.getElementById('f_status').value='Activ';
+  document.getElementById('f_areTahograf').checked=false;
+  setCats([]);
+  toggleTahoFields();
+  toggleTerminareField();
+
+  if(id){
+    const e = employees.find(x=>x.id===id);
+    if(e){
+      document.getElementById('modalTitle').innerHTML = `Editează angajat`;
+      document.getElementById('modalIdTag').style.display='inline-block';
+      document.getElementById('modalIdTag').textContent = e.employeeId||'';
+      document.getElementById('f_numeComplet').value = e.numeComplet||'';
+      document.getElementById('f_rol').value = e.rol||'Șofer';
+      document.getElementById('f_depot').value = e.depot||'Passau (sediu)';
+      document.getElementById('f_dataNasterii').value = e.dataNasterii||'';
+      document.getElementById('f_telefon').value = e.telefon||'';
+      document.getElementById('f_email').value = e.email||'';
+      document.getElementById('f_strada').value = e.strada||'';
+      document.getElementById('f_codPostal').value = e.codPostal||'';
+      document.getElementById('f_oras').value = e.oras||'';
+      document.getElementById('f_tara').value = e.tara||'Germania';
+      document.getElementById('f_dataAngajare').value = e.dataAngajare||'';
+      document.getElementById('f_status').value = e.status||'Activ';
+      document.getElementById('f_dataIncetare').value = e.dataIncetare||'';
+      document.getElementById('f_numarPermis').value = e.numarPermis||'';
+      document.getElementById('f_dataEliberarePermis').value = e.dataEliberarePermis||'';
+      document.getElementById('f_dataExpirarePermis').value = e.dataExpirarePermis||'';
+      document.getElementById('f_areTahograf').checked = !!e.areCardTahograf;
+      document.getElementById('f_numarTahograf').value = e.numarTahograf||'';
+      document.getElementById('f_dataExpirareTahograf').value = e.dataExpirareTahograf||'';
+      document.getElementById('f_notite').value = e.notite||'';
+      setCats(e.categoriiPermis||[]);
+      toggleTahoFields();
+      toggleTerminareField();
+    }
+  } else {
+    document.getElementById('modalTitle').textContent = 'Angajat nou';
+  }
+  document.getElementById('editBackdrop').classList.add('show');
+}
+function closeModal(){ document.getElementById('editBackdrop').classList.remove('show'); editingId=null; }
+
+async function nextEmployeeId(){
+  const counterRef = db.collection('meta').doc('counter');
+  return db.runTransaction(async tx=>{
+    const doc = await tx.get(counterRef);
+    const next = doc.exists ? (doc.data().lastId||0)+1 : 1;
+    tx.set(counterRef, { lastId: next }, { merge:true });
+    return 'MTC-' + String(next).padStart(4,'0');
+  });
+}
+
+async function saveEmployee(){
+  const nume = document.getElementById('f_numeComplet').value.trim();
+  const expPermis = document.getElementById('f_dataExpirarePermis').value;
+  if(!nume){ alert('Numele complet este obligatoriu.'); return; }
+  if(!expPermis){ alert('Data expirării permisului este obligatorie.'); return; }
+
+  const data = {
+    numeComplet: nume,
+    rol: document.getElementById('f_rol').value,
+    depot: document.getElementById('f_depot').value,
+    dataNasterii: document.getElementById('f_dataNasterii').value,
+    telefon: document.getElementById('f_telefon').value.trim(),
+    email: document.getElementById('f_email').value.trim(),
+    strada: document.getElementById('f_strada').value.trim(),
+    codPostal: document.getElementById('f_codPostal').value.trim(),
+    oras: document.getElementById('f_oras').value.trim(),
+    tara: document.getElementById('f_tara').value.trim(),
+    dataAngajare: document.getElementById('f_dataAngajare').value,
+    status: document.getElementById('f_status').value,
+    dataIncetare: document.getElementById('f_dataIncetare').value,
+    categoriiPermis: getSelectedCats(),
+    numarPermis: document.getElementById('f_numarPermis').value.trim(),
+    dataEliberarePermis: document.getElementById('f_dataEliberarePermis').value,
+    dataExpirarePermis: expPermis,
+    areCardTahograf: document.getElementById('f_areTahograf').checked,
+    numarTahograf: document.getElementById('f_numarTahograf').value.trim(),
+    dataExpirareTahograf: document.getElementById('f_dataExpirareTahograf').value,
+    notite: document.getElementById('f_notite').value.trim(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  try{
+    if(editingId){
+      await db.collection('angajati').doc(editingId).update(data);
+    } else {
+      data.employeeId = await nextEmployeeId();
+      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      await db.collection('angajati').add(data);
+    }
+    closeModal();
+  }catch(err){
+    console.error(err);
+    alert('Eroare la salvare. Verifică firebaseConfig și conexiunea.');
+  }
+}
+
+/* ================= DELETE ================= */
+function openDeleteModal(id){
+  deletingId = id;
+  const e = employees.find(x=>x.id===id);
+  document.getElementById('deleteName').textContent = e ? e.numeComplet : '';
+  document.getElementById('deleteBackdrop').classList.add('show');
+}
+function closeDeleteModal(){ document.getElementById('deleteBackdrop').classList.remove('show'); deletingId=null; }
+async function confirmDelete(){
+  if(!deletingId) return;
+  try{
+    await db.collection('angajati').doc(deletingId).delete();
+    closeDeleteModal();
+  }catch(err){ console.error(err); alert('Eroare la ștergere.'); }
+}
+
+/* ================= EXPORT CSV ================= */
+function exportCSV(){
+  const cols = ['employeeId','numeComplet','rol','depot','telefon','email','strada','codPostal','oras','tara',
+    'dataAngajare','status','categoriiPermis','numarPermis','dataEliberarePermis','dataExpirarePermis',
+    'areCardTahograf','numarTahograf','dataExpirareTahograf'];
+  const header = cols.join(';');
+  const rows = employees.map(e=> cols.map(c=>{
+    let v = e[c];
+    if(Array.isArray(v)) v = v.join(',');
+    if(v===undefined||v===null) v='';
+    return String(v).replace(/;/g,',');
+  }).join(';'));
+  const csv = [header, ...rows].join('\n');
+  const blob = new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'angajati-mtc-' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
