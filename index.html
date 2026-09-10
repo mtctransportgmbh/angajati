@@ -9,6 +9,10 @@
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
 <style>
 :root{
@@ -243,6 +247,77 @@ tbody tr:hover{background:#FAFBFC;}
 
 footer.note{max-width:1400px; margin:0 auto; padding:0 28px 40px; color:var(--text-muted); font-size:12px;}
 
+/* ---------- VIEW TABS ---------- */
+.view-tabs{
+  max-width:1400px; margin:0 auto; padding:14px 28px 0; display:flex; gap:8px;
+}
+.view-tab-btn{
+  border:1.5px solid var(--border); background:var(--surface); border-radius:100px;
+  padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer; color:var(--text-muted);
+  font-family:'Inter',sans-serif;
+}
+.view-tab-btn.active{border-color:var(--primary); color:var(--primary); background:var(--primary-soft);}
+
+/* ---------- DISTANȚE ---------- */
+.dist-panel{
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+  box-shadow:var(--shadow); padding:20px 22px; margin-bottom:18px;
+}
+.fp-row{
+  display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border);
+  font-size:13.5px;
+}
+.fp-row:last-child{border-bottom:none;}
+.fp-row .fp-name{font-weight:600; min-width:160px;}
+.fp-row .fp-addr{flex:1; color:var(--text-muted); font-size:12.5px;}
+.fp-row .fp-status{font-size:11px; padding:2px 8px; border-radius:100px;}
+.fp-status.geo-ok{background:var(--green-soft); color:var(--green);}
+.fp-status.geo-bad{background:var(--red-soft); color:var(--red);}
+.fp-add-row{display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;}
+.fp-add-row input{
+  border:1.5px solid var(--border); border-radius:7px; padding:8px 10px; font-size:13px;
+}
+#fp_nume{width:200px;}
+#fp_adresa{flex:1; min-width:220px;}
+#distTable{min-width:600px;}
+#distTable th, #distTable td{padding:10px 14px; font-size:13px;}
+.dist-cell{font-family:'JetBrains Mono',monospace; font-size:12.5px;}
+.dist-cell.stale{color:var(--text-muted);}
+
+/* ---------- ACCES / PIN ---------- */
+.access-body{padding:22px 24px;}
+.access-row{display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border);}
+.access-row:last-child{border-bottom:none;}
+.access-row label{color:var(--text-muted); font-size:12.5px;}
+.pin-reveal{
+  background:var(--primary); color:#fff; border-radius:10px; padding:18px;
+  text-align:center; margin:16px 0;
+}
+.pin-reveal .code{font-family:'JetBrains Mono',monospace; font-size:28px; letter-spacing:.15em; font-weight:600;}
+.pin-reveal small{opacity:.8; display:block; margin-top:6px; font-size:11.5px;}
+.warn-box{
+  background:var(--amber-soft); border:1px solid #EAD6A3; border-radius:8px;
+  padding:10px 12px; font-size:12.5px; color:#8A6300; margin-top:10px;
+}
+.rowcheck{width:34px; text-align:center;}
+
+@media print{
+  body *{visibility:hidden;}
+  #printSheets, #printSheets *{visibility:visible;}
+  #printSheets{position:absolute; top:0; left:0; width:100%;}
+}
+#printSheets{display:none;}
+.sheet{
+  page-break-after:always; padding:40px; border:1.5px dashed #999; margin:20px; border-radius:8px;
+  font-family:'Inter',sans-serif;
+}
+.sheet .sheet-brand{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px; color:var(--primary); margin-bottom:18px;}
+.sheet h3{font-size:20px; margin:0 0 4px;}
+.sheet .sheet-row{margin:14px 0; font-size:14px;}
+.sheet .sheet-row b{display:block; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:#666; margin-bottom:3px;}
+.sheet .sheet-code{font-family:'JetBrains Mono',monospace; font-size:22px; letter-spacing:.1em;}
+.sheet .sheet-note{margin-top:24px; font-size:11.5px; color:#666; border-top:1px solid #ccc; padding-top:12px;}
+
 @media (max-width:720px){
   main{padding:16px;}
   header.top{padding:14px 16px;}
@@ -272,14 +347,19 @@ footer.note{max-width:1400px; margin:0 auto; padding:0 28px 40px; color:var(--te
         <div class="brand-mark">MTC</div>
         <div>
           <h1>Angajați MTC Transport</h1>
-          <span>Bază de date centrală · Passau · Ruhstorf · Eiselfing</span>
+          <span>Bază de date centrală · Ruhstorf · Eiselfing · Polling</span>
         </div>
       </div>
       <div class="stats" id="statsRow"></div>
     </div>
   </header>
 
-  <main>
+  <div class="view-tabs">
+    <button class="view-tab-btn active" id="tabBtn-angajati" onclick="switchView('angajati')">👥 Angajați</button>
+    <button class="view-tab-btn" id="tabBtn-distante" onclick="switchView('distante')">📍 Distanțe</button>
+  </div>
+
+  <main id="view-angajati">
     <div id="alertBanner">
       <div class="ab-head" onclick="toggleAlertList()">
         <strong id="alertHeadText"></strong>
@@ -293,9 +373,9 @@ footer.note{max-width:1400px; margin:0 auto; padding:0 28px 40px; color:var(--te
         <input type="text" id="searchInput" placeholder="Caută nume, telefon, cod..." oninput="renderBoard()">
         <select id="filterDepot" onchange="renderBoard()">
           <option value="">Toate locațiile</option>
-          <option value="Passau (sediu)">Passau (sediu)</option>
           <option value="Ruhstorf">Ruhstorf</option>
           <option value="Eiselfing">Eiselfing</option>
+          <option value="Polling">Polling</option>
           <option value="Altul">Altul</option>
         </select>
         <select id="filterRol" onchange="renderBoard()">
@@ -309,6 +389,7 @@ footer.note{max-width:1400px; margin:0 auto; padding:0 28px 40px; color:var(--te
         <label class="checkbtn"><input type="checkbox" id="filterArhivat" onchange="renderBoard()"> Arată arhivați</label>
       </div>
       <div style="display:flex; gap:10px;">
+        <button class="btn btn-secondary" onclick="printSelectedSheets()">🖨 Fișe acces (selectați)</button>
         <button class="btn btn-secondary" onclick="exportCSV()">⬇ Export CSV</button>
         <button class="btn btn-primary" onclick="openModal()">+ Angajat nou</button>
       </div>
@@ -319,6 +400,7 @@ footer.note{max-width:1400px; margin:0 auto; padding:0 28px 40px; color:var(--te
         <thead>
           <tr>
             <th></th>
+            <th class="rowcheck"><input type="checkbox" id="selectAllBox" onchange="toggleSelectAll(this)"></th>
             <th onclick="setSort('employeeId')">Cod</th>
             <th onclick="setSort('numeComplet')">Nume</th>
             <th onclick="setSort('rol')">Rol</th>
@@ -327,6 +409,8 @@ footer.note{max-width:1400px; margin:0 auto; padding:0 28px 40px; color:var(--te
             <th>Categorii permis</th>
             <th onclick="setSort('dataExpirarePermis')">Expiră permis</th>
             <th onclick="setSort('dataExpirareCardTahograf')">Card tahograf</th>
+            <th>Acces cont</th>
+            <th>Concediu (an curent)</th>
             <th onclick="setSort('status')">Status</th>
             <th></th>
           </tr>
@@ -340,6 +424,34 @@ footer.note{max-width:1400px; margin:0 auto; padding:0 28px 40px; color:var(--te
     </div>
   </main>
 
+  <main id="view-distante" style="display:none;">
+    <div class="dist-panel">
+      <h3 style="margin:0 0 4px;">Puncte fixe</h3>
+      <p style="color:var(--text-muted); font-size:12.5px; margin:0 0 14px;">Adresele față de care se calculează distanța (cu mașina) fiecărui angajat.</p>
+      <div id="fixedPointsList"></div>
+      <div class="fp-add-row">
+        <input type="text" id="fp_nume" placeholder="Nume (ex: Depou Ruhstorf)">
+        <input type="text" id="fp_adresa" placeholder="Adresă completă (stradă, nr, oraș, cod poștal)">
+        <button class="btn btn-primary btn-sm" onclick="addFixedPoint()">+ Adaugă</button>
+      </div>
+      <div id="fpError" style="color:var(--red); font-size:12px; margin-top:6px;"></div>
+    </div>
+
+    <div class="dist-panel">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <h3 style="margin:0;">Distanțe angajați → puncte fixe</h3>
+        <button class="btn btn-secondary btn-sm" onclick="calculateAllDistances()">↻ Calculează / actualizează distanțele</button>
+      </div>
+      <div id="distProgress" style="font-size:12.5px; color:var(--text-muted); margin-top:8px;"></div>
+      <div class="board-wrap" style="margin-top:14px;">
+        <table id="distTable">
+          <thead><tr id="distTableHead"></tr></thead>
+          <tbody id="distTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
   <footer class="note">Codurile angajaților (ex. MTC-0001) sunt identificatorii folosiți de toate aplicațiile MTC pentru a atribui reclamații, concedii, curse și pontaj acestui angajat.</footer>
 </div>
 
@@ -347,13 +459,14 @@ footer.note{max-width:1400px; margin:0 auto; padding:0 28px 40px; color:var(--te
 <div class="modal-backdrop" id="editBackdrop">
   <div class="modal">
     <div class="modal-head">
-      <h2 id="modalTitle">Angajat nou<span class="id-tag" id="modalIdTag" style="display:none;"></span></h2>
+      <h2 id="modalTitle"><span id="modalTitleText">Angajat nou</span><span class="id-tag" id="modalIdTag" style="display:none;"></span></h2>
       <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
     <div class="modal-body">
       <div class="section-label">Date generale</div>
       <div class="form-grid">
         <div class="field full"><label>Nume complet *</label><input type="text" id="f_numeComplet"></div>
+        <div class="field full"><label>Număr personal (din contractul de muncă) — folosit ca user de login</label><input type="text" id="f_numarPersonal" placeholder="ex: 4471"></div>
         <div class="field"><label>Rol</label>
           <select id="f_rol">
             <option>Șofer</option><option>Dispecer</option><option>Administrativ</option><option>Mecanic</option><option>Altul</option>
@@ -361,7 +474,7 @@ footer.note{max-width:1400px; margin:0 auto; padding:0 28px 40px; color:var(--te
         </div>
         <div class="field"><label>Locație</label>
           <select id="f_depot">
-            <option>Passau (sediu)</option><option>Ruhstorf</option><option>Eiselfing</option><option>Altul</option>
+            <option>Ruhstorf</option><option>Eiselfing</option><option>Polling</option><option>Altul</option>
           </select>
         </div>
         <div class="field"><label>Data nașterii</label><input type="date" id="f_dataNasterii"></div>
@@ -416,6 +529,24 @@ footer.note{max-width:1400px; margin:0 auto; padding:0 28px 40px; color:var(--te
   </div>
 </div>
 
+<!-- ============ MODAL: ACCES CONT ============ -->
+<div class="modal-backdrop" id="accessBackdrop">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-head"><h2>Acces cont — <span id="accessName"></span></h2><button class="modal-close" onclick="closeAccessModal()">✕</button></div>
+    <div class="access-body">
+      <div class="access-row"><label>Număr personal (login)</label><span class="mono" id="accessNumarPersonal">—</span></div>
+      <div class="access-row"><label>Status cont</label><span id="accessStatusChip"></span></div>
+      <div id="pinRevealBox"></div>
+      <button class="btn btn-primary" style="width:100%;" onclick="generatePinForCurrent()">🔑 Generează PIN nou (resetare)</button>
+      <div class="warn-box">PIN-ul se arată o singură dată, aici. Notează-l pe fișă și predă-l angajatului în plic sigilat — sistemul nu îl mai poate afișa după ce închizi fereastra asta.</div>
+
+      <div id="qrRevealBox"></div>
+      <button class="btn btn-secondary" style="width:100%; margin-top:10px;" onclick="generateQrForCurrent()">📱 Generează cod QR nou (resetare)</button>
+      <div class="warn-box">La fel ca PIN-ul — codul QR se arată o singură dată. Printează-l direct de aici, în plic sigilat. Scanarea lui îl loghează automat pe angajat, fără să tasteze nimic.</div>
+    </div>
+  </div>
+</div>
+
 <!-- ============ MODAL: DELETE CONFIRM ============ -->
 <div class="modal-backdrop" id="deleteBackdrop">
   <div class="modal" style="max-width:420px;">
@@ -428,42 +559,57 @@ footer.note{max-width:1400px; margin:0 auto; padding:0 28px 40px; color:var(--te
   </div>
 </div>
 
+<div id="printSheets"></div>
+
 <script>
 /* ================= CONFIG ================= */
-// TODO: înlocuiește cu config-ul din Firebase Console → Project settings → General → SDK setup and config
-// Poți crea un proiect nou "angajati-mtc" sau reutiliza unul existent.
-const firebaseConfig = {
-  apiKey: "AIzaSy...",
-  authDomain: "angajati-mtc.firebaseapp.com",
-  projectId: "angajati-mtc",
-  storageBucket: "angajati-mtc.firebasestorage.app",
-  messagingSenderId: "000000000000",
-  appId: "1:000000000000:web:0000000000000000000000"
-};
-const ADMIN_PIN = "060823";
+// Config-ul real e în firebase-config.js — nu se mai atinge aici.
+const firebaseConfig = window.FIREBASE_CONFIG;
+// PIN-ul de admin NU mai stă în client — e verificat server-side în funcția checkAdminPin.
 const CATEGORII_PERMIS = ["AM","A1","A2","A","B","BE","C1","C1E","C","CE","D1","D1E","D","DE"];
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+const auth = firebase.auth();
+const functionsRef = firebase.functions();
 
-/* ================= PIN GATE ================= */
-function checkPin(){
+/* ================= PIN GATE (admin — vede tot boardul) ================= */
+// PIN-ul NU se mai compară în JS. Se trimite la Cloud Function "checkAdminPin",
+// care îl verifică pe server și, dacă e corect, întoarce un token de Firebase
+// Auth. Abia după autentificare pot fi citite/scrise date din Firestore —
+// regulile cer request.auth.token.role == 'admin'.
+async function checkPin(){
   const val = document.getElementById('pinInput').value.trim();
-  if(val === ADMIN_PIN){
+  const errEl = document.getElementById('pinError');
+  errEl.textContent = '';
+  try{
+    const callCheckAdminPin = functionsRef.httpsCallable('checkAdminPin');
+    const result = await callCheckAdminPin({ pin: val });
+    await auth.signInWithCustomToken(result.data.token);
     sessionStorage.setItem('mtc_angajati_auth','1');
     document.getElementById('pinGate').style.display='none';
     document.getElementById('app').style.display='block';
     initBoard();
-  } else {
-    document.getElementById('pinError').textContent = 'PIN incorect.';
+  }catch(err){
+    console.error(err);
+    if(err.code === 'functions/resource-exhausted'){
+      errEl.textContent = 'Prea multe încercări. Așteaptă câteva minute.';
+    } else if(err.code === 'functions/permission-denied'){
+      errEl.textContent = 'PIN incorect.';
+    } else {
+      errEl.innerHTML = `Eroare (trimite-mi asta): <span class="mono">${err.code||'?'} — ${err.message||err}</span>`;
+    }
   }
 }
 document.getElementById('pinInput').addEventListener('keydown', e=>{ if(e.key==='Enter') checkPin(); });
-if(sessionStorage.getItem('mtc_angajati_auth')==='1'){
-  document.getElementById('pinGate').style.display='none';
-  document.getElementById('app').style.display='block';
-  window.addEventListener('DOMContentLoaded', initBoard);
-}
+
+auth.onAuthStateChanged(user=>{
+  if(user && sessionStorage.getItem('mtc_angajati_auth')==='1'){
+    document.getElementById('pinGate').style.display='none';
+    document.getElementById('app').style.display='block';
+    initBoard();
+  }
+});
 
 /* ================= STATE ================= */
 let employees = [];
@@ -472,17 +618,36 @@ let deletingId = null;
 let sortField = 'dataExpirarePermis';
 let sortAsc = true;
 let unsub = null;
+let selectedIds = new Set();
+let revealedPin = null; // ținut doar în memorie, niciodată scris în Firestore
+let fixedPoints = [];
+let unsubFixedPoints = null;
+let currentView = 'angajati';
 
 function initBoard(){
   buildCatGrid();
   if(unsub) return;
+  unsubFixedPoints = db.collection('puncte_fixe').onSnapshot(snap=>{
+    fixedPoints = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+    renderFixedPoints();
+    renderDistanceTable();
+  }, err=>console.error('puncte_fixe:', err));
   unsub = db.collection('angajati').onSnapshot(snap=>{
     employees = snap.docs.map(d=>({ id:d.id, ...d.data() }));
     renderBoard();
-  }, err=>{
+  }, async err=>{
     console.error(err);
+    let claimsInfo = 'nu s-a putut citi';
+    try{
+      const tokenResult = await auth.currentUser.getIdTokenResult(true);
+      claimsInfo = JSON.stringify(tokenResult.claims);
+    }catch(e){ claimsInfo = 'eroare: ' + e.message; }
     document.getElementById('boardBody').innerHTML =
-      '<tr><td colspan="11" style="padding:24px; color:var(--red);">Eroare de conectare la Firestore. Verifică firebaseConfig și regulile de securitate.</td></tr>';
+      `<tr><td colspan="11" style="padding:24px; color:var(--red);">
+        Eroare de conectare la Firestore: ${err.message}<br><br>
+        <b>Claims curente (trimite-mi exact linia asta):</b><br>
+        <span class="mono" style="font-size:12px;">${claimsInfo}</span>
+      </td></tr>`;
   });
 }
 
@@ -509,6 +674,26 @@ function toggleTerminareField(){
 }
 
 /* ================= DATE / STATUS HELPERS ================= */
+/* ================= CALCUL ZILE CONCEDIU ================= */
+// Regulă confirmată: 24 zile/an fix. În anul angajării, se acumulează
+// 2 zile pentru fiecare lună lucrată (inclusiv luna angajării) până la
+// finalul acelui an. Din anul calendaristic următor, toată lumea are
+// direct cele 24 de zile, indiferent de vechime.
+const ZILE_PE_LUNA = 2;
+const ZILE_AN_INTREG = 24;
+
+function zileConcediuAnCurent(dataAngajareStr, anReferinta){
+  if(!dataAngajareStr) return null;
+  const an = anReferinta || new Date().getFullYear();
+  const hireDate = new Date(dataAngajareStr+'T00:00:00');
+  const hireYear = hireDate.getFullYear();
+  if(hireYear > an) return 0; // nu a început încă
+  if(hireYear < an) return ZILE_AN_INTREG; // an complet, angajat de anul trecut sau mai devreme
+  // anul exact al angajării: luni de la angajare (inclusiv) până în decembrie
+  const luniRamase = 12 - hireDate.getMonth(); // getMonth() e 0-indexat (ian=0)
+  return luniRamase * ZILE_PE_LUNA;
+}
+
 function daysUntil(dateStr){
   if(!dateStr) return null;
   const today = new Date(); today.setHours(0,0,0,0);
@@ -532,6 +717,28 @@ function rowTabClass(emp){
   if(vals.some(v=>v<=90)) return 'amber';
   if(vals.length) return 'green';
   return 'gray';
+}
+
+function vacationCell(e){
+  const an = new Date().getFullYear();
+  const zile = zileConcediuAnCurent(e.dataAngajare, an);
+  if(zile === null) return '<span class="chip gray">fără dată angajare</span>';
+  return `<span class="chip green">${zile} zile (${an})</span>`;
+}
+
+function accessChip(e){
+  if(!e.hasAccount) return '<span class="chip gray">Fără cont</span>';
+  if(e.mustChangePin) return '<span class="chip amber">PIN provizoriu</span>';
+  return '<span class="chip green">Cont activ</span>';
+}
+function toggleRowSelect(id, checked){
+  if(checked) selectedIds.add(id); else selectedIds.delete(id);
+}
+function toggleSelectAll(box){
+  document.querySelectorAll('.rowSelect').forEach(cb=>{
+    cb.checked = box.checked;
+    toggleRowSelect(cb.dataset.id, box.checked);
+  });
 }
 
 /* ================= RENDER ================= */
@@ -571,17 +778,21 @@ function renderBoard(){
     return `
     <tr>
       <td style="padding:0; width:4px;"><div class="tab ${rowTabClass(e)}"></div></td>
+      <td class="rowcheck"><input type="checkbox" class="rowSelect" data-id="${e.id}" ${selectedIds.has(e.id)?'checked':''} onchange="toggleRowSelect('${e.id}', this.checked)"></td>
       <td><span class="id-tag mono">${e.employeeId||'—'}</span></td>
-      <td class="name-cell"><b>${escapeHtml(e.numeComplet||'')}</b><small>${escapeHtml(e.oras||e.dataAngajare||'')}</small></td>
+      <td class="name-cell"><b>${escapeHtml(e.numeComplet||'')}</b><small>${escapeHtml(addressLine(e))}</small></td>
       <td>${e.rol||'—'}</td>
       <td>${e.depot||'—'}</td>
       <td>${e.telefon? escapeHtml(e.telefon):'<span style="color:var(--text-muted)">—</span>'}</td>
       <td><div class="cats">${cats||'—'}</div></td>
       <td>${expiryChip(e.dataExpirarePermis)}</td>
       <td>${e.areCardTahograf ? expiryChip(e.dataExpirareTahograf) : '<span class="chip gray">—</span>'}</td>
+      <td>${accessChip(e)}</td>
+      <td>${vacationCell(e)}</td>
       <td><span class="status-pill status-${e.status||'Activ'}">${e.status||'Activ'}</span></td>
       <td>
         <div class="row-actions">
+          <div class="icon-btn" onclick="openAccessModal('${e.id}')" title="Acces cont">🔑</div>
           <div class="icon-btn" onclick="openModal('${e.id}')" title="Editează">✎</div>
           <div class="icon-btn danger" onclick="openDeleteModal('${e.id}')" title="Șterge">🗑</div>
         </div>
@@ -591,6 +802,12 @@ function renderBoard(){
 
   renderStats();
   renderAlerts();
+  renderDistanceTable();
+}
+
+function addressLine(e){
+  const parts = [e.strada, e.oras].filter(Boolean);
+  return parts.length ? parts.join(', ') : (e.dataAngajare||'');
 }
 
 function escapeHtml(s){
@@ -647,12 +864,12 @@ function setSort(field){
 function openModal(id){
   editingId = id || null;
   document.getElementById('modalIdTag').style.display='none';
-  ['numeComplet','dataNasterii','telefon','email','strada','codPostal','oras','tara',
+  ['numeComplet','numarPersonal','dataNasterii','telefon','email','strada','codPostal','oras','tara',
    'dataAngajare','dataIncetare','numarPermis','dataEliberarePermis','dataExpirarePermis',
    'numarTahograf','dataExpirareTahograf','notite'].forEach(f=>document.getElementById('f_'+f).value='');
   document.getElementById('f_tara').value='Germania';
   document.getElementById('f_rol').value='Șofer';
-  document.getElementById('f_depot').value='Passau (sediu)';
+  document.getElementById('f_depot').value='Ruhstorf';
   document.getElementById('f_status').value='Activ';
   document.getElementById('f_areTahograf').checked=false;
   setCats([]);
@@ -662,12 +879,13 @@ function openModal(id){
   if(id){
     const e = employees.find(x=>x.id===id);
     if(e){
-      document.getElementById('modalTitle').innerHTML = `Editează angajat`;
+      document.getElementById('modalTitleText').textContent = 'Editează angajat';
       document.getElementById('modalIdTag').style.display='inline-block';
       document.getElementById('modalIdTag').textContent = e.employeeId||'';
       document.getElementById('f_numeComplet').value = e.numeComplet||'';
+      document.getElementById('f_numarPersonal').value = e.numarPersonal||'';
       document.getElementById('f_rol').value = e.rol||'Șofer';
-      document.getElementById('f_depot').value = e.depot||'Passau (sediu)';
+      document.getElementById('f_depot').value = e.depot||'Ruhstorf';
       document.getElementById('f_dataNasterii').value = e.dataNasterii||'';
       document.getElementById('f_telefon').value = e.telefon||'';
       document.getElementById('f_email').value = e.email||'';
@@ -690,7 +908,7 @@ function openModal(id){
       toggleTerminareField();
     }
   } else {
-    document.getElementById('modalTitle').textContent = 'Angajat nou';
+    document.getElementById('modalTitleText').textContent = 'Angajat nou';
   }
   document.getElementById('editBackdrop').classList.add('show');
 }
@@ -711,9 +929,15 @@ async function saveEmployee(){
   const expPermis = document.getElementById('f_dataExpirarePermis').value;
   if(!nume){ alert('Numele complet este obligatoriu.'); return; }
   if(!expPermis){ alert('Data expirării permisului este obligatorie.'); return; }
+  const numarPersonalVal = document.getElementById('f_numarPersonal').value.trim();
+  if(numarPersonalVal){
+    const dup = employees.find(e=>e.numarPersonal===numarPersonalVal && e.id!==editingId);
+    if(dup){ alert(`Numărul personal "${numarPersonalVal}" e deja folosit de ${dup.numeComplet}. Fiecare angajat are nevoie de un cod unic de login.`); return; }
+  }
 
   const data = {
     numeComplet: nume,
+    numarPersonal: document.getElementById('f_numarPersonal').value.trim(),
     rol: document.getElementById('f_rol').value,
     depot: document.getElementById('f_depot').value,
     dataNasterii: document.getElementById('f_dataNasterii').value,
@@ -768,7 +992,271 @@ async function confirmDelete(){
   }catch(err){ console.error(err); alert('Eroare la ștergere.'); }
 }
 
+/* ================= ACCES CONT / PIN ================= */
+let accessEmployeeId = null;
+
+function openAccessModal(id){
+  accessEmployeeId = id;
+  const e = employees.find(x=>x.id===id);
+  if(!e) return;
+  document.getElementById('accessName').textContent = e.numeComplet||'';
+  document.getElementById('accessNumarPersonal').textContent = e.numarPersonal || '— (completează-l în fișa angajatului)';
+  document.getElementById('accessStatusChip').innerHTML = accessChip(e);
+  document.getElementById('pinRevealBox').innerHTML = '';
+  document.getElementById('accessBackdrop').classList.add('show');
+}
+function closeAccessModal(){
+  document.getElementById('accessBackdrop').classList.remove('show');
+  accessEmployeeId = null;
+}
+
+function randomPin(){
+  return String(Math.floor(100000 + Math.random()*900000)); // 6 cifre
+}
+
+async function generatePinForCurrent(){
+  const e = employees.find(x=>x.id===accessEmployeeId);
+  if(!e) return;
+  if(!e.numarPersonal){
+    alert('Completează mai întâi „Număr personal” în fișa angajatului — e identificatorul de login.');
+    return;
+  }
+  const pin = randomPin();
+  try{
+    const setInitialPin = functionsRef.httpsCallable('setInitialPin');
+    await setInitialPin({ employeeId: e.id, pin });
+    document.getElementById('pinRevealBox').innerHTML = `
+      <div class="pin-reveal">
+        <div class="code">${pin}</div>
+        <small>PIN provizoriu — angajatul îl schimbă la prima logare</small>
+      </div>`;
+  }catch(err){
+    console.error(err);
+    alert('Eroare la generarea PIN-ului. Verifică deploy-ul funcției setInitialPin.');
+  }
+}
+
+async function qrDataUrl(text){
+  return await QRCode.toDataURL(text, { width: 220, margin: 1 });
+}
+
+function loginUrlFor(token){
+  const base = window.PORTAL_URL_BASE || 'portal.html';
+  return base + '?login=' + encodeURIComponent(token);
+}
+
+async function generateQrForCurrent(){
+  const e = employees.find(x=>x.id===accessEmployeeId);
+  if(!e) return;
+  try{
+    const gen = functionsRef.httpsCallable('generateQrToken');
+    const result = await gen({ employeeId: e.id });
+    const url = loginUrlFor(result.data.token);
+    const dataUrl = await qrDataUrl(url);
+    document.getElementById('qrRevealBox').innerHTML = `
+      <div class="pin-reveal" style="background:var(--surface); border:1.5px dashed var(--border);">
+        <img src="${dataUrl}" style="width:160px; height:160px; display:block; margin:0 auto;">
+        <small style="color:var(--text-muted);">Cod QR provizoriu — scanare = logare automată</small>
+      </div>`;
+    e._lastQrUrl = url; // ținut doar în memorie, pentru fișa de printat dacă o generezi acum
+  }catch(err){
+    console.error(err);
+    alert('Eroare la generarea codului QR. Verifică deploy-ul funcției generateQrToken.');
+  }
+}
+
+function sheetHtml(emp, pin, qrDataUrlStr){
+  return `
+  <div class="sheet">
+    <div class="sheet-brand">MTC TRANSPORT · ACCES CONT</div>
+    <h3>${escapeHtml(emp.numeComplet||'')}</h3>
+    ${qrDataUrlStr ? `<div style="text-align:center; margin:14px 0;"><img src="${qrDataUrlStr}" style="width:170px; height:170px;"><div style="font-size:11px; color:#666; margin-top:6px;">Scanează cu telefonul pentru logare automată</div></div>` : ''}
+    <div class="sheet-row"><b>Cod de utilizator (număr personal)</b><span class="sheet-code">${emp.numarPersonal||'—'}</span></div>
+    <div class="sheet-row"><b>PIN provizoriu (dacă nu poți scana)</b><span class="sheet-code">${pin}</span></div>
+    <div class="sheet-note">Păstrează acest cod confidențial. La prima logare cu PIN ți se va cere să-ți setezi propriul PIN. Nu împărtăși acest plic cu nimeni.</div>
+  </div>`;
+}
+
+async function printSelectedSheets(){
+  if(!selectedIds.size){
+    alert('Selectează cel puțin un angajat din tabel (căsuța din stânga).');
+    return;
+  }
+  const targets = employees.filter(e=>selectedIds.has(e.id));
+  const missing = targets.filter(e=>!e.numarPersonal);
+  if(missing.length){
+    alert('Angajați fără „Număr personal” completat: ' + missing.map(e=>e.numeComplet).join(', ') + '. Completează-l înainte de a genera fișe.');
+    return;
+  }
+  if(!confirm(`Generez PIN nou și fișe de printat pentru ${targets.length} angajat(i)? PIN-urile vechi ale acestora vor fi înlocuite.`)) return;
+
+  const setInitialPin = functionsRef.httpsCallable('setInitialPin');
+  const genQr = functionsRef.httpsCallable('generateQrToken');
+  let sheets = '';
+  for(const e of targets){
+    const pin = randomPin();
+    try{
+      await setInitialPin({ employeeId: e.id, pin });
+      let qrUrl = '';
+      try{
+        const qrResult = await genQr({ employeeId: e.id });
+        qrUrl = await qrDataUrl(loginUrlFor(qrResult.data.token));
+      }catch(qrErr){
+        console.error('QR eșuat pentru', e.numeComplet, qrErr);
+      }
+      sheets += sheetHtml(e, pin, qrUrl);
+    }catch(err){
+      console.error('Eroare la', e.numeComplet, err);
+    }
+  }
+  document.getElementById('printSheets').innerHTML = sheets;
+  window.print();
+}
+
 /* ================= EXPORT CSV ================= */
+/* ================= TAB-URI ================= */
+function switchView(name){
+  currentView = name;
+  document.getElementById('view-angajati').style.display = name==='angajati' ? 'block' : 'none';
+  document.getElementById('view-distante').style.display = name==='distante' ? 'block' : 'none';
+  document.getElementById('tabBtn-angajati').classList.toggle('active', name==='angajati');
+  document.getElementById('tabBtn-distante').classList.toggle('active', name==='distante');
+  if(name==='distante'){ renderFixedPoints(); renderDistanceTable(); }
+}
+
+/* ================= GEOCODARE + RUTE (OpenStreetMap, gratuit, fără cheie) ================= */
+// Nominatim cere max 1 cerere/secundă — respectăm asta cu o mică pauză
+// între cereri succesive când geocodăm mai multe adrese la rând.
+function sleep(ms){ return new Promise(r=>setTimeout(r, ms)); }
+
+async function geocodeAddress(address){
+  const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(address);
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('geocodare eșuată (' + res.status + ')');
+  const data = await res.json();
+  if(!data.length) throw new Error('adresă negăsită');
+  return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+}
+
+async function routeDistanceKm(from, to){
+  const url = `https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=false`;
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('rută eșuată (' + res.status + ')');
+  const data = await res.json();
+  if(data.code !== 'Ok' || !data.routes || !data.routes.length) throw new Error('rută negăsită');
+  return { km: Math.round(data.routes[0].distance/100)/10, min: Math.round(data.routes[0].duration/60) };
+}
+
+function employeeAddressString(e){
+  const parts = [e.strada, e.oras, e.codPostal, e.tara].filter(Boolean);
+  return parts.join(', ');
+}
+
+/* ================= PUNCTE FIXE ================= */
+function renderFixedPoints(){
+  const list = document.getElementById('fixedPointsList');
+  if(!fixedPoints.length){
+    list.innerHTML = '<div class="empty-note" style="padding:14px 0; color:var(--text-muted); font-size:13px;">Niciun punct fix adăugat încă.</div>';
+    return;
+  }
+  list.innerHTML = fixedPoints.map(p=>`
+    <div class="fp-row">
+      <span class="fp-name">${escapeHtml(p.nume||'')}</span>
+      <span class="fp-addr">${escapeHtml(p.adresa||'')}</span>
+      <span class="fp-status ${p.lat!=null?'geo-ok':'geo-bad'}">${p.lat!=null?'localizat':'eroare adresă'}</span>
+      <div class="icon-btn danger" onclick="deleteFixedPoint('${p.id}')" title="Șterge">🗑</div>
+    </div>
+  `).join('');
+}
+
+async function addFixedPoint(){
+  const nume = document.getElementById('fp_nume').value.trim();
+  const adresa = document.getElementById('fp_adresa').value.trim();
+  const errEl = document.getElementById('fpError');
+  errEl.textContent = '';
+  if(!nume || !adresa){ errEl.textContent = 'Completează și numele, și adresa.'; return; }
+  try{
+    const coords = await geocodeAddress(adresa);
+    await db.collection('puncte_fixe').add({ nume, adresa, lat: coords.lat, lng: coords.lng, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    document.getElementById('fp_nume').value = '';
+    document.getElementById('fp_adresa').value = '';
+  }catch(err){
+    console.error(err);
+    errEl.textContent = 'Nu am putut localiza adresa asta ("' + err.message + '"). Verifică dacă e scrisă complet (stradă, număr, oraș).';
+  }
+}
+
+async function deleteFixedPoint(id){
+  if(!confirm('Ștergi acest punct fix? Distanțele calculate față de el se pierd.')) return;
+  await db.collection('puncte_fixe').doc(id).delete();
+}
+
+/* ================= CALCUL DISTANȚE ================= */
+async function calculateAllDistances(){
+  const progEl = document.getElementById('distProgress');
+  const activePoints = fixedPoints.filter(p=>p.lat!=null);
+  if(!activePoints.length){
+    progEl.textContent = 'Adaugă cel puțin un punct fix, localizat cu succes, înainte de calcul.';
+    return;
+  }
+  const targets = employees.filter(e=>e.status!=='Arhivat' && employeeAddressString(e));
+  let done = 0;
+  progEl.textContent = `Se calculează... 0 / ${targets.length}`;
+
+  for(const e of targets){
+    try{
+      const addrStr = employeeAddressString(e);
+      let coords = (e.geoLat!=null && e.geoAddressCache===addrStr) ? { lat:e.geoLat, lng:e.geoLng } : null;
+      if(!coords){
+        coords = await geocodeAddress(addrStr);
+        await sleep(1100); // respectă limita Nominatim: max 1 cerere/secundă
+        await db.collection('angajati').doc(e.id).update({ geoLat: coords.lat, geoLng: coords.lng, geoAddressCache: addrStr });
+        e.geoLat = coords.lat; e.geoLng = coords.lng; e.geoAddressCache = addrStr;
+      }
+
+      const distante = Object.assign({}, e.distante||{});
+      for(const p of activePoints){
+        const r = await routeDistanceKm(coords, { lat:p.lat, lng:p.lng });
+        distante[p.id] = { km:r.km, min:r.min, calculatedAt: Date.now() };
+      }
+      await db.collection('angajati').doc(e.id).update({ distante });
+      e.distante = distante;
+    }catch(err){
+      console.error('Distanță eșuată pentru', e.numeComplet, err);
+    }
+    done++;
+    progEl.textContent = `Se calculează... ${done} / ${targets.length}`;
+    renderDistanceTable();
+  }
+  progEl.textContent = `Gata — ${done} angajați actualizați.`;
+}
+
+function renderDistanceTable(){
+  if(currentView !== 'distante') return;
+  const head = document.getElementById('distTableHead');
+  const body = document.getElementById('distTableBody');
+  if(!head || !body) return;
+
+  const activePoints = fixedPoints.filter(p=>p.lat!=null);
+  head.innerHTML = '<th>Angajat</th><th>Adresă</th>' + activePoints.map(p=>`<th>${escapeHtml(p.nume)}</th>`).join('');
+
+  const rows = employees.filter(e=>e.status!=='Arhivat');
+  if(!rows.length || !activePoints.length){
+    body.innerHTML = `<tr><td colspan="${2+activePoints.length}" style="padding:20px; text-align:center; color:var(--text-muted);">
+      ${!activePoints.length ? 'Adaugă un punct fix mai sus.' : 'Niciun angajat activ.'}</td></tr>`;
+    return;
+  }
+
+  body.innerHTML = rows.map(e=>{
+    const cells = activePoints.map(p=>{
+      const d = (e.distante||{})[p.id];
+      if(!d) return '<td class="dist-cell stale">—</td>';
+      return `<td class="dist-cell">${d.km} km · ${d.min} min</td>`;
+    }).join('');
+    return `<tr><td>${escapeHtml(e.numeComplet||'')}</td><td>${escapeHtml(addressLine(e)||'—')}</td>${cells}</tr>`;
+  }).join('');
+}
+
 function exportCSV(){
   const cols = ['employeeId','numeComplet','rol','depot','telefon','email','strada','codPostal','oras','tara',
     'dataAngajare','status','categoriiPermis','numarPermis','dataEliberarePermis','dataExpirarePermis',
