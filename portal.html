@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portalul meu · MTC Transport</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
+<script src="firebase-config.js"></script>
+<style>
+:root{
+  --bg:#F6F7F9; --surface:#FFFFFF; --surface-alt:#EEF1F5; --text:#1B2430; --text-muted:#5B6472;
+  --border:#E2E5EA; --primary:#1E3A5F; --primary-hover:#16293F; --primary-soft:#E7EDF4;
+  --amber:#D98E04; --amber-soft:#FBF1DC; --red:#C0392B; --red-soft:#FBE7E4;
+  --green:#2F855A; --green-soft:#E5F3EC; --radius:14px;
+  --shadow:0 1px 2px rgba(27,36,48,.06), 0 4px 12px rgba(27,36,48,.05);
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; font-size:15px;
+  min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;
+}
+h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
+.mono{font-family:'JetBrains Mono',monospace;}
+.card{
+  background:var(--surface); border-radius:20px; box-shadow:var(--shadow);
+  width:100%; max-width:400px; padding:32px 28px;
+}
+.brand{text-align:center; margin-bottom:22px;}
+.brand-mark{
+  width:46px; height:46px; border-radius:12px; background:var(--primary); color:#fff;
+  display:flex; align-items:center; justify-content:center; font-weight:700; font-size:16px;
+  margin:0 auto 12px;
+}
+.brand h1{font-size:17px; margin:0;}
+.brand p{color:var(--text-muted); font-size:12.5px; margin:4px 0 0;}
+
+#loadingState{text-align:center; padding:30px 0; color:var(--text-muted); font-size:13.5px;}
+#loginState{display:none;}
+#appState{display:none;}
+#errorState{display:none; text-align:center;}
+
+.field{margin-bottom:14px;}
+.field label{display:block; font-size:12.5px; color:var(--text-muted); margin-bottom:5px; font-weight:500;}
+.field input{
+  width:100%; border:1.5px solid var(--border); border-radius:9px; padding:11px 12px;
+  font-size:14px; font-family:'Inter',sans-serif;
+}
+.field input:focus{outline:none; border-color:var(--primary);}
+.btn{
+  border:none; border-radius:9px; padding:12px 18px; font-weight:600; font-size:14px;
+  cursor:pointer; width:100%;
+}
+.btn-primary{background:var(--primary); color:#fff;}
+.btn-primary:hover{background:var(--primary-hover);}
+#loginError{color:var(--red); font-size:12.5px; margin-top:10px; min-height:16px; text-align:center;}
+
+.welcome{text-align:center; margin-bottom:24px;}
+.welcome .hello{color:var(--text-muted); font-size:13px;}
+.welcome h2{font-size:20px; margin:4px 0 0;}
+
+.stat-big{
+  background:var(--primary-soft); border-radius:14px; padding:22px; text-align:center; margin-bottom:14px;
+}
+.stat-big .num{font-family:'Space Grotesk',sans-serif; font-size:38px; font-weight:700; color:var(--primary); line-height:1;}
+.stat-big .lbl{font-size:12.5px; color:var(--text-muted); margin-top:6px;}
+
+.section{margin-top:20px;}
+.section h3{font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted); margin:0 0 10px;}
+.placeholder-box{
+  border:1.5px dashed var(--border); border-radius:12px; padding:18px; text-align:center;
+  color:var(--text-muted); font-size:13px;
+}
+.logout{
+  display:block; text-align:center; margin-top:22px; color:var(--text-muted);
+  font-size:12.5px; text-decoration:none; cursor:pointer;
+}
+
+.setpin-box{background:var(--amber-soft); border-radius:12px; padding:16px; margin-bottom:18px;}
+.setpin-box p{margin:0 0 10px; font-size:12.5px; color:#8A6300;}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="brand">
+    <div class="brand-mark">MTC</div>
+    <h1>Portalul meu</h1>
+    <p>MTC Transport GmbH</p>
+  </div>
+
+  <div id="loadingState">Se conectează...</div>
+
+  <div id="loginState">
+    <div class="field"><label>Număr personal</label><input type="text" id="f_numarPersonal" inputmode="numeric" autocomplete="off"></div>
+    <div class="field"><label>PIN</label><input type="password" id="f_pin" inputmode="numeric" autocomplete="off" maxlength="8"></div>
+    <button class="btn btn-primary" onclick="loginManual()">Intră în cont</button>
+    <div id="loginError"></div>
+  </div>
+
+  <div id="errorState">
+    <p style="color:var(--red); font-size:13.5px;" id="errorText"></p>
+    <button class="btn btn-primary" onclick="showLogin()">Încearcă din nou</button>
+  </div>
+
+  <div id="appState">
+    <div id="setPinPrompt" class="setpin-box" style="display:none;">
+      <p>Ești logat cu un PIN provizoriu. Setează-ți acum propriul PIN, pe care îl vei folosi de acum înainte.</p>
+      <div class="field"><label>PIN nou (4-8 cifre)</label><input type="password" id="f_newPin" inputmode="numeric" maxlength="8"></div>
+      <button class="btn btn-primary" onclick="setNewPin()">Salvează PIN nou</button>
+      <div id="setPinError" style="color:#8A6300; font-size:12px; margin-top:8px;"></div>
+    </div>
+
+    <div class="welcome">
+      <div class="hello">Bine ai venit,</div>
+      <h2 id="welcomeName">—</h2>
+    </div>
+
+    <div class="stat-big">
+      <div class="num" id="vacationDays">—</div>
+      <div class="lbl" id="vacationLabel">zile de concediu, anul curent</div>
+    </div>
+
+    <div class="section">
+      <h3>Reclamații</h3>
+      <div class="placeholder-box">În curând aici — legătura cu Reclamații urmează.</div>
+    </div>
+
+    <div class="section">
+      <h3>Cerere de concediu</h3>
+      <div class="placeholder-box">În curând aici — planificare + aprobare.</div>
+    </div>
+
+    <a class="logout" onclick="logout()">Ieși din cont</a>
+  </div>
+</div>
+
+<script>
+const firebaseConfig = window.FIREBASE_CONFIG;
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+const functionsRef = firebase.functions();
+
+const ZILE_PE_LUNA = 2;
+const ZILE_AN_INTREG = 24;
+function zileConcediuAnCurent(dataAngajareStr, anReferinta){
+  if(!dataAngajareStr) return null;
+  const an = anReferinta || new Date().getFullYear();
+  const hireDate = new Date(dataAngajareStr+'T00:00:00');
+  const hireYear = hireDate.getFullYear();
+  if(hireYear > an) return 0;
+  if(hireYear < an) return ZILE_AN_INTREG;
+  const luniRamase = 12 - hireDate.getMonth();
+  return luniRamase * ZILE_PE_LUNA;
+}
+
+function show(id){
+  ['loadingState','loginState','errorState','appState'].forEach(s=>{
+    document.getElementById(s).style.display = (s===id) ? (id==='loadingState'?'block':(id==='appState'?'block':'block')) : 'none';
+  });
+}
+function showLogin(){ show('loginState'); }
+function showError(msg){
+  document.getElementById('errorText').textContent = msg;
+  show('errorState');
+}
+
+let currentMustChangePin = false;
+
+async function init(){
+  const params = new URLSearchParams(window.location.search);
+  const qrToken = params.get('login');
+
+  if(qrToken){
+    try{
+      const loginByQr = functionsRef.httpsCallable('employeeLoginByQr');
+      const result = await loginByQr({ token: qrToken });
+      await auth.signInWithCustomToken(result.data.token);
+      // curăță token-ul din bara de adresă / istoric, din grijă pentru confidențialitate
+      history.replaceState({}, '', window.location.pathname);
+      currentMustChangePin = false;
+      await loadProfile();
+    }catch(err){
+      console.error(err);
+      showError('Cod QR invalid sau expirat. Cere administratorului un cod nou.');
+    }
+    return;
+  }
+
+  // fără cod în URL — arată login manual
+  show('loginState');
+}
+
+async function loginManual(){
+  const numarPersonal = document.getElementById('f_numarPersonal').value.trim();
+  const pin = document.getElementById('f_pin').value.trim();
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+  try{
+    const login = functionsRef.httpsCallable('employeeLogin');
+    const result = await login({ numarPersonal, pin });
+    await auth.signInWithCustomToken(result.data.token);
+    currentMustChangePin = !!result.data.mustChangePin;
+    await loadProfile();
+  }catch(err){
+    console.error(err);
+    errEl.textContent = err.code === 'functions/resource-exhausted'
+      ? 'Prea multe încercări. Așteaptă câteva minute.'
+      : 'Cod sau PIN incorect.';
+  }
+}
+
+async function loadProfile(){
+  const uid = auth.currentUser.uid;
+  const doc = await db.collection('angajati').doc(uid).get();
+  if(!doc.exists){
+    showError('Contul nu are un profil asociat. Contactează administratorul.');
+    return;
+  }
+  const e = doc.data();
+  document.getElementById('welcomeName').textContent = e.numeComplet || '—';
+  const zile = zileConcediuAnCurent(e.dataAngajare, new Date().getFullYear());
+  document.getElementById('vacationDays').textContent = zile===null ? '—' : zile;
+  document.getElementById('vacationLabel').textContent = `zile de concediu, ${new Date().getFullYear()}`;
+  document.getElementById('setPinPrompt').style.display = currentMustChangePin ? 'block' : 'none';
+  show('appState');
+}
+
+async function setNewPin(){
+  const newPin = document.getElementById('f_newPin').value.trim();
+  const errEl = document.getElementById('setPinError');
+  errEl.textContent = '';
+  if(!/^\d{4,8}$/.test(newPin)){
+    errEl.textContent = 'PIN-ul trebuie să aibă 4-8 cifre.';
+    return;
+  }
+  try{
+    const changePin = functionsRef.httpsCallable('changePin');
+    await changePin({ newPin });
+    currentMustChangePin = false;
+    document.getElementById('setPinPrompt').style.display = 'none';
+    document.getElementById('f_newPin').value = '';
+  }catch(err){
+    console.error(err);
+    errEl.textContent = 'Eroare la salvare. Încearcă din nou.';
+  }
+}
+
+function logout(){
+  auth.signOut().then(()=>{ window.location.href = window.location.pathname; });
+}
+
+init();
+</script>
+</body>
+</html>
