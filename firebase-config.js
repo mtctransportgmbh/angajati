@@ -11,8 +11,5 @@ window.FIREBASE_CONFIG = {
   appId: "1:753268962487:web:37fa40d89a5a986aac4932"
 };
 
-// Adresa unde va sta portal.html odată urcat pe GitHub Pages, ex:
-// "https://angajati.mtctransportgmbh.de/portal.html"
-// Până atunci, poți lăsa placeholder-ul — codurile QR generate local nu vor
-// funcționa la scanare până nu pui adresa reală aici (o singură dată).
-window.PORTAL_URL_BASE = "https://angajati.mtctransportgmbh.de/portal.html";
+// Adresa unde stă portal.html pe GitHub Pages.
+window.PORTAL_URL_BASE = "https://flota.mtctransportgmbh.de/angajati/portal.html";
