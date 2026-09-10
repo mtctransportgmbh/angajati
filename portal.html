@@ -82,6 +82,21 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
 
 .setpin-box{background:var(--amber-soft); border-radius:12px; padding:16px; margin-bottom:18px;}
 .setpin-box p{margin:0 0 10px; font-size:12.5px; color:#8A6300;}
+
+.vac-grid{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:10px;}
+.vac-box{background:var(--primary-soft); border-radius:12px; padding:14px 8px; text-align:center;}
+.vac-num{font-family:'Space Grotesk',sans-serif; font-size:24px; font-weight:700; color:var(--primary); line-height:1;}
+.vac-lbl{font-size:10.5px; color:var(--text-muted); margin-top:4px; text-transform:uppercase; letter-spacing:.03em;}
+.vac-extra{display:flex; gap:14px; font-size:12px; color:var(--text-muted); margin-bottom:16px; flex-wrap:wrap;}
+.vac-extra b{color:var(--text);}
+.vac-list-title{font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted); margin:16px 0 8px; font-weight:600;}
+.vac-list{display:flex; flex-direction:column; gap:6px;}
+.vac-item{
+  background:var(--surface-alt); border-radius:9px; padding:9px 12px;
+  font-size:13px; display:flex; justify-content:space-between; align-items:center;
+}
+.vac-item .days{font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--text-muted);}
+.vac-empty{color:var(--text-muted); font-size:12.5px; padding:6px 0;}
 </style>
 </head>
 <body>
@@ -120,9 +135,24 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
       <h2 id="welcomeName">—</h2>
     </div>
 
-    <div class="stat-big">
-      <div class="num" id="vacationDays">—</div>
-      <div class="lbl" id="vacationLabel">zile de concediu, anul curent</div>
+    <div class="section">
+      <h3>Concediu</h3>
+      <div id="vacationLoading" class="placeholder-box">Se încarcă din Concedii...</div>
+      <div id="vacationContent" style="display:none;">
+        <div class="vac-grid">
+          <div class="vac-box"><div class="vac-num" id="v_ramase">—</div><div class="vac-lbl">rămase</div></div>
+          <div class="vac-box"><div class="vac-num" id="v_folosite">—</div><div class="vac-lbl">folosite</div></div>
+          <div class="vac-box"><div class="vac-num" id="v_total">—</div><div class="vac-lbl">total anul acesta</div></div>
+        </div>
+        <div class="vac-extra" id="v_extra"></div>
+
+        <div class="vac-list-title">Următoarele concedii</div>
+        <div id="v_upcoming" class="vac-list"></div>
+
+        <div class="vac-list-title">Concedii trecute (anul acesta)</div>
+        <div id="v_past" class="vac-list"></div>
+      </div>
+      <div id="vacationError" class="placeholder-box" style="display:none;"></div>
     </div>
 
     <div class="section">
@@ -146,18 +176,19 @@ const db = firebase.firestore();
 const auth = firebase.auth();
 const functionsRef = firebase.functions();
 
-const ZILE_PE_LUNA = 2;
-const ZILE_AN_INTREG = 24;
-function zileConcediuAnCurent(dataAngajareStr, anReferinta){
-  if(!dataAngajareStr) return null;
-  const an = anReferinta || new Date().getFullYear();
-  const hireDate = new Date(dataAngajareStr+'T00:00:00');
-  const hireYear = hireDate.getFullYear();
-  if(hireYear > an) return 0;
-  if(hireYear < an) return ZILE_AN_INTREG;
-  const luniRamase = 12 - hireDate.getMonth();
-  return luniRamase * ZILE_PE_LUNA;
-}
+// Conexiune separată către Concedii (alt proiect Firebase) — doar pentru
+// funcția care ne dă datele de concediu; nu ne logăm acolo, doar apelăm
+// o funcție publică ce verifică sesiunea noastră de aici.
+const CONCEDII_CONFIG = {
+  apiKey: "AIzaSyCaWrQnIAcquK71N_EwKT45lwcUW5RyDK0",
+  authDomain: "concedii-test.firebaseapp.com",
+  projectId: "concedii-test",
+  storageBucket: "concedii-test.firebasestorage.app",
+  messagingSenderId: "212982580101",
+  appId: "1:212982580101:web:5a41c6816a6893e5423aec"
+};
+const concediiApp = firebase.initializeApp(CONCEDII_CONFIG, 'concedii');
+const concediiFunctions = firebase.functions(concediiApp);
 
 function show(id){
   ['loadingState','loginState','errorState','appState'].forEach(s=>{
@@ -224,11 +255,65 @@ async function loadProfile(){
   }
   const e = doc.data();
   document.getElementById('welcomeName').textContent = e.numeComplet || '—';
-  const zile = zileConcediuAnCurent(e.dataAngajare, new Date().getFullYear());
-  document.getElementById('vacationDays').textContent = zile===null ? '—' : zile;
-  document.getElementById('vacationLabel').textContent = `zile de concediu, ${new Date().getFullYear()}`;
   document.getElementById('setPinPrompt').style.display = currentMustChangePin ? 'block' : 'none';
   show('appState');
+  loadVacationData();
+}
+
+function formatRange(l){
+  const days = l.start===l.end ? '1 zi' : (l.start+' → '+l.end);
+  return days;
+}
+
+async function loadVacationData(){
+  const loadingEl = document.getElementById('vacationLoading');
+  const contentEl = document.getElementById('vacationContent');
+  const errorEl = document.getElementById('vacationError');
+  loadingEl.style.display = 'block';
+  contentEl.style.display = 'none';
+  errorEl.style.display = 'none';
+
+  try{
+    const idToken = await auth.currentUser.getIdToken();
+    const getMyLeaveData = concediiFunctions.httpsCallable('getMyLeaveData');
+    const result = await getMyLeaveData({ idToken });
+    const d = result.data;
+
+    if(!d.linked){
+      loadingEl.style.display = 'none';
+      errorEl.style.display = 'block';
+      errorEl.textContent = d.reason || 'Contul nu e încă legat de Concedii.';
+      return;
+    }
+
+    document.getElementById('v_ramase').textContent = d.remaining;
+    document.getElementById('v_folosite').textContent = d.usedLeaves;
+    document.getElementById('v_total').textContent = d.totalAvailable;
+
+    const extraParts = [];
+    if(d.carryOver) extraParts.push(`<span><b>${d.carryOver}</b> reportate din anul trecut</span>`);
+    if(d.usedKrank) extraParts.push(`<span><b>${d.usedKrank}</b> zile Krank folosite</span>`);
+    if(d.usedUnpaid) extraParts.push(`<span><b>${d.usedUnpaid}</b> zile fără plată folosite</span>`);
+    document.getElementById('v_extra').innerHTML = extraParts.join('');
+
+    const upcomingEl = document.getElementById('v_upcoming');
+    upcomingEl.innerHTML = d.upcoming.length
+      ? d.upcoming.map(l=>`<div class="vac-item"><span>${l.start} → ${l.end}</span></div>`).join('')
+      : '<div class="vac-empty">Niciun concediu planificat.</div>';
+
+    const pastEl = document.getElementById('v_past');
+    pastEl.innerHTML = d.past.length
+      ? d.past.map(l=>`<div class="vac-item"><span>${l.start} → ${l.end}</span></div>`).join('')
+      : '<div class="vac-empty">Niciun concediu luat anul acesta.</div>';
+
+    loadingEl.style.display = 'none';
+    contentEl.style.display = 'block';
+  }catch(err){
+    console.error(err);
+    loadingEl.style.display = 'none';
+    errorEl.style.display = 'block';
+    errorEl.textContent = 'Nu am putut încărca datele de concediu (' + (err.message||err.code||err) + ').';
+  }
 }
 
 async function setNewPin(){
