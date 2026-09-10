@@ -3,12 +3,12 @@
 // index.html și potrivire-angajati.html citesc automat de aici.
 // Fișierele acelea se pot înlocui oricând fără să mai atingi configul.
 window.FIREBASE_CONFIG = {
-  apiKey: "AIzaSy...",
-  authDomain: "angajati-mtc.firebaseapp.com",
-  projectId: "angajati-mtc",
-  storageBucket: "angajati-mtc.firebasestorage.app",
-  messagingSenderId: "000000000000",
-  appId: "1:000000000000:web:0000000000000000000000"
+  apiKey: "AIzaSyCzo4hb0gGhiCdTxFMXwe0Ln2hp4qEaUIE",
+  authDomain: "angajati-f1b01.firebaseapp.com",
+  projectId: "angajati-f1b01",
+  storageBucket: "angajati-f1b01.firebasestorage.app",
+  messagingSenderId: "753268962487",
+  appId: "1:753268962487:web:37fa40d89a5a986aac4932"
 };
 
 // Adresa unde va sta portal.html odată urcat pe GitHub Pages, ex:
