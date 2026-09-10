@@ -157,7 +157,18 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
 
     <div class="section">
       <h3>Reclamații</h3>
-      <div class="placeholder-box">În curând aici — legătura cu Reclamații urmează.</div>
+      <div id="reclamatiiLoading" class="placeholder-box">Se încarcă din Reclamații...</div>
+      <div id="reclamatiiContent" style="display:none;">
+        <div class="vac-grid">
+          <div class="vac-box"><div class="vac-num" id="r_total">—</div><div class="vac-lbl">total</div></div>
+          <div class="vac-box"><div class="vac-num" id="r_rezolvate">—</div><div class="vac-lbl">rezolvate</div></div>
+          <div class="vac-box"><div class="vac-num" id="r_nerezolvate">—</div><div class="vac-lbl">nerezolvate</div></div>
+        </div>
+        <div class="vac-extra" id="r_extra"></div>
+        <div class="vac-list-title">Ultimele reclamații</div>
+        <div id="r_lista" class="vac-list"></div>
+      </div>
+      <div id="reclamatiiError" class="placeholder-box" style="display:none;"></div>
     </div>
 
     <div class="section">
@@ -189,6 +200,17 @@ const CONCEDII_CONFIG = {
 };
 const concediiApp = firebase.initializeApp(CONCEDII_CONFIG, 'concedii');
 const concediiFunctions = firebase.functions(concediiApp);
+
+const RECLAMATII_CONFIG = {
+  apiKey: "AIzaSyAUju0UiaAlTCjLgs0IZf01A65iiqpHZhI",
+  authDomain: "reclamatii-df0e7.firebaseapp.com",
+  projectId: "reclamatii-df0e7",
+  storageBucket: "reclamatii-df0e7.firebasestorage.app",
+  messagingSenderId: "231511007803",
+  appId: "1:231511007803:web:04b08affe925e6ef37f21e"
+};
+const reclamatiiApp = firebase.initializeApp(RECLAMATII_CONFIG, 'reclamatii');
+const reclamatiiFunctions = firebase.functions(reclamatiiApp);
 
 function show(id){
   ['loadingState','loginState','errorState','appState'].forEach(s=>{
@@ -258,6 +280,7 @@ async function loadProfile(){
   document.getElementById('setPinPrompt').style.display = currentMustChangePin ? 'block' : 'none';
   show('appState');
   loadVacationData();
+  loadReclamatiiData();
 }
 
 function formatRange(l){
@@ -314,6 +337,57 @@ async function loadVacationData(){
     errorEl.style.display = 'block';
     errorEl.textContent = 'Nu am putut încărca datele de concediu (' + (err.message||err.code||err) + ').';
   }
+}
+
+const STATUS_LABEL = { rezolvata:'Rezolvată', nerezolvata:'Nerezolvată', neprelucrat:'În procesare', checking:'În verificare', parsing:'În procesare', error:'Eroare', ready:'În procesare' };
+
+async function loadReclamatiiData(){
+  const loadingEl = document.getElementById('reclamatiiLoading');
+  const contentEl = document.getElementById('reclamatiiContent');
+  const errorEl = document.getElementById('reclamatiiError');
+  loadingEl.style.display = 'block';
+  contentEl.style.display = 'none';
+  errorEl.style.display = 'none';
+
+  try{
+    const idToken = await auth.currentUser.getIdToken();
+    const getMyReclamatii = reclamatiiFunctions.httpsCallable('getMyReclamatii');
+    const result = await getMyReclamatii({ idToken });
+    const d = result.data;
+
+    if(!d.linked){
+      loadingEl.style.display = 'none';
+      errorEl.style.display = 'block';
+      errorEl.textContent = d.reason || 'Contul nu e încă legat de Reclamații.';
+      return;
+    }
+
+    document.getElementById('r_total').textContent = d.total;
+    document.getElementById('r_rezolvate').textContent = d.rezolvate;
+    document.getElementById('r_nerezolvate').textContent = d.nerezolvate;
+
+    const extraParts = [];
+    extraParts.push(`<span><b>€${d.totalSuma.toFixed(2)}</b> sumă totală</span>`);
+    if(d.inProcesare) extraParts.push(`<span><b>${d.inProcesare}</b> în procesare</span>`);
+    document.getElementById('r_extra').innerHTML = extraParts.join('');
+
+    const listaEl = document.getElementById('r_lista');
+    listaEl.innerHTML = d.lista.length
+      ? d.lista.map(r=>`<div class="vac-item"><span>${r.data||'—'} · ${escapeHtmlP(r.client||'—')}</span><span class="days">€${r.suma.toFixed(2)} · ${STATUS_LABEL[r.status]||r.status}</span></div>`).join('')
+      : '<div class="vac-empty">Nicio reclamație înregistrată.</div>';
+
+    loadingEl.style.display = 'none';
+    contentEl.style.display = 'block';
+  }catch(err){
+    console.error(err);
+    loadingEl.style.display = 'none';
+    errorEl.style.display = 'block';
+    errorEl.textContent = 'Nu am putut încărca reclamațiile (' + (err.message||err.code||err) + ').';
+  }
+}
+
+function escapeHtmlP(s){
+  return (s||'').toString().replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 
 async function setNewPin(){
