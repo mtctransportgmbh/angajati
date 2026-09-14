@@ -12,4 +12,4 @@ window.FIREBASE_CONFIG = {
 };
 
 // Adresa unde stă portal.html pe GitHub Pages.
-window.PORTAL_URL_BASE = "https://flota.mtctransportgmbh.de/angajati/portal.html";
+window.PORTAL_URL_BASE = "https://mtctransportgmbh.github.io/angajati/portal.html";
