@@ -97,6 +97,71 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
 }
 .vac-item .days{font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--text-muted);}
 .vac-empty{color:var(--text-muted); font-size:12.5px; padding:6px 0;}
+
+/* ---------- Următorul concediu, zi cu zi ---------- */
+.next-leave-card{background:var(--primary-soft); border-radius:14px; padding:14px;}
+.next-leave-days{display:flex; gap:6px; overflow-x:auto; padding-bottom:2px;}
+.day-chip{
+  flex:0 0 auto; width:52px; text-align:center; border-radius:10px; padding:8px 4px;
+  background:var(--surface);
+}
+.day-chip.weekend{background:transparent; border:1.5px dashed var(--border);}
+.day-chip .dname{font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600;}
+.day-chip.weekend .dname{color:var(--text-muted);}
+.day-chip .dnum{font-family:'Space Grotesk',sans-serif; font-size:16px; font-weight:700; color:var(--primary); margin-top:2px;}
+.day-chip.weekend .dnum{color:var(--text-muted); font-weight:600;}
+.next-leave-note{font-size:11.5px; color:var(--text-muted); margin-top:8px;}
+
+/* ---------- Cerere de concediu ---------- */
+.req-form{margin-bottom:16px;}
+.req-row{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+.req-form .field{margin-bottom:10px;}
+.req-item{
+  background:var(--surface-alt); border-radius:9px; padding:10px 12px; margin-bottom:6px;
+  display:flex; justify-content:space-between; align-items:center; font-size:13px;
+}
+.req-status{font-size:11px; font-weight:600; padding:2px 9px; border-radius:100px;}
+.req-status.in_asteptare{background:var(--amber-soft); color:var(--amber);}
+.req-status.aprobat{background:var(--green-soft); color:var(--green);}
+.req-status.respins{background:var(--red-soft); color:var(--red);}
+
+/* ---------- Coadă de aprobare (coordonator) ---------- */
+.appr-card{
+  background:var(--surface-alt); border-radius:12px; padding:14px; margin-bottom:12px;
+}
+.appr-card .who{font-weight:600; font-size:14px;}
+.appr-card .when{font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--text-muted); margin-top:2px;}
+.appr-card .motiv{font-size:12.5px; color:var(--text-muted); margin-top:4px; font-style:italic;}
+.appr-warn{
+  background:var(--amber-soft); color:#8A6300; border-radius:8px; padding:8px 10px;
+  font-size:11.5px; margin-top:8px;
+}
+.appr-actions{display:flex; gap:8px; margin-top:10px;}
+.appr-actions button{flex:1; padding:9px; border-radius:8px; border:none; font-weight:600; font-size:12.5px; cursor:pointer;}
+.appr-approve{background:var(--green); color:#fff;}
+.appr-reject{background:var(--red); color:#fff;}
+
+/* ---------- Reclamații pe categorii ---------- */
+.recl-group{margin-bottom:16px;}
+.recl-group-head{
+  display:flex; align-items:center; gap:8px; margin-bottom:8px;
+  font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.03em;
+}
+.recl-group-head.nerezolvate{color:var(--red);}
+.recl-group-head.rezolvate{color:var(--green);}
+.recl-group-head .count{
+  background:var(--surface-alt); border-radius:100px; padding:1px 8px; font-size:11px;
+}
+.recl-item{
+  border-left:3px solid var(--border); border-radius:0 9px 9px 0;
+  background:var(--surface-alt); padding:9px 12px; margin-bottom:6px;
+}
+.recl-item.st-nerezolvata{border-left-color:var(--red);}
+.recl-item.st-rezolvata{border-left-color:var(--green);}
+.recl-item .row1{display:flex; justify-content:space-between; align-items:baseline; font-size:13px;}
+.recl-item .suma{font-family:'JetBrains Mono',monospace; font-weight:600;}
+.recl-item .row1 .suma.has-suma{color:var(--red);}
+.recl-item .row2{font-size:11.5px; color:var(--text-muted); margin-top:2px;}
 </style>
 </head>
 <body>
@@ -146,7 +211,10 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
         </div>
         <div class="vac-extra" id="v_extra"></div>
 
-        <div class="vac-list-title">Următoarele concedii</div>
+        <div class="vac-list-title">Următorul concediu</div>
+        <div id="v_next"></div>
+
+        <div class="vac-list-title">Și după acela</div>
         <div id="v_upcoming" class="vac-list"></div>
 
         <div class="vac-list-title">Concedii trecute (anul acesta)</div>
@@ -165,15 +233,29 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
           <div class="vac-box"><div class="vac-num" id="r_nerezolvate">—</div><div class="vac-lbl">nerezolvate</div></div>
         </div>
         <div class="vac-extra" id="r_extra"></div>
-        <div class="vac-list-title">Ultimele reclamații</div>
-        <div id="r_lista" class="vac-list"></div>
+        <div id="r_groups"></div>
       </div>
       <div id="reclamatiiError" class="placeholder-box" style="display:none;"></div>
     </div>
 
     <div class="section">
       <h3>Cerere de concediu</h3>
-      <div class="placeholder-box">În curând aici — planificare + aprobare.</div>
+      <div class="req-form">
+        <div class="req-row">
+          <div class="field"><label>De la</label><input type="date" id="req_start"></div>
+          <div class="field"><label>Până la</label><input type="date" id="req_end"></div>
+        </div>
+        <div class="field"><label>Motiv (opțional)</label><input type="text" id="req_motiv" maxlength="300" placeholder="ex: vacanță în familie"></div>
+        <button class="btn btn-primary" onclick="submitRequest()">Trimite cererea</button>
+        <div id="req_error" style="color:var(--red); font-size:12px; margin-top:8px; min-height:14px;"></div>
+      </div>
+      <div class="vac-list-title">Cererile mele</div>
+      <div id="myRequestsList" class="vac-list"></div>
+    </div>
+
+    <div class="section" id="approvalSection" style="display:none;">
+      <h3>Cereri de aprobat</h3>
+      <div id="approvalList"></div>
     </div>
 
     <a class="logout" onclick="logout()">Ieși din cont</a>
@@ -226,6 +308,10 @@ function showError(msg){
 let currentMustChangePin = false;
 
 async function init(){
+  const todayStr = new Date().toISOString().slice(0,10);
+  document.getElementById('req_start').min = todayStr;
+  document.getElementById('req_end').min = todayStr;
+
   const params = new URLSearchParams(window.location.search);
   const qrToken = params.get('login');
 
@@ -281,6 +367,8 @@ async function loadProfile(){
   show('appState');
   loadVacationData();
   loadReclamatiiData();
+  loadMyRequests();
+  loadApprovalQueue();
 }
 
 function formatRange(l){
@@ -319,10 +407,43 @@ async function loadVacationData(){
     if(d.usedUnpaid) extraParts.push(`<span><b>${d.usedUnpaid}</b> zile fără plată folosite</span>`);
     document.getElementById('v_extra').innerHTML = extraParts.join('');
 
-    const upcomingEl = document.getElementById('v_upcoming');
-    upcomingEl.innerHTML = d.upcoming.length
-      ? d.upcoming.map(l=>`<div class="vac-item"><span>${l.start} → ${l.end}</span></div>`).join('')
+    const DAY_NAMES = ['Duminică','Luni','Marți','Miercuri','Joi','Vineri','Sâmbătă'];
+    const DAY_ABBR = ['Dum','Lun','Mar','Mie','Joi','Vin','Sâm'];
+
+    function renderNextLeave(l){
+      const start = new Date(l.start+'T00:00:00');
+      const end = new Date(l.end+'T00:00:00');
+      const chips = [];
+      const d = new Date(start);
+      while(d<=end){
+        const isWeekend = d.getDay()===0 || d.getDay()===6;
+        chips.push(`<div class="day-chip ${isWeekend?'weekend':''}">
+          <div class="dname">${DAY_ABBR[d.getDay()]}</div>
+          <div class="dnum">${d.getDate()}</div>
+        </div>`);
+        d.setDate(d.getDate()+1);
+      }
+      const singleDay = l.start === l.end;
+      const label = singleDay
+        ? `${DAY_NAMES[start.getDay()]}, ${start.getDate()} ${MONTHS_RO[start.getMonth()]}`
+        : `${DAY_NAMES[start.getDay()]} ${start.getDate()} ${MONTHS_RO[start.getMonth()]} → ${DAY_NAMES[end.getDay()]} ${end.getDate()} ${MONTHS_RO[end.getMonth()]}`;
+      return `<div class="next-leave-card">
+        <div class="next-leave-note" style="margin:0 0 8px; font-weight:600; color:var(--primary);">${label}</div>
+        <div class="next-leave-days">${chips.join('')}</div>
+        <div class="next-leave-note">Zilele cu chenar punctat sunt weekend.</div>
+      </div>`;
+    }
+
+    const nextEl = document.getElementById('v_next');
+    nextEl.innerHTML = d.upcoming.length
+      ? renderNextLeave(d.upcoming[0])
       : '<div class="vac-empty">Niciun concediu planificat.</div>';
+
+    const restUpcoming = d.upcoming.slice(1);
+    const upcomingEl = document.getElementById('v_upcoming');
+    upcomingEl.innerHTML = restUpcoming.length
+      ? restUpcoming.map(l=>`<div class="vac-item"><span>${l.start} → ${l.end}</span></div>`).join('')
+      : '<div class="vac-empty">Niciun alt concediu planificat.</div>';
 
     const pastEl = document.getElementById('v_past');
     pastEl.innerHTML = d.past.length
@@ -340,6 +461,7 @@ async function loadVacationData(){
 }
 
 const STATUS_LABEL = { rezolvata:'Rezolvată', nerezolvata:'Nerezolvată', neprelucrat:'În procesare', checking:'În verificare', parsing:'În procesare', error:'Eroare', ready:'În procesare' };
+const MONTHS_RO = ['ian','feb','mar','apr','mai','iun','iul','aug','sep','oct','nov','dec'];
 
 async function loadReclamatiiData(){
   const loadingEl = document.getElementById('reclamatiiLoading');
@@ -371,10 +493,30 @@ async function loadReclamatiiData(){
     if(d.inProcesare) extraParts.push(`<span><b>${d.inProcesare}</b> în procesare</span>`);
     document.getElementById('r_extra').innerHTML = extraParts.join('');
 
-    const listaEl = document.getElementById('r_lista');
-    listaEl.innerHTML = d.lista.length
-      ? d.lista.map(r=>`<div class="vac-item"><span>${r.data||'—'} · ${escapeHtmlP(r.client||'—')}</span><span class="days">€${r.suma.toFixed(2)} · ${STATUS_LABEL[r.status]||r.status}</span></div>`).join('')
-      : '<div class="vac-empty">Nicio reclamație înregistrată.</div>';
+    const nerezolvateList = d.lista.filter(r=>r.status==='nerezolvata');
+    const rezolvateList = d.lista.filter(r=>r.status==='rezolvata');
+    const alteleList = d.lista.filter(r=>r.status!=='nerezolvata' && r.status!=='rezolvata');
+
+    function reclItem(r){
+      const suma = r.suma>0 ? `<span class="suma has-suma">€${r.suma.toFixed(2)}</span>` : `<span class="suma">—</span>`;
+      return `<div class="recl-item st-${r.status}">
+        <div class="row1"><span>${escapeHtmlP(r.client||'—')}</span>${suma}</div>
+        <div class="row2">${r.data||'fără dată'}${r.belegNr?' · #'+escapeHtmlP(r.belegNr):''}</div>
+      </div>`;
+    }
+    function reclGroup(title, cls, list){
+      if(!list.length) return '';
+      return `<div class="recl-group">
+        <div class="recl-group-head ${cls}">${title} <span class="count">${list.length}</span></div>
+        ${list.map(reclItem).join('')}
+      </div>`;
+    }
+
+    document.getElementById('r_groups').innerHTML =
+      reclGroup('Nerezolvate', 'nerezolvate', nerezolvateList) +
+      reclGroup('Rezolvate', 'rezolvate', rezolvateList) +
+      reclGroup('În procesare', '', alteleList) +
+      (d.lista.length ? '' : '<div class="vac-empty">Nicio reclamație înregistrată.</div>');
 
     loadingEl.style.display = 'none';
     contentEl.style.display = 'block';
@@ -388,6 +530,94 @@ async function loadReclamatiiData(){
 
 function escapeHtmlP(s){
   return (s||'').toString().replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+/* ================= CERERE DE CONCEDIU ================= */
+const REQ_STATUS_LABEL = { in_asteptare:'În așteptare', aprobat:'Aprobat', respins:'Respins' };
+
+async function submitRequest(){
+  const start = document.getElementById('req_start').value;
+  const end = document.getElementById('req_end').value;
+  const motiv = document.getElementById('req_motiv').value.trim();
+  const errEl = document.getElementById('req_error');
+  errEl.textContent = '';
+  if(!start || !end){ errEl.textContent = 'Alege perioada.'; return; }
+  if(end < start){ errEl.textContent = 'Data de final e înainte de data de început.'; return; }
+  try{
+    const idToken = await auth.currentUser.getIdToken();
+    const submit = concediiFunctions.httpsCallable('submitLeaveRequest');
+    await submit({ idToken, start, end, motiv });
+    document.getElementById('req_start').value = '';
+    document.getElementById('req_end').value = '';
+    document.getElementById('req_motiv').value = '';
+    loadMyRequests();
+  }catch(err){
+    console.error(err);
+    errEl.textContent = err.message || 'Eroare la trimitere.';
+  }
+}
+
+async function loadMyRequests(){
+  const listEl = document.getElementById('myRequestsList');
+  try{
+    const idToken = await auth.currentUser.getIdToken();
+    const getMyRequests = concediiFunctions.httpsCallable('getMyRequests');
+    const result = await getMyRequests({ idToken });
+    const lista = result.data.lista || [];
+    listEl.innerHTML = lista.length
+      ? lista.map(r=>`<div class="req-item">
+          <span>${r.start} → ${r.end}${r.motiv?' · '+escapeHtmlP(r.motiv):''}</span>
+          <span class="req-status ${r.status}">${REQ_STATUS_LABEL[r.status]||r.status}</span>
+        </div>`).join('')
+      : '<div class="vac-empty">Nicio cerere trimisă încă.</div>';
+  }catch(err){
+    console.error(err);
+    listEl.innerHTML = '<div class="vac-empty">Nu am putut încărca cererile tale.</div>';
+  }
+}
+
+/* ================= COADA DE APROBARE (coordonator) ================= */
+async function loadApprovalQueue(){
+  try{
+    const idToken = await auth.currentUser.getIdToken();
+    const getPending = concediiFunctions.httpsCallable('getPendingRequests');
+    const result = await getPending({ idToken });
+    const lista = result.data.lista || [];
+    document.getElementById('approvalSection').style.display = 'block';
+    const listEl = document.getElementById('approvalList');
+    listEl.innerHTML = lista.length
+      ? lista.map(r=>`
+        <div class="appr-card">
+          <div class="who">${escapeHtmlP(r.numeAngajat||'—')}</div>
+          <div class="when">${r.start} → ${r.end}</div>
+          ${r.motiv ? `<div class="motiv">"${escapeHtmlP(r.motiv)}"</div>` : ''}
+          ${r.suprapuneri && r.suprapuneri.length ? `<div class="appr-warn">⚠ Se suprapune cu ${r.suprapuneri.map(s=>escapeHtmlP(s.nume)).join(', ')}</div>` : ''}
+          <div class="appr-actions">
+            <button class="appr-approve" onclick="decideRequest('${r.id}','aprobat')">Aprobă</button>
+            <button class="appr-reject" onclick="decideRequest('${r.id}','respins')">Respinge</button>
+          </div>
+        </div>`).join('')
+      : '<div class="vac-empty">Nicio cerere de aprobat momentan.</div>';
+  }catch(err){
+    console.error(err);
+    // Nu e coordonator — nu arătăm secțiunea deloc, fără eroare vizibilă.
+  }
+}
+
+async function decideRequest(requestId, decision){
+  let motivRespingere = '';
+  if(decision === 'respins'){
+    motivRespingere = prompt('Motivul respingerii (opțional):') || '';
+  }
+  try{
+    const idToken = await auth.currentUser.getIdToken();
+    const decide = concediiFunctions.httpsCallable('decideLeaveRequest');
+    await decide({ idToken, requestId, decision, motivRespingere });
+    loadApprovalQueue();
+  }catch(err){
+    console.error(err);
+    alert('Eroare la decizie: ' + (err.message||err));
+  }
 }
 
 async function setNewPin(){

@@ -139,14 +139,14 @@ input[type=text]:focus, select:focus{outline:none; border-color:var(--primary);}
   background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
   overflow-x:auto; box-shadow:var(--shadow);
 }
-table{width:100%; border-collapse:collapse; min-width:1080px;}
+table{width:100%; border-collapse:collapse; min-width:1280px;}
 thead th{
   text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.05em;
   color:var(--text-muted); padding:12px 14px; border-bottom:1px solid var(--border);
   background:var(--surface-alt); white-space:nowrap; cursor:pointer;
 }
 thead th:hover{color:var(--text);}
-tbody td{padding:12px 14px; border-bottom:1px solid var(--border); vertical-align:middle; font-size:13.5px;}
+tbody td{padding:16px 16px; border-bottom:1px solid var(--border); vertical-align:middle; font-size:13.5px;}
 tbody tr:last-child td{border-bottom:none;}
 tbody tr{position:relative;}
 tbody tr:hover{background:#FAFBFC;}
@@ -162,8 +162,9 @@ tbody tr:hover{background:#FAFBFC;}
   font-family:'JetBrains Mono',monospace; font-size:11.5px; background:var(--surface-alt);
   padding:3px 8px; border-radius:5px; letter-spacing:.04em;
 }
-.name-cell b{display:block; font-size:13.5px;}
-.name-cell small{color:var(--text-muted); font-size:11.5px;}
+.name-cell{min-width:190px;}
+.name-cell b{display:block; font-size:13.5px; line-height:1.35;}
+.name-cell small{display:block; color:var(--text-muted); font-size:11.5px; margin-top:4px; line-height:1.4;}
 .chip{
   display:inline-flex; align-items:center; gap:5px; padding:4px 9px; border-radius:100px;
   font-size:11.5px; font-weight:600; white-space:nowrap;
@@ -284,6 +285,18 @@ footer.note{max-width:1400px; margin:0 auto; padding:0 28px 40px; color:var(--te
 .dist-cell{font-family:'JetBrains Mono',monospace; font-size:12.5px;}
 .dist-cell.stale{color:var(--text-muted);}
 
+/* ---------- Aprobări concediu ---------- */
+.appr-card{background:var(--surface-alt); border-radius:12px; padding:14px; margin-bottom:12px;}
+.appr-card .who{font-weight:600; font-size:14px;}
+.appr-card .coord{font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.03em;}
+.appr-card .when{font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--text-muted); margin-top:4px;}
+.appr-card .motiv{font-size:12.5px; color:var(--text-muted); margin-top:4px; font-style:italic;}
+.appr-warn{background:var(--amber-soft); color:#8A6300; border-radius:8px; padding:8px 10px; font-size:11.5px; margin-top:8px;}
+.appr-actions{display:flex; gap:8px; margin-top:10px;}
+.appr-actions button{flex:1; padding:9px; border-radius:8px; border:none; font-weight:600; font-size:12.5px; cursor:pointer;}
+.appr-approve{background:var(--green); color:#fff;}
+.appr-reject{background:var(--red); color:#fff;}
+
 /* ---------- ACCES / PIN ---------- */
 .access-body{padding:22px 24px;}
 .access-row{display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border);}
@@ -357,6 +370,7 @@ footer.note{max-width:1400px; margin:0 auto; padding:0 28px 40px; color:var(--te
   <div class="view-tabs">
     <button class="view-tab-btn active" id="tabBtn-angajati" onclick="switchView('angajati')">👥 Angajați</button>
     <button class="view-tab-btn" id="tabBtn-distante" onclick="switchView('distante')">📍 Distanțe</button>
+    <button class="view-tab-btn" id="tabBtn-aprobari" onclick="switchView('aprobari')">✅ Aprobări concediu</button>
   </div>
 
   <main id="view-angajati">
@@ -452,6 +466,13 @@ footer.note{max-width:1400px; margin:0 auto; padding:0 28px 40px; color:var(--te
     </div>
   </main>
 
+  <main id="view-aprobari" style="display:none;">
+    <div class="dist-panel">
+      <h3 style="margin:0 0 4px;">Cereri de concediu — toate (admin vede tot, indiferent de coordonator)</h3>
+      <div id="adminApprovalList" style="margin-top:14px;"></div>
+    </div>
+  </main>
+
   <footer class="note">Codurile angajaților (ex. MTC-0001) sunt identificatorii folosiți de toate aplicațiile MTC pentru a atribui reclamații, concedii, curse și pontaj acestui angajat.</footer>
 </div>
 
@@ -499,6 +520,29 @@ footer.note{max-width:1400px; margin:0 auto; padding:0 28px 40px; color:var(--te
           </select>
         </div>
         <div class="field" id="terminareField"><label>Data încetării</label><input type="date" id="f_dataIncetare"></div>
+      </div>
+
+      <div class="section-label">Concediu — coordonator</div>
+      <div class="form-grid">
+        <div class="field"><label>Cine îi aprobă cererile de concediu</label>
+          <select id="f_coordonator">
+            <option value="">— neatribuit —</option>
+            <option value="raluca">Raluca</option>
+            <option value="madalina">Mădălina</option>
+            <option value="corina">Corina</option>
+            <option value="tania">Tania</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <div class="field"><label>Dacă acest angajat E coordonator — pentru cine aprobă</label>
+          <select id="f_rolAprobator">
+            <option value="">— nu e coordonator —</option>
+            <option value="raluca">Raluca (aprobă grupul Raluca)</option>
+            <option value="madalina">Mădălina (aprobă grupul Mădălina)</option>
+            <option value="corina">Corina (aprobă grupul Corina)</option>
+            <option value="tania">Tania (aprobă grupul Tania)</option>
+          </select>
+        </div>
       </div>
 
       <div class="section-label">Permis de conducere</div>
@@ -572,6 +616,18 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 const functionsRef = firebase.functions();
+
+// Conexiune separată către Concedii — doar pentru tabul de aprobări.
+const CONCEDII_CONFIG = {
+  apiKey: "AIzaSyCaWrQnIAcquK71N_EwKT45lwcUW5RyDK0",
+  authDomain: "concedii-test.firebaseapp.com",
+  projectId: "concedii-test",
+  storageBucket: "concedii-test.firebasestorage.app",
+  messagingSenderId: "212982580101",
+  appId: "1:212982580101:web:5a41c6816a6893e5423aec"
+};
+const concediiApp = firebase.initializeApp(CONCEDII_CONFIG, 'concedii');
+const concediiFunctions = firebase.functions(concediiApp);
 
 /* ================= PIN GATE (admin — vede tot boardul) ================= */
 // PIN-ul NU se mai compară în JS. Se trimite la Cloud Function "checkAdminPin",
@@ -783,7 +839,7 @@ function renderBoard(){
       <td class="name-cell"><b>${escapeHtml(e.numeComplet||'')}</b><small>${escapeHtml(addressLine(e))}</small></td>
       <td>${e.rol||'—'}</td>
       <td>${e.depot||'—'}</td>
-      <td>${e.telefon? escapeHtml(e.telefon):'<span style="color:var(--text-muted)">—</span>'}</td>
+      <td><span style="white-space:nowrap;">${e.telefon? escapeHtml(e.telefon):'<span style="color:var(--text-muted)">—</span>'}</span></td>
       <td><div class="cats">${cats||'—'}</div></td>
       <td>${expiryChip(e.dataExpirarePermis)}</td>
       <td>${e.areCardTahograf ? expiryChip(e.dataExpirareTahograf) : '<span class="chip gray">—</span>'}</td>
@@ -871,6 +927,8 @@ function openModal(id){
   document.getElementById('f_rol').value='Șofer';
   document.getElementById('f_depot').value='Ruhstorf';
   document.getElementById('f_status').value='Activ';
+  document.getElementById('f_coordonator').value='';
+  document.getElementById('f_rolAprobator').value='';
   document.getElementById('f_areTahograf').checked=false;
   setCats([]);
   toggleTahoFields();
@@ -896,6 +954,8 @@ function openModal(id){
       document.getElementById('f_dataAngajare').value = e.dataAngajare||'';
       document.getElementById('f_status').value = e.status||'Activ';
       document.getElementById('f_dataIncetare').value = e.dataIncetare||'';
+      document.getElementById('f_coordonator').value = e.coordonator||'';
+      document.getElementById('f_rolAprobator').value = e.rolAprobator||'';
       document.getElementById('f_numarPermis').value = e.numarPermis||'';
       document.getElementById('f_dataEliberarePermis').value = e.dataEliberarePermis||'';
       document.getElementById('f_dataExpirarePermis').value = e.dataExpirarePermis||'';
@@ -950,6 +1010,8 @@ async function saveEmployee(){
     dataAngajare: document.getElementById('f_dataAngajare').value,
     status: document.getElementById('f_status').value,
     dataIncetare: document.getElementById('f_dataIncetare').value,
+    coordonator: document.getElementById('f_coordonator').value,
+    rolAprobator: document.getElementById('f_rolAprobator').value,
     categoriiPermis: getSelectedCats(),
     numarPermis: document.getElementById('f_numarPermis').value.trim(),
     dataEliberarePermis: document.getElementById('f_dataEliberarePermis').value,
@@ -1119,9 +1181,56 @@ function switchView(name){
   currentView = name;
   document.getElementById('view-angajati').style.display = name==='angajati' ? 'block' : 'none';
   document.getElementById('view-distante').style.display = name==='distante' ? 'block' : 'none';
+  document.getElementById('view-aprobari').style.display = name==='aprobari' ? 'block' : 'none';
   document.getElementById('tabBtn-angajati').classList.toggle('active', name==='angajati');
   document.getElementById('tabBtn-distante').classList.toggle('active', name==='distante');
+  document.getElementById('tabBtn-aprobari').classList.toggle('active', name==='aprobari');
   if(name==='distante'){ renderFixedPoints(); renderDistanceTable(); }
+  if(name==='aprobari'){ loadAdminApprovalQueue(); }
+}
+
+async function loadAdminApprovalQueue(){
+  const listEl = document.getElementById('adminApprovalList');
+  listEl.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">Se încarcă...</div>';
+  try{
+    const idToken = await auth.currentUser.getIdToken();
+    const getPending = concediiFunctions.httpsCallable('getPendingRequests');
+    const result = await getPending({ idToken });
+    const lista = result.data.lista || [];
+    listEl.innerHTML = lista.length
+      ? lista.map(r=>`
+        <div class="appr-card">
+          <div class="coord">${escapeHtml(r.coordonator||'')}</div>
+          <div class="who">${escapeHtml(r.numeAngajat||'—')}</div>
+          <div class="when">${r.start} → ${r.end}</div>
+          ${r.motiv ? `<div class="motiv">"${escapeHtml(r.motiv)}"</div>` : ''}
+          ${r.suprapuneri && r.suprapuneri.length ? `<div class="appr-warn">⚠ Se suprapune cu ${r.suprapuneri.map(s=>escapeHtml(s.nume)).join(', ')}</div>` : ''}
+          <div class="appr-actions">
+            <button class="appr-approve" onclick="adminDecideRequest('${r.id}','aprobat')">Aprobă</button>
+            <button class="appr-reject" onclick="adminDecideRequest('${r.id}','respins')">Respinge</button>
+          </div>
+        </div>`).join('')
+      : '<div style="color:var(--text-muted); font-size:13px;">Nicio cerere de aprobat momentan.</div>';
+  }catch(err){
+    console.error(err);
+    listEl.innerHTML = '<div style="color:var(--red); font-size:13px;">Eroare la încărcare: ' + (err.message||err) + '</div>';
+  }
+}
+
+async function adminDecideRequest(requestId, decision){
+  let motivRespingere = '';
+  if(decision === 'respins'){
+    motivRespingere = prompt('Motivul respingerii (opțional):') || '';
+  }
+  try{
+    const idToken = await auth.currentUser.getIdToken();
+    const decide = concediiFunctions.httpsCallable('decideLeaveRequest');
+    await decide({ idToken, requestId, decision, motivRespingere });
+    loadAdminApprovalQueue();
+  }catch(err){
+    console.error(err);
+    alert('Eroare la decizie: ' + (err.message||err));
+  }
 }
 
 /* ================= GEOCODARE + RUTE (OpenStreetMap, gratuit, fără cheie) ================= */
