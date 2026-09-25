@@ -53,7 +53,7 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
 #loadingState{text-align:center; padding:30px 0; color:var(--text-muted); font-size:13.5px;}
 #loginState{display:none;}
 #errorState{display:none; text-align:center;}
-#appState{display:none; flex:1; min-height:0; flex-direction:column;}
+#appState{display:none; flex:1; min-height:0; flex-direction:column; position:relative;}
 
 .field{margin-bottom:14px;}
 .field label{display:block; font-size:12.5px; color:var(--text-muted); margin-bottom:5px; font-weight:500;}
@@ -193,6 +193,29 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
 .req-status.in_asteptare{background:var(--amber-soft); color:var(--amber);}
 .req-status.aprobat{background:var(--green-soft); color:var(--green);}
 .req-status.respins{background:var(--red-soft); color:var(--red);}
+
+/* ---------- Buton plutitor "cerere nouă" (doar pe tabul Concediu) ---------- */
+.fab-btn{
+  position:absolute; right:18px; bottom:80px; z-index:40;
+  width:56px; height:56px; border-radius:50%; background:var(--primary); color:#fff;
+  border:none; font-size:26px; line-height:1; display:none; align-items:center; justify-content:center;
+  cursor:pointer; box-shadow:0 6px 18px rgba(30,58,95,.35);
+}
+.fab-btn.show{display:flex;}
+.fab-btn:active{transform:scale(.94);}
+
+/* ---------- Panou "cerere nouă" (peste conținut, ca un bottom sheet) ---------- */
+.req-overlay{position:absolute; inset:0; z-index:50; display:none;}
+.req-overlay.show{display:block;}
+.req-overlay-backdrop{position:absolute; inset:0; background:rgba(20,26,34,.45);}
+.req-sheet{
+  position:absolute; left:0; right:0; bottom:0; background:var(--surface);
+  border-radius:20px 20px 0 0; padding:18px 20px max(18px, env(safe-area-inset-bottom));
+  box-shadow:0 -8px 30px rgba(0,0,0,.15); animation:sheetUp .18s ease-out;
+}
+@keyframes sheetUp{from{transform:translateY(16px); opacity:.6;} to{transform:translateY(0); opacity:1;}}
+.req-sheet-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
+.req-sheet-head h3{font-size:16px; margin:0;}
 
 /* ---------- Coadă de aprobare (coordonator) ---------- */
 .appr-card{
@@ -343,8 +366,21 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
         <div class="section-divider"></div>
 
         <div class="section">
-          <h3>Cerere nouă</h3>
-          <div class="req-form">
+          <h3>Cererile mele</h3>
+          <div id="myRequestsList" class="vac-list"></div>
+        </div>
+      </section>
+
+      <!-- Buton plutitor + panou de cerere nouă, vizibil doar pe tabul Concediu -->
+      <button class="fab-btn" id="fabNewRequest" onclick="openRequestOverlay()" title="Cerere nouă de concediu">+</button>
+      <div class="req-overlay" id="requestOverlay">
+        <div class="req-overlay-backdrop" onclick="closeRequestOverlay()"></div>
+        <div class="req-sheet">
+          <div class="req-sheet-head">
+            <h3>Cerere de concediu</h3>
+            <button class="ph-icon-btn" onclick="closeRequestOverlay()">✕</button>
+          </div>
+          <div class="req-form" style="margin-bottom:0;">
             <div class="req-row">
               <div class="field"><label>De la</label><input type="date" id="req_start"></div>
               <div class="field"><label>Până la</label><input type="date" id="req_end"></div>
@@ -353,10 +389,8 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
             <button class="btn btn-primary" onclick="submitRequest()">Trimite cererea</button>
             <div id="req_error" style="color:var(--red); font-size:12px; margin-top:8px; min-height:14px;"></div>
           </div>
-          <div class="vac-list-title">Cererile mele</div>
-          <div id="myRequestsList" class="vac-list"></div>
         </div>
-      </section>
+      </div>
 
       <!-- ---------- TAB: RECLAMAȚII ---------- -->
       <section id="tab-reclamatii" class="tab-panel">
@@ -453,8 +487,17 @@ function showError(msg){
 function switchTab(name){
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active', p.id === 'tab-'+name));
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab === name));
+  document.getElementById('fabNewRequest').classList.toggle('show', name === 'concediu');
+  closeRequestOverlay();
   const content = document.getElementById('phContent');
   if(content) content.scrollTop = 0;
+}
+
+function openRequestOverlay(){
+  document.getElementById('requestOverlay').classList.add('show');
+}
+function closeRequestOverlay(){
+  document.getElementById('requestOverlay').classList.remove('show');
 }
 
 let currentMustChangePin = false;
@@ -744,6 +787,7 @@ async function submitRequest(){
     document.getElementById('req_start').value = '';
     document.getElementById('req_end').value = '';
     document.getElementById('req_motiv').value = '';
+    closeRequestOverlay();
     loadMyRequests();
   }catch(err){
     console.error(err);
