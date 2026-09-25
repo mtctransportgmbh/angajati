@@ -416,7 +416,8 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
             <th></th>
             <th class="rowcheck"><input type="checkbox" id="selectAllBox" onchange="toggleSelectAll(this)"></th>
             <th onclick="setSort('employeeId')">Cod</th>
-            <th onclick="setSort('numeComplet')">Nume</th>
+            <th onclick="setSort('numeFamilie')">Nume</th>
+            <th onclick="setSort('prenume')">Prenume</th>
             <th onclick="setSort('rol')">Rol · Locație</th>
             <th onclick="setSort('dataExpirarePermis')">Expiră permis</th>
             <th>Acces cont</th>
@@ -482,12 +483,12 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
     <div class="modal-body">
       <div class="section-label">Date generale</div>
       <div class="form-grid">
-        <div class="field full"><label>Nume complet *</label><input type="text" id="f_numeComplet"></div>
+        <div class="field"><label>Prenume *</label><input type="text" id="f_prenume"></div>
+        <div class="field"><label>Nume de familie *</label><input type="text" id="f_numeFamilie"></div>
         <div class="field full"><label>Număr personal (din contractul de muncă) — folosit ca user de login</label><input type="text" id="f_numarPersonal" placeholder="ex: 4471"></div>
-        <div class="field"><label>Rol</label>
-          <select id="f_rol">
-            <option>Șofer</option><option>Dispecer</option><option>Administrativ</option><option>Mecanic</option><option>Altul</option>
-          </select>
+        <div class="field full">
+          <label>Rol (poți bifa mai multe — ex. Șofer + Dispecer)</label>
+          <div class="cat-grid" id="rolGrid"></div>
         </div>
         <div class="field"><label>Locație</label>
           <select id="f_depot">
@@ -607,6 +608,7 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
 const firebaseConfig = window.FIREBASE_CONFIG;
 // PIN-ul de admin NU mai stă în client — e verificat server-side în funcția checkAdminPin.
 const CATEGORII_PERMIS = ["AM","A1","A2","A","B","BE","C1","C1E","C","CE","D1","D1E","D","DE"];
+const ROLURI_DISPONIBILE = ["Șofer","Dispecer","Administrativ","Mecanic","Altul"];
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
@@ -678,6 +680,7 @@ let currentView = 'angajati';
 
 function initBoard(){
   buildCatGrid();
+  buildRolGrid();
   if(unsub) return;
   unsubFixedPoints = db.collection('puncte_fixe').onSnapshot(snap=>{
     fixedPoints = snap.docs.map(d=>({ id:d.id, ...d.data() }));
@@ -695,7 +698,7 @@ function initBoard(){
       claimsInfo = JSON.stringify(tokenResult.claims);
     }catch(e){ claimsInfo = 'eroare: ' + e.message; }
     document.getElementById('boardBody').innerHTML =
-      `<tr><td colspan="10" style="padding:24px; color:var(--red);">
+      `<tr><td colspan="11" style="padding:24px; color:var(--red);">
         Eroare de conectare la Firestore: ${err.message}<br><br>
         <b>Claims curente (trimite-mi exact linia asta):</b><br>
         <span class="mono" style="font-size:12px;">${claimsInfo}</span>
@@ -709,15 +712,25 @@ function buildCatGrid(){
     `<div class="cat-check" data-cat="${c}" onclick="toggleCat(this)">${c}</div>`
   ).join('');
 }
-function toggleCat(el){ el.classList.toggle('active'); }
-function getSelectedCats(){
-  return Array.from(document.querySelectorAll('.cat-check.active')).map(e=>e.dataset.cat);
+function buildRolGrid(){
+  const grid = document.getElementById('rolGrid');
+  grid.innerHTML = ROLURI_DISPONIBILE.map(r=>
+    `<div class="cat-check" data-cat="${r}" onclick="toggleCat(this)">${r}</div>`
+  ).join('');
 }
-function setCats(cats){
-  document.querySelectorAll('.cat-check').forEach(el=>{
-    el.classList.toggle('active', (cats||[]).includes(el.dataset.cat));
+function toggleCat(el){ el.classList.toggle('active'); }
+function getCheckedIn(gridId){
+  return Array.from(document.querySelectorAll('#'+gridId+' .cat-check.active')).map(e=>e.dataset.cat);
+}
+function setCheckedIn(gridId, vals){
+  document.querySelectorAll('#'+gridId+' .cat-check').forEach(el=>{
+    el.classList.toggle('active', (vals||[]).includes(el.dataset.cat));
   });
 }
+function getSelectedCats(){ return getCheckedIn('catGrid'); }
+function setCats(cats){ setCheckedIn('catGrid', cats); }
+function getSelectedRoluri(){ return getCheckedIn('rolGrid'); }
+function setRoluri(roluri){ setCheckedIn('rolGrid', roluri); }
 function toggleTahoFields(){
   document.getElementById('tahoFields').classList.toggle('show', document.getElementById('f_areTahograf').checked);
 }
@@ -778,6 +791,24 @@ function vacationCell(e){
   return `<span class="chip green">${zile} zile (${an})</span>`;
 }
 
+// Angajați vechi, salvați înainte de separarea nume/prenume, nu au încă
+// f.numeFamilie/f.prenume — afișăm o despărțire aproximativă din numeComplet
+// (primul cuvânt = nume de familie), fără să rescriem nimic în Firestore.
+// La prima editare+salvare a acelui angajat, câmpurile separate se completează definitiv.
+function displayNumeFamilie(e){
+  if(e.numeFamilie) return e.numeFamilie;
+  return (e.numeComplet||'').trim().split(/\s+/)[0] || '—';
+}
+function displayPrenume(e){
+  if(e.prenume) return e.prenume;
+  const parts = (e.numeComplet||'').trim().split(/\s+/);
+  return parts.slice(1).join(' ') || '';
+}
+function rolesText(e){
+  const arr = (e.roluri && e.roluri.length) ? e.roluri : (e.rol ? [e.rol] : []);
+  return arr.length ? arr.map(r=>escapeHtml(r)).join(', ') : '—';
+}
+
 function accessChip(e){
   if(!e.hasAccount) return '<span class="chip gray">Fără cont</span>';
   if(e.mustChangePin) return '<span class="chip amber">PIN provizoriu</span>';
@@ -803,7 +834,7 @@ function renderBoard(){
   let list = employees.filter(e=>{
     if(!showArhivat && e.status==='Arhivat') return false;
     if(fDepot && e.depot!==fDepot) return false;
-    if(fRol && e.rol!==fRol) return false;
+    if(fRol && !(e.roluri && e.roluri.length ? e.roluri.includes(fRol) : e.rol===fRol)) return false;
     if(q){
       const hay = [e.numeComplet,e.telefon,e.email,e.employeeId].filter(Boolean).join(' ').toLowerCase();
       if(!hay.includes(q)) return false;
@@ -831,8 +862,9 @@ function renderBoard(){
       <td style="padding:0; width:4px;"><div class="tab ${rowTabClass(e)}"></div></td>
       <td class="rowcheck"><input type="checkbox" class="rowSelect" data-id="${e.id}" ${selectedIds.has(e.id)?'checked':''} onchange="toggleRowSelect('${e.id}', this.checked)"></td>
       <td><span class="id-tag mono">${e.employeeId||'—'}</span></td>
-      <td class="name-cell"><b>${escapeHtml(e.numeComplet||'')}</b><small>${escapeHtml(addressLine(e))}${e.telefon?' · '+escapeHtml(e.telefon):''}</small></td>
-      <td>${escapeHtml(e.rol||'—')} <span style="color:var(--text-muted);">· ${escapeHtml(e.depot||'—')}</span></td>
+      <td class="name-cell"><b>${escapeHtml(displayNumeFamilie(e))}</b><small>${escapeHtml(addressLine(e))}${e.telefon?' · '+escapeHtml(e.telefon):''}</small></td>
+      <td>${escapeHtml(displayPrenume(e))}</td>
+      <td>${rolesText(e)} <span style="color:var(--text-muted);">· ${escapeHtml(e.depot||'—')}</span></td>
       <td>${expiryChip(e.dataExpirarePermis)}</td>
       <td>${accessChip(e)}</td>
       <td>${vacationCell(e)}</td>
@@ -868,7 +900,7 @@ function renderStats(){
     const t = e.areCardTahograf ? daysUntil(e.dataExpirareTahograf) : null;
     return (p!==null && p<=30) || (t!==null && t<=30);
   });
-  const soferi = active.filter(e=>e.rol==='Șofer');
+  const soferi = active.filter(e=>(e.roluri && e.roluri.length) ? e.roluri.includes('Șofer') : e.rol==='Șofer');
   document.getElementById('statsRow').innerHTML = `
     <div class="stat"><b>${active.length}</b><small>Total angajați</small></div>
     <div class="stat"><b>${soferi.length}</b><small>Șoferi</small></div>
@@ -911,17 +943,17 @@ function setSort(field){
 function openModal(id){
   editingId = id || null;
   document.getElementById('modalIdTag').style.display='none';
-  ['numeComplet','numarPersonal','dataNasterii','telefon','email','strada','codPostal','oras','tara',
+  ['prenume','numeFamilie','numarPersonal','dataNasterii','telefon','email','strada','codPostal','oras','tara',
    'dataAngajare','dataIncetare','numarPermis','dataEliberarePermis','dataExpirarePermis',
    'numarTahograf','dataExpirareTahograf','notite'].forEach(f=>document.getElementById('f_'+f).value='');
   document.getElementById('f_tara').value='Germania';
-  document.getElementById('f_rol').value='Șofer';
   document.getElementById('f_depot').value='Ruhstorf';
   document.getElementById('f_status').value='Activ';
   document.getElementById('f_coordonator').value='';
   document.getElementById('f_rolAprobator').value='';
   document.getElementById('f_areTahograf').checked=false;
   setCats([]);
+  setRoluri([]);
   toggleTahoFields();
   toggleTerminareField();
 
@@ -931,9 +963,11 @@ function openModal(id){
       document.getElementById('modalTitleText').textContent = 'Editează angajat';
       document.getElementById('modalIdTag').style.display='inline-block';
       document.getElementById('modalIdTag').textContent = e.employeeId||'';
-      document.getElementById('f_numeComplet').value = e.numeComplet||'';
+      // fallback pt angajați vechi fără câmpuri separate: se completează din numeComplet
+      document.getElementById('f_numeFamilie').value = e.numeFamilie || displayNumeFamilie(e);
+      document.getElementById('f_prenume').value = e.prenume || displayPrenume(e);
       document.getElementById('f_numarPersonal').value = e.numarPersonal||'';
-      document.getElementById('f_rol').value = e.rol||'Șofer';
+      setRoluri(e.roluri && e.roluri.length ? e.roluri : (e.rol ? [e.rol] : []));
       document.getElementById('f_depot').value = e.depot||'Ruhstorf';
       document.getElementById('f_dataNasterii').value = e.dataNasterii||'';
       document.getElementById('f_telefon').value = e.telefon||'';
@@ -976,20 +1010,30 @@ async function nextEmployeeId(){
 }
 
 async function saveEmployee(){
-  const nume = document.getElementById('f_numeComplet').value.trim();
+  const prenume = document.getElementById('f_prenume').value.trim();
+  const numeFamilie = document.getElementById('f_numeFamilie').value.trim();
   const expPermis = document.getElementById('f_dataExpirarePermis').value;
-  if(!nume){ alert('Numele complet este obligatoriu.'); return; }
+  if(!numeFamilie || !prenume){ alert('Prenumele și numele de familie sunt obligatorii.'); return; }
   if(!expPermis){ alert('Data expirării permisului este obligatorie.'); return; }
   const numarPersonalVal = document.getElementById('f_numarPersonal').value.trim();
   if(numarPersonalVal){
     const dup = employees.find(e=>e.numarPersonal===numarPersonalVal && e.id!==editingId);
     if(dup){ alert(`Numărul personal "${numarPersonalVal}" e deja folosit de ${dup.numeComplet}. Fiecare angajat are nevoie de un cod unic de login.`); return; }
   }
+  const rolurileSelectate = getSelectedRoluri();
 
   const data = {
-    numeComplet: nume,
+    prenume,
+    numeFamilie,
+    // numeComplet rămâne compus automat din cele două câmpuri, pentru
+    // compatibilitate cu restul aplicațiilor (căutare, potrivire după nume,
+    // concedii, reclamații) care încă citesc/leagă angajați după acest câmp.
+    numeComplet: (numeFamilie + ' ' + prenume).trim(),
     numarPersonal: document.getElementById('f_numarPersonal').value.trim(),
-    rol: document.getElementById('f_rol').value,
+    roluri: rolurileSelectate,
+    // "rol" rămâne un string (rolurile unite prin virgulă) pentru orice cod
+    // vechi/alte ecrane care mai citesc acest câmp ca text simplu.
+    rol: rolurileSelectate.join(', '),
     depot: document.getElementById('f_depot').value,
     dataNasterii: document.getElementById('f_dataNasterii').value,
     telefon: document.getElementById('f_telefon').value.trim(),
@@ -1358,7 +1402,7 @@ function renderDistanceTable(){
 }
 
 function exportCSV(){
-  const cols = ['employeeId','numeComplet','rol','depot','telefon','email','strada','codPostal','oras','tara',
+  const cols = ['employeeId','numeFamilie','prenume','numeComplet','roluri','depot','telefon','email','strada','codPostal','oras','tara',
     'dataAngajare','status','categoriiPermis','numarPermis','dataEliberarePermis','dataExpirarePermis',
     'areCardTahograf','numarTahograf','dataExpirareTahograf'];
   const header = cols.join(';');
