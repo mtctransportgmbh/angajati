@@ -2,7 +2,7 @@
 <html lang="ro">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Portalul meu · MTC Transport</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -26,23 +26,34 @@ body{
 }
 h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
 .mono{font-family:'JetBrains Mono',monospace;}
-.card{
-  background:var(--surface); border-radius:20px; box-shadow:var(--shadow);
-  width:100%; max-width:400px; padding:32px 28px;
+
+/* ---------- App-like phone frame ---------- */
+.phone-frame{
+  width:100%; max-width:420px;
+  height:min(880px, calc(100vh - 40px));
+  background:var(--surface); border-radius:28px; box-shadow:var(--shadow);
+  display:flex; flex-direction:column; overflow:hidden; position:relative;
 }
+@media (max-width:480px){
+  body{padding:0;}
+  .phone-frame{max-width:100%; height:100vh; height:100dvh; border-radius:0;}
+}
+
+/* pre-login views (loading/login/error), centered */
+#preAppWrap{flex:1; min-height:0; display:flex; flex-direction:column; justify-content:center; padding:32px 28px; overflow-y:auto;}
 .brand{text-align:center; margin-bottom:22px;}
 .brand-mark{
   width:46px; height:46px; border-radius:12px; background:var(--primary); color:#fff;
   display:flex; align-items:center; justify-content:center; font-weight:700; font-size:16px;
-  margin:0 auto 12px;
+  margin:0 auto 12px; font-family:'Space Grotesk',sans-serif;
 }
 .brand h1{font-size:17px; margin:0;}
 .brand p{color:var(--text-muted); font-size:12.5px; margin:4px 0 0;}
 
 #loadingState{text-align:center; padding:30px 0; color:var(--text-muted); font-size:13.5px;}
 #loginState{display:none;}
-#appState{display:none;}
 #errorState{display:none; text-align:center;}
+#appState{display:none; flex:1; min-height:0; flex-direction:column;}
 
 .field{margin-bottom:14px;}
 .field label{display:block; font-size:12.5px; color:var(--text-muted); margin-bottom:5px; font-weight:500;}
@@ -57,31 +68,89 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
 }
 .btn-primary{background:var(--primary); color:#fff;}
 .btn-primary:hover{background:var(--primary-hover);}
+.btn-secondary{background:var(--surface-alt); color:var(--text);}
+.btn-secondary:hover{background:#E4E8ED;}
 #loginError{color:var(--red); font-size:12.5px; margin-top:10px; min-height:16px; text-align:center;}
+
+/* ---------- App header (compact, logged in) ---------- */
+.ph-header{
+  display:flex; align-items:center; justify-content:space-between; gap:10px; flex:0 0 auto;
+  padding:max(16px, env(safe-area-inset-top)) 20px 14px; border-bottom:1px solid var(--border);
+}
+.ph-header-left{display:flex; align-items:center; gap:10px; min-width:0;}
+.ph-avatar{
+  width:40px; height:40px; border-radius:11px; background:var(--primary); color:#fff;
+  display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px;
+  font-family:'Space Grotesk',sans-serif; flex:0 0 auto;
+}
+.ph-name{font-size:14.5px; font-weight:700; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.ph-sub{font-size:11px; color:var(--text-muted); margin-top:1px;}
+.ph-icon-btn{
+  border:1.5px solid var(--border); background:var(--surface); width:36px; height:36px; border-radius:10px;
+  display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:16px;
+  color:var(--text-muted); flex:0 0 auto;
+}
+.ph-icon-btn:hover{border-color:var(--primary); color:var(--primary);}
+
+/* ---------- Scrollable content between header and tab bar ---------- */
+.ph-content{flex:1 1 auto; overflow-y:auto; padding:18px 20px 24px; min-height:0; -webkit-overflow-scrolling:touch;}
+.tab-panel{display:none;}
+.tab-panel.active{display:block; animation:fadeIn .15s ease-out;}
+@keyframes fadeIn{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);}}
+
+/* ---------- Bottom tab bar ---------- */
+.ph-tabbar{
+  display:flex; border-top:1px solid var(--border); flex:0 0 auto; background:var(--surface);
+  padding-bottom:max(6px, env(safe-area-inset-bottom));
+}
+.tab-btn{
+  flex:1; border:none; background:none; padding:10px 4px 8px; display:flex; flex-direction:column;
+  align-items:center; gap:3px; cursor:pointer; color:var(--text-muted); font-family:'Inter',sans-serif;
+}
+.tab-btn .ic{font-size:19px; line-height:1;}
+.tab-btn .lbl{font-size:10.5px; font-weight:600;}
+.tab-btn.active{color:var(--primary);}
+.tab-btn.active .ic{transform:scale(1.08);}
+
+/* ---------- Home: quick-glance tiles ---------- */
+.glance-row{display:flex; gap:10px; margin-bottom:20px;}
+.glance-tile{
+  flex:1; background:var(--surface-alt); border-radius:14px; padding:14px 8px; text-align:center;
+  cursor:pointer; border:1.5px solid transparent; transition:.12s;
+}
+.glance-tile:active{transform:scale(.97);}
+.glance-tile.warn{background:var(--red-soft);}
+.glance-num{font-family:'Space Grotesk',sans-serif; font-size:22px; font-weight:700; color:var(--primary); line-height:1;}
+.glance-tile.warn .glance-num{color:var(--red);}
+.glance-lbl{font-size:10px; color:var(--text-muted); margin-top:5px; line-height:1.3;}
+
+.section-divider{height:1px; background:var(--border); margin:22px 0;}
 
 .welcome{text-align:center; margin-bottom:24px;}
 .welcome .hello{color:var(--text-muted); font-size:13px;}
 .welcome h2{font-size:20px; margin:4px 0 0;}
 
-.stat-big{
-  background:var(--primary-soft); border-radius:14px; padding:22px; text-align:center; margin-bottom:14px;
-}
-.stat-big .num{font-family:'Space Grotesk',sans-serif; font-size:38px; font-weight:700; color:var(--primary); line-height:1;}
-.stat-big .lbl{font-size:12.5px; color:var(--text-muted); margin-top:6px;}
-
 .section{margin-top:20px;}
+.section:first-child{margin-top:0;}
 .section h3{font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted); margin:0 0 10px;}
 .placeholder-box{
   border:1.5px dashed var(--border); border-radius:12px; padding:18px; text-align:center;
   color:var(--text-muted); font-size:13px;
 }
 .logout{
-  display:block; text-align:center; margin-top:22px; color:var(--text-muted);
+  display:block; text-align:center; margin-top:18px; color:var(--text-muted);
   font-size:12.5px; text-decoration:none; cursor:pointer;
 }
 
-.setpin-box{background:var(--amber-soft); border-radius:12px; padding:16px; margin-bottom:18px;}
+.setpin-box{background:var(--amber-soft); border-radius:12px; padding:16px; margin-bottom:14px;}
 .setpin-box p{margin:0 0 10px; font-size:12.5px; color:#8A6300;}
+
+.account-row{
+  display:flex; justify-content:space-between; align-items:center; padding:12px 0;
+  border-top:1px solid var(--border); font-size:13px;
+}
+.account-row .lbl{color:var(--text-muted);}
+.btn-small{width:auto; padding:8px 14px; font-size:12.5px;}
 
 .vac-grid{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:10px;}
 .vac-box{background:var(--primary-soft); border-radius:12px; padding:14px 8px; text-align:center;}
@@ -118,9 +187,9 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
 .req-form .field{margin-bottom:10px;}
 .req-item{
   background:var(--surface-alt); border-radius:9px; padding:10px 12px; margin-bottom:6px;
-  display:flex; justify-content:space-between; align-items:center; font-size:13px;
+  display:flex; justify-content:space-between; align-items:center; font-size:13px; gap:8px;
 }
-.req-status{font-size:11px; font-weight:600; padding:2px 9px; border-radius:100px;}
+.req-status{font-size:11px; font-weight:600; padding:2px 9px; border-radius:100px; white-space:nowrap;}
 .req-status.in_asteptare{background:var(--amber-soft); color:var(--amber);}
 .req-status.aprobat{background:var(--green-soft); color:var(--green);}
 .req-status.respins{background:var(--red-soft); color:var(--red);}
@@ -158,108 +227,181 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
 }
 .recl-item.st-nerezolvata{border-left-color:var(--red);}
 .recl-item.st-rezolvata{border-left-color:var(--green);}
-.recl-item .row1{display:flex; justify-content:space-between; align-items:baseline; font-size:13px;}
-.recl-item .suma{font-family:'JetBrains Mono',monospace; font-weight:600;}
+.recl-item .row1{display:flex; justify-content:space-between; align-items:baseline; font-size:13px; gap:8px;}
+.recl-item .suma{font-family:'JetBrains Mono',monospace; font-weight:600; white-space:nowrap;}
 .recl-item .row1 .suma.has-suma{color:var(--red);}
 .recl-item .row2{font-size:11.5px; color:var(--text-muted); margin-top:2px;}
 </style>
 </head>
 <body>
 
-<div class="card">
-  <div class="brand">
-    <div class="brand-mark">MTC</div>
-    <h1>Portalul meu</h1>
-    <p>MTC Transport GmbH</p>
+<div class="phone-frame">
+
+  <!-- ============ PRE-LOGIN (loading / login form / error) ============ -->
+  <div id="preAppWrap">
+    <div class="brand">
+      <div class="brand-mark">MTC</div>
+      <h1>Portalul meu</h1>
+      <p>MTC Transport GmbH</p>
+    </div>
+
+    <div id="loadingState">Se conectează...</div>
+
+    <div id="loginState">
+      <div class="field"><label>Număr personal</label><input type="text" id="f_numarPersonal" inputmode="numeric" autocomplete="off"></div>
+      <div class="field"><label>PIN</label><input type="password" id="f_pin" inputmode="numeric" autocomplete="off" maxlength="8"></div>
+      <button class="btn btn-primary" onclick="loginManual()">Intră în cont</button>
+      <div id="loginError"></div>
+    </div>
+
+    <div id="errorState">
+      <p style="color:var(--red); font-size:13.5px;" id="errorText"></p>
+      <button class="btn btn-primary" onclick="showLogin()">Încearcă din nou</button>
+    </div>
   </div>
 
-  <div id="loadingState">Se conectează...</div>
-
-  <div id="loginState">
-    <div class="field"><label>Număr personal</label><input type="text" id="f_numarPersonal" inputmode="numeric" autocomplete="off"></div>
-    <div class="field"><label>PIN</label><input type="password" id="f_pin" inputmode="numeric" autocomplete="off" maxlength="8"></div>
-    <button class="btn btn-primary" onclick="loginManual()">Intră în cont</button>
-    <div id="loginError"></div>
-  </div>
-
-  <div id="errorState">
-    <p style="color:var(--red); font-size:13.5px;" id="errorText"></p>
-    <button class="btn btn-primary" onclick="showLogin()">Încearcă din nou</button>
-  </div>
-
+  <!-- ============ APP (logged in) ============ -->
   <div id="appState">
-    <div id="setPinPrompt" class="setpin-box" style="display:none;">
-      <p>Ești logat cu un PIN provizoriu. Setează-ți acum propriul PIN, pe care îl vei folosi de acum înainte.</p>
-      <div class="field"><label>PIN nou (4-8 cifre)</label><input type="password" id="f_newPin" inputmode="numeric" maxlength="8"></div>
-      <button class="btn btn-primary" onclick="setNewPin()">Salvează PIN nou</button>
-      <div id="setPinError" style="color:#8A6300; font-size:12px; margin-top:8px;"></div>
-    </div>
-
-    <div class="welcome">
-      <div class="hello">Bine ai venit,</div>
-      <h2 id="welcomeName">—</h2>
-    </div>
-
-    <div class="section">
-      <h3>Concediu</h3>
-      <div id="vacationLoading" class="placeholder-box">Se încarcă din Concedii...</div>
-      <div id="vacationContent" style="display:none;">
-        <div class="vac-grid">
-          <div class="vac-box"><div class="vac-num" id="v_ramase">—</div><div class="vac-lbl">rămase</div></div>
-          <div class="vac-box"><div class="vac-num" id="v_folosite">—</div><div class="vac-lbl">folosite</div></div>
-          <div class="vac-box"><div class="vac-num" id="v_total">—</div><div class="vac-lbl">total anul acesta</div></div>
+    <header class="ph-header">
+      <div class="ph-header-left">
+        <div class="ph-avatar" id="ph_avatar">—</div>
+        <div style="min-width:0;">
+          <div class="ph-name" id="welcomeName">—</div>
+          <div class="ph-sub">MTC Transport</div>
         </div>
-        <div class="vac-extra" id="v_extra"></div>
-
-        <div class="vac-list-title">Următorul concediu</div>
-        <div id="v_next"></div>
-
-        <div class="vac-list-title">Și după acela</div>
-        <div id="v_upcoming" class="vac-list"></div>
-
-        <div class="vac-list-title">Concedii trecute (anul acesta)</div>
-        <div id="v_past" class="vac-list"></div>
       </div>
-      <div id="vacationError" class="placeholder-box" style="display:none;"></div>
-    </div>
+      <button class="ph-icon-btn" onclick="logout()" title="Ieși din cont">⎋</button>
+    </header>
 
-    <div class="section">
-      <h3>Reclamații</h3>
-      <div id="reclamatiiLoading" class="placeholder-box">Se încarcă din Reclamații...</div>
-      <div id="reclamatiiContent" style="display:none;">
-        <div class="vac-grid">
-          <div class="vac-box"><div class="vac-num" id="r_total">—</div><div class="vac-lbl">total</div></div>
-          <div class="vac-box"><div class="vac-num" id="r_rezolvate">—</div><div class="vac-lbl">rezolvate</div></div>
-          <div class="vac-box"><div class="vac-num" id="r_nerezolvate">—</div><div class="vac-lbl">nerezolvate</div></div>
+    <div class="ph-content" id="phContent">
+
+      <!-- ---------- TAB: ACASĂ ---------- -->
+      <section id="tab-acasa" class="tab-panel active">
+        <div class="glance-row">
+          <div class="glance-tile" onclick="switchTab('concediu')">
+            <div class="glance-num" id="g_vacRamase">—</div>
+            <div class="glance-lbl">zile concediu<br>rămase</div>
+          </div>
+          <div class="glance-tile" id="g_reclTile" onclick="switchTab('reclamatii')">
+            <div class="glance-num" id="g_reclNerez">—</div>
+            <div class="glance-lbl">reclamații<br>nerezolvate</div>
+          </div>
+          <div class="glance-tile" onclick="switchTab('concediu')">
+            <div class="glance-num" id="g_cereriPending">—</div>
+            <div class="glance-lbl">cereri<br>în așteptare</div>
+          </div>
         </div>
-        <div class="vac-extra" id="r_extra"></div>
-        <div id="r_groups"></div>
-      </div>
-      <div id="reclamatiiError" class="placeholder-box" style="display:none;"></div>
-    </div>
 
-    <div class="section">
-      <h3>Cerere de concediu</h3>
-      <div class="req-form">
-        <div class="req-row">
-          <div class="field"><label>De la</label><input type="date" id="req_start"></div>
-          <div class="field"><label>Până la</label><input type="date" id="req_end"></div>
+        <div class="section">
+          <h3>Următorul concediu</h3>
+          <div id="g_nextLeave"><div class="vac-empty">Se încarcă...</div></div>
         </div>
-        <div class="field"><label>Motiv (opțional)</label><input type="text" id="req_motiv" maxlength="300" placeholder="ex: vacanță în familie"></div>
-        <button class="btn btn-primary" onclick="submitRequest()">Trimite cererea</button>
-        <div id="req_error" style="color:var(--red); font-size:12px; margin-top:8px; min-height:14px;"></div>
-      </div>
-      <div class="vac-list-title">Cererile mele</div>
-      <div id="myRequestsList" class="vac-list"></div>
+
+        <div class="section-divider"></div>
+
+        <div class="section">
+          <h3>Contul meu</h3>
+          <div id="pinChangeCard" class="setpin-box" style="display:none;">
+            <p id="pinChangeMsg">Introdu noul PIN pe care vrei să-l folosești de acum înainte.</p>
+            <div class="field"><label>PIN nou (4-8 cifre)</label><input type="password" id="f_newPin" inputmode="numeric" maxlength="8"></div>
+            <button class="btn btn-primary" onclick="setNewPin()">Salvează PIN nou</button>
+            <div id="setPinError" style="color:#8A6300; font-size:12px; margin-top:8px;"></div>
+          </div>
+          <div class="account-row">
+            <span class="lbl">Schimbă PIN-ul de acces</span>
+            <button class="btn btn-secondary btn-small" onclick="togglePinChangeCard()">Schimbă</button>
+          </div>
+          <a class="logout" onclick="logout()">Ieși din cont</a>
+        </div>
+      </section>
+
+      <!-- ---------- TAB: CONCEDIU ---------- -->
+      <section id="tab-concediu" class="tab-panel">
+        <div class="section" style="margin-top:0;">
+          <h3>Balanța mea</h3>
+          <div id="vacationLoading" class="placeholder-box">Se încarcă din Concedii...</div>
+          <div id="vacationContent" style="display:none;">
+            <div class="vac-grid">
+              <div class="vac-box"><div class="vac-num" id="v_ramase">—</div><div class="vac-lbl">rămase</div></div>
+              <div class="vac-box"><div class="vac-num" id="v_folosite">—</div><div class="vac-lbl">folosite</div></div>
+              <div class="vac-box"><div class="vac-num" id="v_total">—</div><div class="vac-lbl">total anul acesta</div></div>
+            </div>
+            <div class="vac-extra" id="v_extra"></div>
+
+            <div class="vac-list-title">Următorul concediu</div>
+            <div id="v_next"></div>
+
+            <div class="vac-list-title">Și după acela</div>
+            <div id="v_upcoming" class="vac-list"></div>
+
+            <div class="vac-list-title">Concedii trecute (anul acesta)</div>
+            <div id="v_past" class="vac-list"></div>
+          </div>
+          <div id="vacationError" class="placeholder-box" style="display:none;"></div>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <div class="section">
+          <h3>Cerere nouă</h3>
+          <div class="req-form">
+            <div class="req-row">
+              <div class="field"><label>De la</label><input type="date" id="req_start"></div>
+              <div class="field"><label>Până la</label><input type="date" id="req_end"></div>
+            </div>
+            <div class="field"><label>Motiv (opțional)</label><input type="text" id="req_motiv" maxlength="300" placeholder="ex: vacanță în familie"></div>
+            <button class="btn btn-primary" onclick="submitRequest()">Trimite cererea</button>
+            <div id="req_error" style="color:var(--red); font-size:12px; margin-top:8px; min-height:14px;"></div>
+          </div>
+          <div class="vac-list-title">Cererile mele</div>
+          <div id="myRequestsList" class="vac-list"></div>
+        </div>
+      </section>
+
+      <!-- ---------- TAB: RECLAMAȚII ---------- -->
+      <section id="tab-reclamatii" class="tab-panel">
+        <div class="section" style="margin-top:0;">
+          <h3>Reclamații</h3>
+          <div id="reclamatiiLoading" class="placeholder-box">Se încarcă din Reclamații...</div>
+          <div id="reclamatiiContent" style="display:none;">
+            <div class="vac-grid">
+              <div class="vac-box"><div class="vac-num" id="r_total">—</div><div class="vac-lbl">total</div></div>
+              <div class="vac-box"><div class="vac-num" id="r_rezolvate">—</div><div class="vac-lbl">rezolvate</div></div>
+              <div class="vac-box"><div class="vac-num" id="r_nerezolvate">—</div><div class="vac-lbl">nerezolvate</div></div>
+            </div>
+            <div class="vac-extra" id="r_extra"></div>
+            <div id="r_groups"></div>
+          </div>
+          <div id="reclamatiiError" class="placeholder-box" style="display:none;"></div>
+        </div>
+      </section>
+
+      <!-- ---------- TAB: APROBĂRI (doar coordonatori) ---------- -->
+      <section id="tab-aprobari" class="tab-panel">
+        <div class="section" style="margin-top:0;">
+          <h3>Cereri de aprobat</h3>
+          <div id="approvalList"></div>
+        </div>
+      </section>
+
     </div>
 
-    <div class="section" id="approvalSection" style="display:none;">
-      <h3>Cereri de aprobat</h3>
-      <div id="approvalList"></div>
-    </div>
-
-    <a class="logout" onclick="logout()">Ieși din cont</a>
+    <nav class="ph-tabbar">
+      <button class="tab-btn active" data-tab="acasa" onclick="switchTab('acasa')">
+        <span class="ic">🏠</span><span class="lbl">Acasă</span>
+      </button>
+      <button class="tab-btn" data-tab="concediu" onclick="switchTab('concediu')">
+        <span class="ic">🌴</span><span class="lbl">Concediu</span>
+      </button>
+      <button class="tab-btn" data-tab="reclamatii" onclick="switchTab('reclamatii')">
+        <span class="ic">📋</span><span class="lbl">Reclamații</span>
+      </button>
+      <button class="tab-btn" data-tab="aprobari" id="tabBtnAprobari" style="display:none;" onclick="switchTab('aprobari')">
+        <span class="ic">✅</span><span class="lbl">Aprobări</span>
+      </button>
+    </nav>
   </div>
+
 </div>
 
 <script>
@@ -295,9 +437,11 @@ const reclamatiiApp = firebase.initializeApp(RECLAMATII_CONFIG, 'reclamatii');
 const reclamatiiFunctions = firebase.functions(reclamatiiApp);
 
 function show(id){
-  ['loadingState','loginState','errorState','appState'].forEach(s=>{
-    document.getElementById(s).style.display = (s===id) ? (id==='loadingState'?'block':(id==='appState'?'block':'block')) : 'none';
-  });
+  const preIds = ['loadingState','loginState','errorState'];
+  const showingPre = preIds.includes(id);
+  document.getElementById('preAppWrap').style.display = showingPre ? 'flex' : 'none';
+  preIds.forEach(s=>{ document.getElementById(s).style.display = (s===id) ? 'block' : 'none'; });
+  document.getElementById('appState').style.display = (id==='appState') ? 'flex' : 'none';
 }
 function showLogin(){ show('loginState'); }
 function showError(msg){
@@ -305,7 +449,18 @@ function showError(msg){
   show('errorState');
 }
 
+/* ================= TAB NAVIGATION ================= */
+function switchTab(name){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active', p.id === 'tab-'+name));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab === name));
+  const content = document.getElementById('phContent');
+  if(content) content.scrollTop = 0;
+}
+
 let currentMustChangePin = false;
+let lastVacData = null;
+let lastReclData = null;
+let lastMyRequests = null;
 
 async function init(){
   const todayStr = new Date().toISOString().slice(0,10);
@@ -354,6 +509,12 @@ async function loginManual(){
   }
 }
 
+function initialsFromName(nume){
+  const parts = (nume||'').trim().split(/\s+/).filter(Boolean);
+  if(!parts.length) return '—';
+  return (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
+}
+
 async function loadProfile(){
   const uid = auth.currentUser.uid;
   const doc = await db.collection('angajati').doc(uid).get();
@@ -363,17 +524,70 @@ async function loadProfile(){
   }
   const e = doc.data();
   document.getElementById('welcomeName').textContent = e.numeComplet || '—';
-  document.getElementById('setPinPrompt').style.display = currentMustChangePin ? 'block' : 'none';
+  document.getElementById('ph_avatar').textContent = initialsFromName(e.numeComplet);
+  if(currentMustChangePin) togglePinChangeCard(true);
+
+  const isCoordonator = !!e.rolAprobator;
+  document.getElementById('tabBtnAprobari').style.display = isCoordonator ? 'flex' : 'none';
+
+  switchTab('acasa');
   show('appState');
   loadVacationData();
   loadReclamatiiData();
   loadMyRequests();
-  loadApprovalQueue();
+  if(isCoordonator) loadApprovalQueue();
 }
 
-function formatRange(l){
-  const days = l.start===l.end ? '1 zi' : (l.start+' → '+l.end);
-  return days;
+/* ================= HOME: quick-glance summary ================= */
+function updateHomeGlance(){
+  document.getElementById('g_vacRamase').textContent = (lastVacData && lastVacData.linked) ? lastVacData.remaining : '—';
+
+  if(lastReclData){
+    document.getElementById('g_reclNerez').textContent = lastReclData.nerezolvate;
+    document.getElementById('g_reclTile').classList.toggle('warn', lastReclData.nerezolvate > 0);
+  }
+
+  if(lastMyRequests){
+    const pending = lastMyRequests.filter(r=>r.status==='in_asteptare').length;
+    document.getElementById('g_cereriPending').textContent = pending;
+  }
+
+  const nl = document.getElementById('g_nextLeave');
+  if(lastVacData && lastVacData.linked){
+    nl.innerHTML = (lastVacData.upcoming && lastVacData.upcoming.length)
+      ? renderNextLeave(lastVacData.upcoming[0])
+      : '<div class="vac-empty">Niciun concediu planificat.</div>';
+  } else if(lastVacData && !lastVacData.linked){
+    nl.innerHTML = '<div class="vac-empty">Contul nu e încă legat de Concedii.</div>';
+  }
+}
+
+const DAY_NAMES = ['Duminică','Luni','Marți','Miercuri','Joi','Vineri','Sâmbătă'];
+const DAY_ABBR = ['Dum','Lun','Mar','Mie','Joi','Vin','Sâm'];
+const MONTHS_RO = ['ian','feb','mar','apr','mai','iun','iul','aug','sep','oct','nov','dec'];
+
+function renderNextLeave(l){
+  const start = new Date(l.start+'T00:00:00');
+  const end = new Date(l.end+'T00:00:00');
+  const chips = [];
+  const d = new Date(start);
+  while(d<=end){
+    const isWeekend = d.getDay()===0 || d.getDay()===6;
+    chips.push(`<div class="day-chip ${isWeekend?'weekend':''}">
+      <div class="dname">${DAY_ABBR[d.getDay()]}</div>
+      <div class="dnum">${d.getDate()}</div>
+    </div>`);
+    d.setDate(d.getDate()+1);
+  }
+  const singleDay = l.start === l.end;
+  const label = singleDay
+    ? `${DAY_NAMES[start.getDay()]}, ${start.getDate()} ${MONTHS_RO[start.getMonth()]}`
+    : `${DAY_NAMES[start.getDay()]} ${start.getDate()} ${MONTHS_RO[start.getMonth()]} → ${DAY_NAMES[end.getDay()]} ${end.getDate()} ${MONTHS_RO[end.getMonth()]}`;
+  return `<div class="next-leave-card">
+    <div class="next-leave-note" style="margin:0 0 8px; font-weight:600; color:var(--primary);">${label}</div>
+    <div class="next-leave-days">${chips.join('')}</div>
+    <div class="next-leave-note">Zilele cu chenar punctat sunt weekend.</div>
+  </div>`;
 }
 
 async function loadVacationData(){
@@ -389,11 +603,13 @@ async function loadVacationData(){
     const getMyLeaveData = concediiFunctions.httpsCallable('getMyLeaveData');
     const result = await getMyLeaveData({ idToken });
     const d = result.data;
+    lastVacData = d;
 
     if(!d.linked){
       loadingEl.style.display = 'none';
       errorEl.style.display = 'block';
       errorEl.textContent = d.reason || 'Contul nu e încă legat de Concedii.';
+      updateHomeGlance();
       return;
     }
 
@@ -406,33 +622,6 @@ async function loadVacationData(){
     if(d.usedKrank) extraParts.push(`<span><b>${d.usedKrank}</b> zile Krank folosite</span>`);
     if(d.usedUnpaid) extraParts.push(`<span><b>${d.usedUnpaid}</b> zile fără plată folosite</span>`);
     document.getElementById('v_extra').innerHTML = extraParts.join('');
-
-    const DAY_NAMES = ['Duminică','Luni','Marți','Miercuri','Joi','Vineri','Sâmbătă'];
-    const DAY_ABBR = ['Dum','Lun','Mar','Mie','Joi','Vin','Sâm'];
-
-    function renderNextLeave(l){
-      const start = new Date(l.start+'T00:00:00');
-      const end = new Date(l.end+'T00:00:00');
-      const chips = [];
-      const d = new Date(start);
-      while(d<=end){
-        const isWeekend = d.getDay()===0 || d.getDay()===6;
-        chips.push(`<div class="day-chip ${isWeekend?'weekend':''}">
-          <div class="dname">${DAY_ABBR[d.getDay()]}</div>
-          <div class="dnum">${d.getDate()}</div>
-        </div>`);
-        d.setDate(d.getDate()+1);
-      }
-      const singleDay = l.start === l.end;
-      const label = singleDay
-        ? `${DAY_NAMES[start.getDay()]}, ${start.getDate()} ${MONTHS_RO[start.getMonth()]}`
-        : `${DAY_NAMES[start.getDay()]} ${start.getDate()} ${MONTHS_RO[start.getMonth()]} → ${DAY_NAMES[end.getDay()]} ${end.getDate()} ${MONTHS_RO[end.getMonth()]}`;
-      return `<div class="next-leave-card">
-        <div class="next-leave-note" style="margin:0 0 8px; font-weight:600; color:var(--primary);">${label}</div>
-        <div class="next-leave-days">${chips.join('')}</div>
-        <div class="next-leave-note">Zilele cu chenar punctat sunt weekend.</div>
-      </div>`;
-    }
 
     const nextEl = document.getElementById('v_next');
     nextEl.innerHTML = d.upcoming.length
@@ -452,6 +641,7 @@ async function loadVacationData(){
 
     loadingEl.style.display = 'none';
     contentEl.style.display = 'block';
+    updateHomeGlance();
   }catch(err){
     console.error(err);
     loadingEl.style.display = 'none';
@@ -461,7 +651,6 @@ async function loadVacationData(){
 }
 
 const STATUS_LABEL = { rezolvata:'Rezolvată', nerezolvata:'Nerezolvată', neprelucrat:'În procesare', checking:'În verificare', parsing:'În procesare', error:'Eroare', ready:'În procesare' };
-const MONTHS_RO = ['ian','feb','mar','apr','mai','iun','iul','aug','sep','oct','nov','dec'];
 
 async function loadReclamatiiData(){
   const loadingEl = document.getElementById('reclamatiiLoading');
@@ -481,8 +670,12 @@ async function loadReclamatiiData(){
       loadingEl.style.display = 'none';
       errorEl.style.display = 'block';
       errorEl.textContent = d.reason || 'Contul nu e încă legat de Reclamații.';
+      lastReclData = { nerezolvate: 0 };
+      updateHomeGlance();
       return;
     }
+
+    lastReclData = d;
 
     document.getElementById('r_total').textContent = d.total;
     document.getElementById('r_rezolvate').textContent = d.rezolvate;
@@ -520,6 +713,7 @@ async function loadReclamatiiData(){
 
     loadingEl.style.display = 'none';
     contentEl.style.display = 'block';
+    updateHomeGlance();
   }catch(err){
     console.error(err);
     loadingEl.style.display = 'none';
@@ -564,12 +758,14 @@ async function loadMyRequests(){
     const getMyRequests = concediiFunctions.httpsCallable('getMyRequests');
     const result = await getMyRequests({ idToken });
     const lista = result.data.lista || [];
+    lastMyRequests = lista;
     listEl.innerHTML = lista.length
       ? lista.map(r=>`<div class="req-item">
           <span>${r.start} → ${r.end}${r.motiv?' · '+escapeHtmlP(r.motiv):''}</span>
           <span class="req-status ${r.status}">${REQ_STATUS_LABEL[r.status]||r.status}</span>
         </div>`).join('')
       : '<div class="vac-empty">Nicio cerere trimisă încă.</div>';
+    updateHomeGlance();
   }catch(err){
     console.error(err);
     listEl.innerHTML = '<div class="vac-empty">Nu am putut încărca cererile tale.</div>';
@@ -583,7 +779,6 @@ async function loadApprovalQueue(){
     const getPending = concediiFunctions.httpsCallable('getPendingRequests');
     const result = await getPending({ idToken });
     const lista = result.data.lista || [];
-    document.getElementById('approvalSection').style.display = 'block';
     const listEl = document.getElementById('approvalList');
     listEl.innerHTML = lista.length
       ? lista.map(r=>`
@@ -600,7 +795,7 @@ async function loadApprovalQueue(){
       : '<div class="vac-empty">Nicio cerere de aprobat momentan.</div>';
   }catch(err){
     console.error(err);
-    // Nu e coordonator — nu arătăm secțiunea deloc, fără eroare vizibilă.
+    document.getElementById('approvalList').innerHTML = '<div class="vac-empty">Nu am putut încărca cererile de aprobat.</div>';
   }
 }
 
@@ -620,6 +815,16 @@ async function decideRequest(requestId, decision){
   }
 }
 
+/* ================= SCHIMBARE PIN (forțată sau voluntară) ================= */
+function togglePinChangeCard(force){
+  const box = document.getElementById('pinChangeCard');
+  const willShow = force!==undefined ? force : (box.style.display === 'none' || !box.style.display);
+  box.style.display = willShow ? 'block' : 'none';
+  document.getElementById('pinChangeMsg').textContent = currentMustChangePin
+    ? 'Ești logat cu un PIN provizoriu. Setează-ți acum propriul PIN, pe care îl vei folosi de acum înainte.'
+    : 'Introdu noul PIN pe care vrei să-l folosești de acum înainte.';
+}
+
 async function setNewPin(){
   const newPin = document.getElementById('f_newPin').value.trim();
   const errEl = document.getElementById('setPinError');
@@ -632,7 +837,7 @@ async function setNewPin(){
     const changePin = functionsRef.httpsCallable('changePin');
     await changePin({ newPin });
     currentMustChangePin = false;
-    document.getElementById('setPinPrompt').style.display = 'none';
+    document.getElementById('pinChangeCard').style.display = 'none';
     document.getElementById('f_newPin').value = '';
   }catch(err){
     console.error(err);
