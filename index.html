@@ -84,7 +84,7 @@ header.top{
   background:var(--surface); border-bottom:1px solid var(--border);
   padding:18px 28px; position:sticky; top:0; z-index:10;
 }
-.top-inner{max-width:1400px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px;}
+.top-inner{max-width:100%; margin:0; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px;}
 .brand{display:flex; align-items:center; gap:12px;}
 .brand-mark{
   width:38px; height:38px; border-radius:9px; background:var(--primary);
@@ -104,7 +104,7 @@ header.top{
 .stat.alert-red b{color:var(--red);}
 .stat.alert-amber b{color:var(--amber);}
 
-main{max-width:1400px; margin:0 auto; padding:22px 28px 60px;}
+main{max-width:100%; margin:0; padding:22px 32px 60px;}
 
 /* alert banner */
 #alertBanner{
@@ -139,7 +139,7 @@ input[type=text]:focus, select:focus{outline:none; border-color:var(--primary);}
   background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
   overflow-x:auto; box-shadow:var(--shadow);
 }
-table{width:100%; border-collapse:collapse; min-width:1280px;}
+table{width:100%; border-collapse:collapse; min-width:700px; table-layout:auto;}
 thead th{
   text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.05em;
   color:var(--text-muted); padding:12px 14px; border-bottom:1px solid var(--border);
@@ -246,11 +246,11 @@ tbody tr:hover{background:#FAFBFC;}
 .btn-danger{background:var(--red); color:#fff;}
 .btn-danger:hover{background:#A5311F;}
 
-footer.note{max-width:1400px; margin:0 auto; padding:0 28px 40px; color:var(--text-muted); font-size:12px;}
+footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-muted); font-size:12px;}
 
 /* ---------- VIEW TABS ---------- */
 .view-tabs{
-  max-width:1400px; margin:0 auto; padding:14px 28px 0; display:flex; gap:8px;
+  max-width:100%; margin:0; padding:14px 32px 0; display:flex; gap:8px;
 }
 .view-tab-btn{
   border:1.5px solid var(--border); background:var(--surface); border-radius:100px;
@@ -417,12 +417,8 @@ footer.note{max-width:1400px; margin:0 auto; padding:0 28px 40px; color:var(--te
             <th class="rowcheck"><input type="checkbox" id="selectAllBox" onchange="toggleSelectAll(this)"></th>
             <th onclick="setSort('employeeId')">Cod</th>
             <th onclick="setSort('numeComplet')">Nume</th>
-            <th onclick="setSort('rol')">Rol</th>
-            <th onclick="setSort('depot')">Locație</th>
-            <th>Contact</th>
-            <th>Categorii permis</th>
+            <th onclick="setSort('rol')">Rol · Locație</th>
             <th onclick="setSort('dataExpirarePermis')">Expiră permis</th>
-            <th onclick="setSort('dataExpirareCardTahograf')">Card tahograf</th>
             <th>Acces cont</th>
             <th>Concediu (an curent)</th>
             <th onclick="setSort('status')">Status</th>
@@ -699,7 +695,7 @@ function initBoard(){
       claimsInfo = JSON.stringify(tokenResult.claims);
     }catch(e){ claimsInfo = 'eroare: ' + e.message; }
     document.getElementById('boardBody').innerHTML =
-      `<tr><td colspan="11" style="padding:24px; color:var(--red);">
+      `<tr><td colspan="10" style="padding:24px; color:var(--red);">
         Eroare de conectare la Firestore: ${err.message}<br><br>
         <b>Claims curente (trimite-mi exact linia asta):</b><br>
         <span class="mono" style="font-size:12px;">${claimsInfo}</span>
@@ -830,19 +826,14 @@ function renderBoard(){
   document.getElementById('emptyState').style.display = employees.length? 'none':'block';
 
   body.innerHTML = list.map(e=>{
-    const cats = (e.categoriiPermis||[]).map(c=>`<span class="cat-pill">${c}</span>`).join('');
     return `
     <tr>
       <td style="padding:0; width:4px;"><div class="tab ${rowTabClass(e)}"></div></td>
       <td class="rowcheck"><input type="checkbox" class="rowSelect" data-id="${e.id}" ${selectedIds.has(e.id)?'checked':''} onchange="toggleRowSelect('${e.id}', this.checked)"></td>
       <td><span class="id-tag mono">${e.employeeId||'—'}</span></td>
-      <td class="name-cell"><b>${escapeHtml(e.numeComplet||'')}</b><small>${escapeHtml(addressLine(e))}</small></td>
-      <td>${e.rol||'—'}</td>
-      <td>${e.depot||'—'}</td>
-      <td><span style="white-space:nowrap;">${e.telefon? escapeHtml(e.telefon):'<span style="color:var(--text-muted)">—</span>'}</span></td>
-      <td><div class="cats">${cats||'—'}</div></td>
+      <td class="name-cell"><b>${escapeHtml(e.numeComplet||'')}</b><small>${escapeHtml(addressLine(e))}${e.telefon?' · '+escapeHtml(e.telefon):''}</small></td>
+      <td>${escapeHtml(e.rol||'—')} <span style="color:var(--text-muted);">· ${escapeHtml(e.depot||'—')}</span></td>
       <td>${expiryChip(e.dataExpirarePermis)}</td>
-      <td>${e.areCardTahograf ? expiryChip(e.dataExpirareTahograf) : '<span class="chip gray">—</span>'}</td>
       <td>${accessChip(e)}</td>
       <td>${vacationCell(e)}</td>
       <td><span class="status-pill status-${e.status||'Activ'}">${e.status||'Activ'}</span></td>
