@@ -210,12 +210,14 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
 .req-overlay-backdrop{position:absolute; inset:0; background:rgba(20,26,34,.45);}
 .req-sheet{
   position:absolute; left:0; right:0; bottom:0; background:var(--surface);
-  border-radius:20px 20px 0 0; padding:18px 20px max(18px, env(safe-area-inset-bottom));
+  border-radius:20px 20px 0 0; padding:18px 20px calc(22px + env(safe-area-inset-bottom));
   box-shadow:0 -8px 30px rgba(0,0,0,.15); animation:sheetUp .18s ease-out;
+  max-height:min(70vh, 520px); overflow-y:auto; -webkit-overflow-scrolling:touch;
 }
 @keyframes sheetUp{from{transform:translateY(16px); opacity:.6;} to{transform:translateY(0); opacity:1;}}
 .req-sheet-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
 .req-sheet-head h3{font-size:16px; margin:0;}
+.btn:disabled{opacity:.6; cursor:not-allowed;}
 
 /* ---------- Coadă de aprobare (coordonator) ---------- */
 .appr-card{
@@ -386,7 +388,7 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
               <div class="field"><label>Până la</label><input type="date" id="req_end"></div>
             </div>
             <div class="field"><label>Motiv (opțional)</label><input type="text" id="req_motiv" maxlength="300" placeholder="ex: vacanță în familie"></div>
-            <button class="btn btn-primary" onclick="submitRequest()">Trimite cererea</button>
+            <button class="btn btn-primary" id="submitReqBtn" onclick="submitRequest()">Trimite cererea</button>
             <div id="req_error" style="color:var(--red); font-size:12px; margin-top:8px; min-height:14px;"></div>
           </div>
         </div>
@@ -772,7 +774,9 @@ function escapeHtmlP(s){
 /* ================= CERERE DE CONCEDIU ================= */
 const REQ_STATUS_LABEL = { in_asteptare:'În așteptare', aprobat:'Aprobat', respins:'Respins' };
 
+let submittingRequest = false;
 async function submitRequest(){
+  if(submittingRequest) return; // apărare împotriva apăsărilor multiple / dublurilor
   const start = document.getElementById('req_start').value;
   const end = document.getElementById('req_end').value;
   const motiv = document.getElementById('req_motiv').value.trim();
@@ -780,6 +784,13 @@ async function submitRequest(){
   errEl.textContent = '';
   if(!start || !end){ errEl.textContent = 'Alege perioada.'; return; }
   if(end < start){ errEl.textContent = 'Data de final e înainte de data de început.'; return; }
+
+  const btn = document.getElementById('submitReqBtn');
+  submittingRequest = true;
+  btn.disabled = true;
+  const originalLabel = btn.textContent;
+  btn.textContent = 'Se trimite...';
+
   try{
     const idToken = await auth.currentUser.getIdToken();
     const submit = concediiFunctions.httpsCallable('submitLeaveRequest');
@@ -792,6 +803,10 @@ async function submitRequest(){
   }catch(err){
     console.error(err);
     errEl.textContent = err.message || 'Eroare la trimitere.';
+  }finally{
+    submittingRequest = false;
+    btn.disabled = false;
+    btn.textContent = originalLabel;
   }
 }
 
