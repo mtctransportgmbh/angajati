@@ -774,6 +774,18 @@ const db = firebase.firestore(adminApp);
 const auth = firebase.auth(adminApp);
 const functionsRef = firebase.functions(adminApp);
 
+// Fără asta, sesiunea de Firebase Auth e ținută în localStorage/IndexedDB,
+// care e COMUN tuturor tab-urilor deschise cu index.html pe același
+// calculator/browser — dacă cineva se loghează ca și coordonator într-un
+// tab, în timp ce boardul de admin e deschis în alt tab, a doua
+// autentificare suprascrie silențios sesiunea din primul tab, care rămâne
+// apoi cu un cont fără drepturi de admin ("Missing or insufficient
+// permissions"). SESSION ține sesiunea în sessionStorage, care e izolat
+// per-tab, exact ca "mtc_login_mode" de mai jos — fiecare tab își ține
+// propriul login, indiferent ce se întâmplă în alte tab-uri.
+const authReady = auth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
+  .catch(err=>console.error('setPersistence:', err));
+
 // Conexiune separată către Concedii — doar pentru tabul de aprobări.
 const CONCEDII_CONFIG = {
   apiKey: "AIzaSyCaWrQnIAcquK71N_EwKT45lwcUW5RyDK0",
@@ -819,6 +831,7 @@ async function checkPin(){
     const callCheckAdminPin = functionsRef.httpsCallable('checkAdminPin');
     const result = await callCheckAdminPin({ pin: val });
     sessionStorage.setItem('mtc_login_mode','admin');
+    await authReady;
     await auth.signInWithCustomToken(result.data.token);
   }catch(err){
     console.error(err);
@@ -842,6 +855,7 @@ async function coordLogin(){
     const login = functionsRef.httpsCallable('employeeLogin');
     const result = await login({ numarPersonal, pin });
     sessionStorage.setItem('mtc_login_mode','coord');
+    await authReady;
     await auth.signInWithCustomToken(result.data.token);
   }catch(err){
     console.error(err);
@@ -935,8 +949,12 @@ function initBoard(){
     console.error(err);
     let claimsInfo = 'nu s-a putut citi';
     try{
-      const tokenResult = await auth.currentUser.getIdTokenResult(true);
-      claimsInfo = JSON.stringify(tokenResult.claims);
+      if(!auth.currentUser){
+        claimsInfo = 'sesiunea s-a închis (delogat din acest tab) — dă refresh și loghează-te din nou';
+      } else {
+        const tokenResult = await auth.currentUser.getIdTokenResult(true);
+        claimsInfo = JSON.stringify(tokenResult.claims);
+      }
     }catch(e){ claimsInfo = 'eroare: ' + e.message; }
     document.getElementById('boardBody').innerHTML =
       `<tr><td colspan="11" style="padding:24px; color:var(--red);">

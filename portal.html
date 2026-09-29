@@ -540,6 +540,13 @@ const db = firebase.firestore();
 const auth = firebase.auth();
 const functionsRef = firebase.functions();
 
+// Ține sesiunea de login în sessionStorage (izolat per-tab), nu în
+// localStorage/IndexedDB (comun tuturor tab-urilor) — altfel, dacă doi
+// angajați se loghează pe rând pe același calculator, în tab-uri diferite,
+// a doua logare o suprascrie silențios pe prima.
+const authReady = auth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
+  .catch(err=>console.error('setPersistence:', err));
+
 // Conexiune separată către Concedii (alt proiect Firebase) — doar pentru
 // funcția care ne dă datele de concediu; nu ne logăm acolo, doar apelăm
 // o funcție publică ce verifică sesiunea noastră de aici.
@@ -612,6 +619,7 @@ async function init(){
     try{
       const loginByQr = functionsRef.httpsCallable('employeeLoginByQr');
       const result = await loginByQr({ token: qrToken });
+      await authReady;
       await auth.signInWithCustomToken(result.data.token);
       // curăță token-ul din bara de adresă / istoric, din grijă pentru confidențialitate
       history.replaceState({}, '', window.location.pathname);
@@ -636,6 +644,7 @@ async function loginManual(){
   try{
     const login = functionsRef.httpsCallable('employeeLogin');
     const result = await login({ numarPersonal, pin });
+    await authReady;
     await auth.signInWithCustomToken(result.data.token);
     currentMustChangePin = !!result.data.mustChangePin;
     await loadProfile();
