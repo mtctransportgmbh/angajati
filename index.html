@@ -239,8 +239,18 @@ tbody tr:hover{background:#FAFBFC;}
 .toggle-row{display:flex; align-items:center; gap:8px; margin-bottom:4px; font-size:13px; cursor:pointer;}
 #tahoFields{display:none;}
 #tahoFields.show{display:grid;}
+#coordTahoFields{display:none;}
+#coordTahoFields.show{display:grid;}
 #terminareField{display:none;}
 #terminareField.show{display:flex;}
+#copiiField{display:none;}
+#copiiField.show{display:flex;}
+#asigMedicalaAltaField{display:none;}
+#asigMedicalaAltaField.show{display:flex;}
+#coord_copiiField{display:none;}
+#coord_copiiField.show{display:flex;}
+#coord_asigMedicalaAltaField{display:none;}
+#coord_asigMedicalaAltaField.show{display:flex;}
 
 .confirm-body{padding:22px 24px; font-size:13.5px; color:var(--text);}
 .btn-danger{background:var(--red); color:#fff;}
@@ -613,7 +623,80 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
       </div>
 
       <div class="section-label">Card tahograf (Fahrerkarte)</div>
-      <label class="toggle-row"><input type="checkbox" id="coord_areCardTahograf"> Angajatul are card tahograf</label>
+      <label class="toggle-row"><input type="checkbox" id="coord_areCardTahograf" onchange="toggleCoordTahoFields()"> Angajatul are card tahograf</label>
+      <div class="form-grid" id="coordTahoFields">
+        <div class="field"><label>Număr card</label><input type="text" id="coord_numarTahograf"></div>
+        <div class="field"><label>Data expirării</label><input type="date" id="coord_dataExpirareTahograf"></div>
+      </div>
+
+      <div class="section-label">Calificări suplimentare</div>
+      <div class="form-grid">
+        <div class="field full"><label>Modul conducător auto (Cod 95) — data expirării</label><input type="date" id="coord_dataExpirareModul95"></div>
+      </div>
+
+      <div class="section-label">Date personale suplimentare</div>
+      <div class="form-grid">
+        <div class="field"><label>Cetățenia</label><input type="text" id="coord_cetatenie" placeholder="ex: Română"></div>
+        <div class="field"><label>CNP</label><input type="text" id="coord_cnp" placeholder="13 cifre"></div>
+        <div class="field"><label>Data expirării buletin / CI</label><input type="date" id="coord_dataExpirareBuletin"></div>
+        <div class="field"><label>Sozialversicherungsnummer</label><input type="text" id="coord_sozialversicherungsnummer" placeholder="ex: 12 345678 A 123"></div>
+        <div class="field"><label>Identifikationsnummer (Steuer-ID)</label><input type="text" id="coord_identnummer" placeholder="11 cifre"></div>
+        <div class="field"><label>Steuerklasse</label>
+          <select id="coord_steuerklasse">
+            <option value="">— neprecizat —</option>
+            <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+            <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+          </select>
+        </div>
+        <div class="field"><label>Stare civilă</label>
+          <select id="coord_stareCivila">
+            <option value="">— neprecizat —</option>
+            <option value="Necăsătorit(ă)">Necăsătorit(ă)</option>
+            <option value="Căsătorit(ă)">Căsătorit(ă)</option>
+            <option value="Divorțat(ă)">Divorțat(ă)</option>
+            <option value="Văduv(ă)">Văduv(ă)</option>
+          </select>
+        </div>
+        <div class="field"><label>Are copii?</label>
+          <select id="coord_areCopii" onchange="toggleCoordCopiiField()">
+            <option value="">— neprecizat —</option>
+            <option value="nu">Nu</option>
+            <option value="da">Da</option>
+          </select>
+        </div>
+        <div class="field" id="coord_copiiField"><label>Câți copii</label><input type="number" min="1" id="coord_numarCopii"></div>
+        <div class="field full"><label>Asigurare medicală</label>
+          <select id="coord_asigurareMedicala" onchange="toggleCoordAsigMedicalaAltaField()">
+            <option value="">— neprecizat —</option>
+            <option>TK (Techniker Krankenkasse)</option>
+            <option>BARMER</option>
+            <option>DAK-Gesundheit</option>
+            <option>KKH Kaufmännische Krankenkasse</option>
+            <option>HEK — Hanseatische Krankenkasse</option>
+            <option>hkk Krankenkasse</option>
+            <option>Knappschaft</option>
+            <option>IKK classic</option>
+            <option>IKK gesund plus</option>
+            <option>IKK Südwest</option>
+            <option>BIG direkt gesund</option>
+            <option>AOK Bayern</option>
+            <option>AOK Baden-Württemberg</option>
+            <option>AOK PLUS</option>
+            <option>AOK Rheinland/Hamburg</option>
+            <option>AOK NordWest</option>
+            <option>AOK Niedersachsen</option>
+            <option>AOK Nordost</option>
+            <option>AOK Hessen</option>
+            <option>AOK Rheinland-Pfalz/Saarland</option>
+            <option>AOK Sachsen-Anhalt</option>
+            <option>AOK Bremen/Bremerhaven</option>
+            <option>BKK (casă de firmă)</option>
+            <option>Asigurare privată (PKV)</option>
+            <option value="__altele__">Altă casă de asigurări...</option>
+          </select>
+        </div>
+        <div class="field full" id="coord_asigMedicalaAltaField"><label>Numele casei de asigurări</label><input type="text" id="coord_asigurareMedicalaAlta"></div>
+      </div>
 
       <div id="coord_error" style="color:var(--red); font-size:12.5px; margin-top:14px; min-height:16px;"></div>
     </div>
@@ -709,6 +792,75 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
       <div class="form-grid" id="tahoFields">
         <div class="field"><label>Număr card</label><input type="text" id="f_numarTahograf"></div>
         <div class="field"><label>Data expirării</label><input type="date" id="f_dataExpirareTahograf"></div>
+      </div>
+
+      <div class="section-label">Calificări suplimentare</div>
+      <div class="form-grid">
+        <div class="field full"><label>Modul conducător auto (Cod 95) — data expirării</label><input type="date" id="f_dataExpirareModul95"></div>
+      </div>
+
+      <div class="section-label">Date personale suplimentare</div>
+      <div class="form-grid">
+        <div class="field"><label>Cetățenia</label><input type="text" id="f_cetatenie" placeholder="ex: Română"></div>
+        <div class="field"><label>CNP</label><input type="text" id="f_cnp" placeholder="13 cifre"></div>
+        <div class="field"><label>Data expirării buletin / CI</label><input type="date" id="f_dataExpirareBuletin"></div>
+        <div class="field"><label>Sozialversicherungsnummer</label><input type="text" id="f_sozialversicherungsnummer" placeholder="ex: 12 345678 A 123"></div>
+        <div class="field"><label>Identifikationsnummer (Steuer-ID)</label><input type="text" id="f_identnummer" placeholder="11 cifre"></div>
+        <div class="field"><label>Steuerklasse</label>
+          <select id="f_steuerklasse">
+            <option value="">— neprecizat —</option>
+            <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+            <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+          </select>
+        </div>
+        <div class="field"><label>Stare civilă</label>
+          <select id="f_stareCivila">
+            <option value="">— neprecizat —</option>
+            <option value="Necăsătorit(ă)">Necăsătorit(ă)</option>
+            <option value="Căsătorit(ă)">Căsătorit(ă)</option>
+            <option value="Divorțat(ă)">Divorțat(ă)</option>
+            <option value="Văduv(ă)">Văduv(ă)</option>
+          </select>
+        </div>
+        <div class="field"><label>Are copii?</label>
+          <select id="f_areCopii" onchange="toggleCopiiField()">
+            <option value="">— neprecizat —</option>
+            <option value="nu">Nu</option>
+            <option value="da">Da</option>
+          </select>
+        </div>
+        <div class="field" id="copiiField"><label>Câți copii</label><input type="number" min="1" id="f_numarCopii"></div>
+        <div class="field full"><label>Asigurare medicală</label>
+          <select id="f_asigurareMedicala" onchange="toggleAsigMedicalaAltaField()">
+            <option value="">— neprecizat —</option>
+            <option>TK (Techniker Krankenkasse)</option>
+            <option>BARMER</option>
+            <option>DAK-Gesundheit</option>
+            <option>KKH Kaufmännische Krankenkasse</option>
+            <option>HEK — Hanseatische Krankenkasse</option>
+            <option>hkk Krankenkasse</option>
+            <option>Knappschaft</option>
+            <option>IKK classic</option>
+            <option>IKK gesund plus</option>
+            <option>IKK Südwest</option>
+            <option>BIG direkt gesund</option>
+            <option>AOK Bayern</option>
+            <option>AOK Baden-Württemberg</option>
+            <option>AOK PLUS</option>
+            <option>AOK Rheinland/Hamburg</option>
+            <option>AOK NordWest</option>
+            <option>AOK Niedersachsen</option>
+            <option>AOK Nordost</option>
+            <option>AOK Hessen</option>
+            <option>AOK Rheinland-Pfalz/Saarland</option>
+            <option>AOK Sachsen-Anhalt</option>
+            <option>AOK Bremen/Bremerhaven</option>
+            <option>BKK (casă de firmă)</option>
+            <option>Asigurare privată (PKV)</option>
+            <option value="__altele__">Altă casă de asigurări...</option>
+          </select>
+        </div>
+        <div class="field full" id="asigMedicalaAltaField"><label>Numele casei de asigurări</label><input type="text" id="f_asigurareMedicalaAlta"></div>
       </div>
 
       <div class="section-label">Notițe</div>
@@ -996,6 +1148,39 @@ function toggleTahoFields(){
 function toggleTerminareField(){
   document.getElementById('terminareField').classList.toggle('show', document.getElementById('f_status').value!=='Activ');
 }
+function toggleCopiiField(){
+  document.getElementById('copiiField').classList.toggle('show', document.getElementById('f_areCopii').value==='da');
+}
+function toggleAsigMedicalaAltaField(){
+  document.getElementById('asigMedicalaAltaField').classList.toggle('show', document.getElementById('f_asigurareMedicala').value==='__altele__');
+}
+// Selectul de asigurare medicală are doar câțiva ani cunoscuți ca opțiuni;
+// dacă valoarea salvată nu se potrivește cu niciuna (ex: o casă mai puțin
+// comună), o tratăm ca "altele" și o afișăm în câmpul liber de text.
+function fillAsigurareMedicala(selectId, altaId, value){
+  const sel = document.getElementById(selectId);
+  const known = Array.from(sel.options).map(o=>o.value).filter(v=>v && v!=='__altele__');
+  if(value && !known.includes(value)){
+    sel.value = '__altele__';
+    document.getElementById(altaId).value = value;
+  } else {
+    sel.value = value || '';
+    document.getElementById(altaId).value = '';
+  }
+}
+function readAsigurareMedicala(selectId, altaId){
+  const sel = document.getElementById(selectId);
+  return sel.value === '__altele__' ? document.getElementById(altaId).value.trim() : sel.value;
+}
+function toggleCoordTahoFields(){
+  document.getElementById('coordTahoFields').classList.toggle('show', document.getElementById('coord_areCardTahograf').checked);
+}
+function toggleCoordCopiiField(){
+  document.getElementById('coord_copiiField').classList.toggle('show', document.getElementById('coord_areCopii').value==='da');
+}
+function toggleCoordAsigMedicalaAltaField(){
+  document.getElementById('coord_asigMedicalaAltaField').classList.toggle('show', document.getElementById('coord_asigurareMedicala').value==='__altele__');
+}
 
 /* ================= DATE / STATUS HELPERS ================= */
 /* ================= CALCUL ZILE CONCEDIU ================= */
@@ -1204,17 +1389,25 @@ function openModal(id){
   document.getElementById('modalIdTag').style.display='none';
   ['prenume','numeFamilie','numarPersonal','dataNasterii','telefon','email','strada','codPostal','oras','tara',
    'dataAngajare','dataIncetare','numarPermis','dataEliberarePermis','dataExpirarePermis',
-   'numarTahograf','dataExpirareTahograf','notite'].forEach(f=>document.getElementById('f_'+f).value='');
+   'numarTahograf','dataExpirareTahograf','dataExpirareModul95',
+   'cetatenie','cnp','dataExpirareBuletin','sozialversicherungsnummer','identnummer','numarCopii',
+   'notite'].forEach(f=>document.getElementById('f_'+f).value='');
   document.getElementById('f_tara').value='Germania';
   document.getElementById('f_depot').value='Ruhstorf';
   document.getElementById('f_status').value='Activ';
   document.getElementById('f_coordonator').value='';
   document.getElementById('f_rolAprobator').value='';
   document.getElementById('f_areTahograf').checked=false;
+  document.getElementById('f_steuerklasse').value='';
+  document.getElementById('f_stareCivila').value='';
+  document.getElementById('f_areCopii').value='';
+  fillAsigurareMedicala('f_asigurareMedicala','f_asigurareMedicalaAlta','');
   setCats([]);
   setRoluri([]);
   toggleTahoFields();
   toggleTerminareField();
+  toggleCopiiField();
+  toggleAsigMedicalaAltaField();
 
   if(id){
     const e = employees.find(x=>x.id===id);
@@ -1246,10 +1439,23 @@ function openModal(id){
       document.getElementById('f_areTahograf').checked = !!e.areCardTahograf;
       document.getElementById('f_numarTahograf').value = e.numarTahograf||'';
       document.getElementById('f_dataExpirareTahograf').value = e.dataExpirareTahograf||'';
+      document.getElementById('f_dataExpirareModul95').value = e.dataExpirareModul95||'';
+      document.getElementById('f_cetatenie').value = e.cetatenie||'';
+      document.getElementById('f_cnp').value = e.cnp||'';
+      document.getElementById('f_dataExpirareBuletin').value = e.dataExpirareBuletin||'';
+      document.getElementById('f_sozialversicherungsnummer').value = e.sozialversicherungsnummer||'';
+      document.getElementById('f_identnummer').value = e.identnummer||'';
+      document.getElementById('f_steuerklasse').value = e.steuerklasse||'';
+      document.getElementById('f_stareCivila').value = e.stareCivila||'';
+      document.getElementById('f_areCopii').value = e.areCopii||'';
+      document.getElementById('f_numarCopii').value = e.numarCopii||'';
+      fillAsigurareMedicala('f_asigurareMedicala','f_asigurareMedicalaAlta', e.asigurareMedicala||'');
       document.getElementById('f_notite').value = e.notite||'';
       setCats(e.categoriiPermis||[]);
       toggleTahoFields();
       toggleTerminareField();
+      toggleCopiiField();
+      toggleAsigMedicalaAltaField();
     }
   } else {
     document.getElementById('modalTitleText').textContent = 'Angajat nou';
@@ -1313,6 +1519,17 @@ async function saveEmployee(){
     areCardTahograf: document.getElementById('f_areTahograf').checked,
     numarTahograf: document.getElementById('f_numarTahograf').value.trim(),
     dataExpirareTahograf: document.getElementById('f_dataExpirareTahograf').value,
+    dataExpirareModul95: document.getElementById('f_dataExpirareModul95').value,
+    cetatenie: document.getElementById('f_cetatenie').value.trim(),
+    cnp: document.getElementById('f_cnp').value.trim(),
+    dataExpirareBuletin: document.getElementById('f_dataExpirareBuletin').value,
+    sozialversicherungsnummer: document.getElementById('f_sozialversicherungsnummer').value.trim(),
+    identnummer: document.getElementById('f_identnummer').value.trim(),
+    steuerklasse: document.getElementById('f_steuerklasse').value,
+    stareCivila: document.getElementById('f_stareCivila').value,
+    areCopii: document.getElementById('f_areCopii').value,
+    numarCopii: document.getElementById('f_areCopii').value==='da' ? (document.getElementById('f_numarCopii').value?Number(document.getElementById('f_numarCopii').value):null) : null,
+    asigurareMedicala: readAsigurareMedicala('f_asigurareMedicala','f_asigurareMedicalaAlta'),
     notite: document.getElementById('f_notite').value.trim(),
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   };
@@ -1867,15 +2084,24 @@ function openCoordModal(memberId){
   coordEditingId = memberId || null;
   ['coord_prenume','coord_numeFamilie','coord_dataNasterii','coord_telefon','coord_email','coord_strada',
    'coord_codPostal','coord_oras','coord_dataAngajare','coord_numarPermis','coord_dataEliberarePermis',
-   'coord_dataExpirarePermis'].forEach(id=>{ document.getElementById(id).value=''; });
+   'coord_dataExpirarePermis','coord_numarTahograf','coord_dataExpirareTahograf','coord_dataExpirareModul95',
+   'coord_cetatenie','coord_cnp','coord_dataExpirareBuletin','coord_sozialversicherungsnummer',
+   'coord_identnummer','coord_numarCopii'].forEach(id=>{ document.getElementById(id).value=''; });
   document.getElementById('coord_tara').value = 'Germania';
   document.getElementById('coord_depot').value = 'Ruhstorf';
   document.getElementById('coord_status').value = 'Activ';
   document.getElementById('coord_coordonator').value = coordMyGroup || 'admin';
   document.getElementById('coord_areCardTahograf').checked = false;
+  document.getElementById('coord_steuerklasse').value = '';
+  document.getElementById('coord_stareCivila').value = '';
+  document.getElementById('coord_areCopii').value = '';
+  fillAsigurareMedicala('coord_asigurareMedicala','coord_asigurareMedicalaAlta','');
   setCheckedIn('coordRolGrid', []);
   setCheckedIn('coordCatGrid', []);
   document.getElementById('coord_error').textContent = '';
+  toggleCoordTahoFields();
+  toggleCoordCopiiField();
+  toggleCoordAsigMedicalaAltaField();
 
   if(memberId){
     const m = coordTeamCache.find(x=>x.id===memberId);
@@ -1900,6 +2126,22 @@ function openCoordModal(memberId){
       document.getElementById('coord_dataEliberarePermis').value = m.dataEliberarePermis||'';
       document.getElementById('coord_dataExpirarePermis').value = m.dataExpirarePermis||'';
       document.getElementById('coord_areCardTahograf').checked = !!m.areCardTahograf;
+      document.getElementById('coord_numarTahograf').value = m.numarTahograf||'';
+      document.getElementById('coord_dataExpirareTahograf').value = m.dataExpirareTahograf||'';
+      document.getElementById('coord_dataExpirareModul95').value = m.dataExpirareModul95||'';
+      document.getElementById('coord_cetatenie').value = m.cetatenie||'';
+      document.getElementById('coord_cnp').value = m.cnp||'';
+      document.getElementById('coord_dataExpirareBuletin').value = m.dataExpirareBuletin||'';
+      document.getElementById('coord_sozialversicherungsnummer').value = m.sozialversicherungsnummer||'';
+      document.getElementById('coord_identnummer').value = m.identnummer||'';
+      document.getElementById('coord_steuerklasse').value = m.steuerklasse||'';
+      document.getElementById('coord_stareCivila').value = m.stareCivila||'';
+      document.getElementById('coord_areCopii').value = m.areCopii||'';
+      document.getElementById('coord_numarCopii').value = m.numarCopii||'';
+      fillAsigurareMedicala('coord_asigurareMedicala','coord_asigurareMedicalaAlta', m.asigurareMedicala||'');
+      toggleCoordTahoFields();
+      toggleCoordCopiiField();
+      toggleCoordAsigMedicalaAltaField();
     }
     document.getElementById('coordExpLabel').textContent = 'Data expir\u0103rii';
   } else {
@@ -1949,7 +2191,20 @@ async function saveCoordMember(){
     numarPermis: document.getElementById('coord_numarPermis').value.trim(),
     dataEliberarePermis: document.getElementById('coord_dataEliberarePermis').value,
     dataExpirarePermis,
-    areCardTahograf: document.getElementById('coord_areCardTahograf').checked
+    areCardTahograf: document.getElementById('coord_areCardTahograf').checked,
+    numarTahograf: document.getElementById('coord_numarTahograf').value.trim(),
+    dataExpirareTahograf: document.getElementById('coord_dataExpirareTahograf').value,
+    dataExpirareModul95: document.getElementById('coord_dataExpirareModul95').value,
+    cetatenie: document.getElementById('coord_cetatenie').value.trim(),
+    cnp: document.getElementById('coord_cnp').value.trim(),
+    dataExpirareBuletin: document.getElementById('coord_dataExpirareBuletin').value,
+    sozialversicherungsnummer: document.getElementById('coord_sozialversicherungsnummer').value.trim(),
+    identnummer: document.getElementById('coord_identnummer').value.trim(),
+    steuerklasse: document.getElementById('coord_steuerklasse').value,
+    stareCivila: document.getElementById('coord_stareCivila').value,
+    areCopii: document.getElementById('coord_areCopii').value,
+    numarCopii: document.getElementById('coord_areCopii').value==='da' ? (document.getElementById('coord_numarCopii').value?Number(document.getElementById('coord_numarCopii').value):null) : null,
+    asigurareMedicala: readAsigurareMedicala('coord_asigurareMedicala','coord_asigurareMedicalaAlta')
   };
 
   try{
