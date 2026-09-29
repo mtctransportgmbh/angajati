@@ -360,6 +360,27 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
     <input type="password" id="pinInput" maxlength="10" inputmode="numeric" autocomplete="off" placeholder="••••••">
     <button class="btn btn-primary" onclick="checkPin()">Intră</button>
     <div id="pinError"></div>
+    <div style="margin-top:14px;"><a href="#" onclick="showCoordGate(); return false;" style="font-size:12px; color:var(--text-muted);">Sunt coordonator, nu admin →</a></div>
+  </div>
+</div>
+
+<!-- ============ COORDONATOR: LOGIN ============ -->
+<div id="coordGate" style="display:none; position:fixed; inset:0; background:var(--primary); align-items:center; justify-content:center; z-index:999;">
+  <div class="pinCard">
+    <span class="tag">MTC Transport</span>
+    <h1>Coordonator</h1>
+    <p>Loghează-te cu numărul personal și PIN-ul tău — același cont ca la portalul de telefon.</p>
+    <div style="text-align:left;">
+      <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:4px;">Număr personal</label>
+      <input type="text" id="coordNumarPersonal" inputmode="numeric" autocomplete="off"
+        style="width:100%; padding:11px; font-size:15px; border:1.5px solid var(--border); border-radius:8px; margin-bottom:10px;">
+      <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:4px;">PIN</label>
+      <input type="password" id="coordPin" inputmode="numeric" maxlength="8" autocomplete="off"
+        style="width:100%; padding:11px; font-size:15px; border:1.5px solid var(--border); border-radius:8px; margin-bottom:12px;">
+    </div>
+    <button class="btn btn-primary" onclick="coordLogin()">Intră</button>
+    <div id="coordLoginError" style="color:var(--red); font-size:12.5px; margin-top:10px; min-height:16px;"></div>
+    <div style="margin-top:6px;"><a href="#" onclick="showAdminGate(); return false;" style="font-size:12px; color:var(--text-muted);">← Sunt admin</a></div>
   </div>
 </div>
 
@@ -491,6 +512,116 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
   </main>
 
   <footer class="note">Codurile angajaților (ex. MTC-0001) sunt identificatorii folosiți de toate aplicațiile MTC pentru a atribui reclamații, concedii, curse și pontaj acestui angajat.</footer>
+</div>
+
+<!-- ============ COORDONATOR: APP (echipa mea) ============ -->
+<div id="coordApp" style="display:none;">
+  <header class="top">
+    <div class="top-inner">
+      <div class="brand">
+        <div class="brand-mark">MTC</div>
+        <div>
+          <h1>Echipa mea</h1>
+          <span id="coordWelcomeName">—</span>
+        </div>
+      </div>
+      <button class="btn btn-secondary" style="width:auto;" onclick="coordLogout()">Ieși din cont</button>
+    </div>
+  </header>
+  <main style="max-width:900px; margin:0 auto; padding:28px 32px 60px;">
+    <div class="dist-panel">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; flex-wrap:wrap; gap:10px;">
+        <h3 style="margin:0;">Echipa mea</h3>
+        <button class="btn btn-primary" style="width:auto;" onclick="openCoordModal(null)">+ Angajat nou</button>
+      </div>
+      <div style="color:var(--text-muted); font-size:12.5px; margin-bottom:6px;">Angajații pe care îi modifici aici devin activi imediat. Un angajat nou trimis de tine intră mai întâi la admin pentru aprobare — îl vezi în „Propunerile mele" mai jos, cu statusul lui.</div>
+      <div id="coordTeamList" style="margin-top:14px;"></div>
+    </div>
+    <div class="dist-panel">
+      <h3 style="margin:0 0 4px;">Propunerile mele</h3>
+      <div id="coordProposalsList" style="margin-top:14px;"></div>
+    </div>
+  </main>
+</div>
+
+<!-- ============ MODAL: COORDONATOR — ANGAJAT (nou/editare) ============ -->
+<div class="modal-backdrop" id="coordEditBackdrop">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="coordModalTitleText">Angajat nou (propunere)</h2>
+      <button class="modal-close" onclick="closeCoordModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="section-label">Date generale</div>
+      <div class="form-grid">
+        <div class="field"><label>Prenume *</label><input type="text" id="coord_prenume"></div>
+        <div class="field"><label>Nume de familie *</label><input type="text" id="coord_numeFamilie"></div>
+        <div class="field full">
+          <label>Rol (poți bifa mai multe)</label>
+          <div class="cat-grid" id="coordRolGrid"></div>
+        </div>
+        <div class="field"><label>Locație</label>
+          <select id="coord_depot">
+            <option>Ruhstorf</option><option>Eiselfing</option><option>Polling</option><option>Altul</option>
+          </select>
+        </div>
+        <div class="field"><label>Data nașterii</label><input type="date" id="coord_dataNasterii"></div>
+        <div class="field"><label>Telefon</label><input type="text" id="coord_telefon" placeholder="+49 ..."></div>
+        <div class="field full"><label>Email</label><input type="text" id="coord_email"></div>
+      </div>
+
+      <div class="section-label">Adresă</div>
+      <div class="form-grid">
+        <div class="field"><label>Stradă și număr</label><input type="text" id="coord_strada"></div>
+        <div class="field"><label>Cod poștal</label><input type="text" id="coord_codPostal"></div>
+        <div class="field"><label>Oraș</label><input type="text" id="coord_oras"></div>
+        <div class="field"><label>Țară</label><input type="text" id="coord_tara" value="Germania"></div>
+      </div>
+
+      <div class="section-label">Angajare</div>
+      <div class="form-grid">
+        <div class="field"><label>Data angajării</label><input type="date" id="coord_dataAngajare"></div>
+        <div class="field"><label>Status</label>
+          <select id="coord_status">
+            <option>Activ</option><option>Inactiv</option><option>Arhivat</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section-label">Concediu — coordonator</div>
+      <div class="form-grid">
+        <div class="field full"><label>Cine îi aprobă cererile de concediu</label>
+          <select id="coord_coordonator">
+            <option value="raluca">Raluca</option>
+            <option value="madalina">Mădălina</option>
+            <option value="corina">Corina</option>
+            <option value="tania">Tania</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section-label">Permis de conducere</div>
+      <div class="form-grid">
+        <div class="field full">
+          <label>Categorii</label>
+          <div class="cat-grid" id="coordCatGrid"></div>
+        </div>
+        <div class="field"><label>Număr permis</label><input type="text" id="coord_numarPermis"></div>
+        <div class="field"><label>Data eliberării</label><input type="date" id="coord_dataEliberarePermis"></div>
+        <div class="field full"><label id="coordExpLabel">Data expirării *</label><input type="date" id="coord_dataExpirarePermis"></div>
+      </div>
+
+      <div class="section-label">Card tahograf (Fahrerkarte)</div>
+      <label class="toggle-row"><input type="checkbox" id="coord_areCardTahograf"> Angajatul are card tahograf</label>
+
+      <div id="coord_error" style="color:var(--red); font-size:12.5px; margin-top:14px; min-height:16px;"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeCoordModal()">Anulează</button>
+      <button class="btn btn-primary" id="submitCoordBtn" style="width:auto;" onclick="saveCoordMember()">Trimite propunerea</button>
+    </div>
+  </div>
 </div>
 
 <!-- ============ MODAL: ADD/EDIT ============ -->
@@ -630,10 +761,18 @@ const firebaseConfig = window.FIREBASE_CONFIG;
 const CATEGORII_PERMIS = ["AM","A1","A2","A","B","BE","C1","C1E","C","CE","D1","D1E","D","DE"];
 const ROLURI_DISPONIBILE = ["Șofer","Dispecer","Administrativ","Mecanic","Altul"];
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const auth = firebase.auth();
-const functionsRef = firebase.functions();
+// Boardul de admin folosește o instanță Firebase separată de cea din
+// portal.html ("adminBoard" în loc de aplicația implicită). Dacă ar folosi
+// aceeași aplicație implicită, sesiunea de Firebase Auth ar fi comună cu a
+// portalului — cine testează un login de coordonator din portal.html în
+// același browser ar "împinge" acel cont de angajat și în boardul de admin
+// (chiar dacă boardul rămâne deschis într-un alt tab), ceea ce ducea exact la
+// eroarea "Missing or insufficient permissions" cu claims de "angajat".
+// Cu aplicații separate, cele două sesiuni de autentificare nu se mai ating.
+const adminApp = firebase.initializeApp(firebaseConfig, 'adminBoard');
+const db = firebase.firestore(adminApp);
+const auth = firebase.auth(adminApp);
+const functionsRef = firebase.functions(adminApp);
 
 // Conexiune separată către Concedii — doar pentru tabul de aprobări.
 const CONCEDII_CONFIG = {
@@ -647,7 +786,27 @@ const CONCEDII_CONFIG = {
 const concediiApp = firebase.initializeApp(CONCEDII_CONFIG, 'concedii');
 const concediiFunctions = firebase.functions(concediiApp);
 
-/* ================= PIN GATE (admin — vede tot boardul) ================= */
+/* ================= LOGIN GATES (admin ȘI coordonator, pe aceeași pagină) =================
+   Boardul are acum DOUĂ moduri de login, complet separate:
+   - "admin"  → PIN de admin (checkAdminPin), vede tot boardul.
+   - "coord"  → numărul personal + PIN al coordonatorului (employeeLogin —
+                exact aceleași credențiale ca la portalul de telefon), vede
+                doar propria echipă.
+   sessionStorage ține minte CARE mod a fost folosit ca să se autentifice, în
+   tab-ul curent (cheia "mtc_login_mode"), și onAuthStateChanged verifică, la
+   fiecare schimbare de sesiune Firebase, că rolul din claims chiar se
+   potrivește cu modul așteptat — altfel golește sesiunea și cere login din
+   nou, în loc să încerce să citească date la care nu are drepturi. */
+
+function showCoordGate(){
+  document.getElementById('pinGate').style.display='none';
+  document.getElementById('coordGate').style.display='flex';
+}
+function showAdminGate(){
+  document.getElementById('coordGate').style.display='none';
+  document.getElementById('pinGate').style.display='flex';
+}
+
 // PIN-ul NU se mai compară în JS. Se trimite la Cloud Function "checkAdminPin",
 // care îl verifică pe server și, dacă e corect, întoarce un token de Firebase
 // Auth. Abia după autentificare pot fi citite/scrise date din Firestore —
@@ -659,11 +818,8 @@ async function checkPin(){
   try{
     const callCheckAdminPin = functionsRef.httpsCallable('checkAdminPin');
     const result = await callCheckAdminPin({ pin: val });
+    sessionStorage.setItem('mtc_login_mode','admin');
     await auth.signInWithCustomToken(result.data.token);
-    sessionStorage.setItem('mtc_angajati_auth','1');
-    document.getElementById('pinGate').style.display='none';
-    document.getElementById('app').style.display='block';
-    initBoard();
   }catch(err){
     console.error(err);
     if(err.code === 'functions/resource-exhausted'){
@@ -677,11 +833,68 @@ async function checkPin(){
 }
 document.getElementById('pinInput').addEventListener('keydown', e=>{ if(e.key==='Enter') checkPin(); });
 
-auth.onAuthStateChanged(user=>{
-  if(user && sessionStorage.getItem('mtc_angajati_auth')==='1'){
+async function coordLogin(){
+  const numarPersonal = document.getElementById('coordNumarPersonal').value.trim();
+  const pin = document.getElementById('coordPin').value.trim();
+  const errEl = document.getElementById('coordLoginError');
+  errEl.textContent = '';
+  try{
+    const login = functionsRef.httpsCallable('employeeLogin');
+    const result = await login({ numarPersonal, pin });
+    sessionStorage.setItem('mtc_login_mode','coord');
+    await auth.signInWithCustomToken(result.data.token);
+  }catch(err){
+    console.error(err);
+    errEl.textContent = err.code === 'functions/resource-exhausted'
+      ? 'Prea multe încercări. Așteaptă câteva minute.'
+      : 'Număr personal sau PIN incorect.';
+  }
+}
+document.getElementById('coordPin').addEventListener('keydown', e=>{ if(e.key==='Enter') coordLogin(); });
+
+function coordLogout(){
+  sessionStorage.removeItem('mtc_login_mode');
+  auth.signOut().then(()=>{ window.location.reload(); });
+}
+
+auth.onAuthStateChanged(async user=>{
+  const mode = sessionStorage.getItem('mtc_login_mode');
+  if(!user || !mode) return;
+
+  let claims;
+  try{
+    claims = (await user.getIdTokenResult()).claims;
+  }catch(err){
+    console.error(err);
+    return;
+  }
+
+  if(mode === 'admin'){
+    if(claims.role !== 'admin'){
+      // Sesiunea curentă de Firebase Auth NU mai e de admin (ex: s-a
+      // folosit între timp login-ul de coordonator, în același tab) —
+      // cerem din nou PIN-ul, în loc să încercăm să citim boardul cu un
+      // cont fără drepturi.
+      sessionStorage.removeItem('mtc_login_mode');
+      await auth.signOut();
+      return;
+    }
     document.getElementById('pinGate').style.display='none';
+    document.getElementById('coordGate').style.display='none';
+    document.getElementById('coordApp').style.display='none';
     document.getElementById('app').style.display='block';
     initBoard();
+  } else if(mode === 'coord'){
+    if(claims.role !== 'angajat'){
+      sessionStorage.removeItem('mtc_login_mode');
+      await auth.signOut();
+      return;
+    }
+    document.getElementById('pinGate').style.display='none';
+    document.getElementById('coordGate').style.display='none';
+    document.getElementById('app').style.display='none';
+    document.getElementById('coordApp').style.display='block';
+    initCoordApp();
   }
 });
 
@@ -1540,6 +1753,207 @@ function exportCSV(){
   a.href = url; a.download = 'angajati-mtc-' + new Date().toISOString().slice(0,10) + '.csv';
   a.click();
   URL.revokeObjectURL(url);
+}
+
+/* ================= COORDONATOR \u2014 \u201eEchipa mea" (pe web, \u00een acest fi\u0219ier) =================
+   Coordonatorii se logheaz\u0103 cu acela\u0219i cont ca la portalul de telefon
+   (num\u0103rul personal + PIN, vezi coordLogin() mai sus), dar aici au o
+   variant\u0103 pentru calculator: v\u0103d \u0219i editeaz\u0103 echipa lor, \u0219i propun
+   angaja\u021bi noi. Totul trece prin cele 4 Cloud Functions din functions/
+   index.js (getMyTeam / updateTeamMember / submitEmployeeProposal /
+   getMyProposals), care aplic\u0103 pe server aceea\u0219i list\u0103 alb\u0103 de c\u00e2mpuri \u2014
+   niciodat\u0103 num\u0103rul personal, dac\u0103 e coordonator, sau detaliile cardului
+   tahograf. */
+let coordTeamCache = [];
+let coordMyGroup = null;
+let coordEditingId = null; // null = propunere angajat nou; altfel = editare membru existent
+
+function buildGenericGrid(containerId, list){
+  const grid = document.getElementById(containerId);
+  if(!grid) return;
+  grid.innerHTML = list.map(v=>`<div class="cat-check" data-cat="${v}" onclick="toggleCat(this)">${v}</div>`).join('');
+}
+buildGenericGrid('coordRolGrid', ROLURI_DISPONIBILE);
+buildGenericGrid('coordCatGrid', CATEGORII_PERMIS);
+
+async function initCoordApp(){
+  try{
+    const uid = auth.currentUser.uid;
+    const doc = await db.collection('angajati').doc(uid).get();
+    const e = doc.exists ? doc.data() : {};
+    document.getElementById('coordWelcomeName').textContent = e.numeComplet || '\u2014';
+  }catch(err){
+    console.error(err);
+  }
+  loadMyTeamCoord();
+  loadMyProposalsCoord();
+}
+
+async function loadMyTeamCoord(){
+  const listEl = document.getElementById('coordTeamList');
+  listEl.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">Se \u00eencarc\u0103...</div>';
+  try{
+    const getMyTeam = functionsRef.httpsCallable('getMyTeam');
+    const result = await getMyTeam();
+    coordTeamCache = result.data.lista || [];
+    coordMyGroup = result.data.myGroup || null;
+    renderCoordTeamList();
+  }catch(err){
+    console.error(err);
+    listEl.innerHTML = '<div style="color:var(--red); font-size:13px;">Eroare la \u00eenc\u0103rcare: ' + (err.message||err) + '</div>';
+  }
+}
+
+function renderCoordTeamList(){
+  const listEl = document.getElementById('coordTeamList');
+  listEl.innerHTML = coordTeamCache.length
+    ? coordTeamCache.map(m=>{
+        const nume = m.numeComplet || ((m.numeFamilie||'')+' '+(m.prenume||'')).trim() || '\u2014';
+        const roluri = (m.roluri||[]).join(', ') || '\u2014';
+        return `
+        <div class="appr-card">
+          <div class="who">${escapeHtml(nume)}</div>
+          <div class="when">${escapeHtml(m.depot||'\u2014')} \u00b7 ${escapeHtml(m.telefon||'\u2014')} \u00b7 ${escapeHtml(m.email||'\u2014')}</div>
+          <div class="motiv">Rol: ${escapeHtml(roluri)}</div>
+          <div class="appr-actions">
+            <button style="background:var(--primary); color:#fff;" onclick="openCoordModal('${m.id}')">Editeaz\u0103</button>
+          </div>
+        </div>`;
+      }).join('')
+    : '<div style="color:var(--text-muted); font-size:13px;">Nu ai \u00eenc\u0103 niciun angajat atribuit.</div>';
+}
+
+const COORD_PROP_STATUS_LABEL = { in_asteptare:'\u00cen a\u0219teptare', aprobat:'Aprobat', respins:'Respins' };
+const COORD_PROP_STATUS_CHIP = { in_asteptare:'amber', aprobat:'green', respins:'red' };
+
+async function loadMyProposalsCoord(){
+  const listEl = document.getElementById('coordProposalsList');
+  try{
+    const getMyProposals = functionsRef.httpsCallable('getMyProposals');
+    const result = await getMyProposals();
+    const lista = result.data.lista || [];
+    listEl.innerHTML = lista.length
+      ? lista.map(p=>`
+        <div class="appr-card" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+          <div class="who" style="margin:0;">${escapeHtml(p.numeComplet||'\u2014')}</div>
+          <span class="chip ${COORD_PROP_STATUS_CHIP[p.status]||'gray'}">${COORD_PROP_STATUS_LABEL[p.status]||p.status}</span>
+        </div>`).join('')
+      : '<div style="color:var(--text-muted); font-size:13px;">Nicio propunere trimis\u0103 \u00eenc\u0103.</div>';
+  }catch(err){
+    console.error(err);
+    listEl.innerHTML = '<div style="color:var(--red); font-size:13px;">Nu am putut \u00eenc\u0103rca propunerile.</div>';
+  }
+}
+
+function openCoordModal(memberId){
+  coordEditingId = memberId || null;
+  ['coord_prenume','coord_numeFamilie','coord_dataNasterii','coord_telefon','coord_email','coord_strada',
+   'coord_codPostal','coord_oras','coord_dataAngajare','coord_numarPermis','coord_dataEliberarePermis',
+   'coord_dataExpirarePermis'].forEach(id=>{ document.getElementById(id).value=''; });
+  document.getElementById('coord_tara').value = 'Germania';
+  document.getElementById('coord_depot').value = 'Ruhstorf';
+  document.getElementById('coord_status').value = 'Activ';
+  document.getElementById('coord_coordonator').value = coordMyGroup || 'admin';
+  document.getElementById('coord_areCardTahograf').checked = false;
+  setCheckedIn('coordRolGrid', []);
+  setCheckedIn('coordCatGrid', []);
+  document.getElementById('coord_error').textContent = '';
+
+  if(memberId){
+    const m = coordTeamCache.find(x=>x.id===memberId);
+    if(m){
+      document.getElementById('coordModalTitleText').textContent = 'Editeaz\u0103 \u2014 ' + (m.numeComplet||'');
+      document.getElementById('coord_prenume').value = m.prenume||'';
+      document.getElementById('coord_numeFamilie').value = m.numeFamilie||'';
+      setCheckedIn('coordRolGrid', m.roluri||[]);
+      document.getElementById('coord_depot').value = m.depot||'Ruhstorf';
+      document.getElementById('coord_dataNasterii').value = m.dataNasterii||'';
+      document.getElementById('coord_telefon').value = m.telefon||'';
+      document.getElementById('coord_email').value = m.email||'';
+      document.getElementById('coord_strada').value = m.strada||'';
+      document.getElementById('coord_codPostal').value = m.codPostal||'';
+      document.getElementById('coord_oras').value = m.oras||'';
+      document.getElementById('coord_tara').value = m.tara||'Germania';
+      document.getElementById('coord_dataAngajare').value = m.dataAngajare||'';
+      document.getElementById('coord_status').value = m.status||'Activ';
+      document.getElementById('coord_coordonator').value = m.coordonator||coordMyGroup||'';
+      setCheckedIn('coordCatGrid', m.categoriiPermis||[]);
+      document.getElementById('coord_numarPermis').value = m.numarPermis||'';
+      document.getElementById('coord_dataEliberarePermis').value = m.dataEliberarePermis||'';
+      document.getElementById('coord_dataExpirarePermis').value = m.dataExpirarePermis||'';
+      document.getElementById('coord_areCardTahograf').checked = !!m.areCardTahograf;
+    }
+    document.getElementById('coordExpLabel').textContent = 'Data expir\u0103rii';
+  } else {
+    document.getElementById('coordModalTitleText').textContent = 'Angajat nou (propunere)';
+    document.getElementById('coordExpLabel').textContent = 'Data expir\u0103rii *';
+  }
+  document.getElementById('submitCoordBtn').textContent = memberId ? 'Salveaz\u0103 modific\u0103rile' : 'Trimite propunerea';
+  document.getElementById('coordEditBackdrop').classList.add('show');
+}
+function closeCoordModal(){
+  document.getElementById('coordEditBackdrop').classList.remove('show');
+  coordEditingId = null;
+}
+
+let submittingCoord = false;
+async function saveCoordMember(){
+  if(submittingCoord) return;
+  const prenume = document.getElementById('coord_prenume').value.trim();
+  const numeFamilie = document.getElementById('coord_numeFamilie').value.trim();
+  const dataExpirarePermis = document.getElementById('coord_dataExpirarePermis').value;
+  const errEl = document.getElementById('coord_error');
+  errEl.textContent = '';
+  if(!prenume || !numeFamilie){ errEl.textContent = 'Prenumele \u0219i numele de familie sunt obligatorii.'; return; }
+  if(!coordEditingId && !dataExpirarePermis){ errEl.textContent = 'Data expir\u0103rii permisului este obligatorie.'; return; }
+
+  const btn = document.getElementById('submitCoordBtn');
+  submittingCoord = true;
+  btn.disabled = true;
+  const originalLabel = btn.textContent;
+  btn.textContent = 'Se salveaz\u0103...';
+
+  const payload = {
+    prenume, numeFamilie,
+    roluri: getCheckedIn('coordRolGrid'),
+    depot: document.getElementById('coord_depot').value,
+    dataNasterii: document.getElementById('coord_dataNasterii').value,
+    telefon: document.getElementById('coord_telefon').value.trim(),
+    email: document.getElementById('coord_email').value.trim(),
+    strada: document.getElementById('coord_strada').value.trim(),
+    codPostal: document.getElementById('coord_codPostal').value.trim(),
+    oras: document.getElementById('coord_oras').value.trim(),
+    tara: document.getElementById('coord_tara').value.trim(),
+    dataAngajare: document.getElementById('coord_dataAngajare').value,
+    status: document.getElementById('coord_status').value,
+    coordonator: document.getElementById('coord_coordonator').value,
+    categoriiPermis: getCheckedIn('coordCatGrid'),
+    numarPermis: document.getElementById('coord_numarPermis').value.trim(),
+    dataEliberarePermis: document.getElementById('coord_dataEliberarePermis').value,
+    dataExpirarePermis,
+    areCardTahograf: document.getElementById('coord_areCardTahograf').checked
+  };
+
+  try{
+    if(coordEditingId){
+      const updateMember = functionsRef.httpsCallable('updateTeamMember');
+      await updateMember({ targetId: coordEditingId, changes: payload });
+      closeCoordModal();
+      loadMyTeamCoord();
+    } else {
+      const submitProposal = functionsRef.httpsCallable('submitEmployeeProposal');
+      await submitProposal({ date: payload });
+      closeCoordModal();
+      loadMyProposalsCoord();
+    }
+  }catch(err){
+    console.error(err);
+    errEl.textContent = err.message || 'Eroare la salvare.';
+  }finally{
+    submittingCoord = false;
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+  }
 }
 </script>
 </body>

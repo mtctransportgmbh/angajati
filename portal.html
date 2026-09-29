@@ -53,7 +53,37 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
 #loadingState{text-align:center; padding:30px 0; color:var(--text-muted); font-size:13.5px;}
 #loginState{display:none;}
 #errorState{display:none; text-align:center;}
-#appState{display:none; flex:1; min-height:0; flex-direction:column; position:relative;}
+#appState{display:none; flex:1; min-height:0; flex-direction:column;}
+
+/* Meniu lateral — ascuns pe telefon, apare doar pe ecran de calculator
+   (vezi media query de la finalul foii de stil). Butoanele de aici au
+   aceeași clasă .tab-btn ca cele din bara de jos, deci switchTab() le
+   comută pe amândouă simultan, fără cod JS suplimentar. */
+.ph-sidebar{
+  display:none; flex-direction:column; gap:3px;
+  width:220px; flex:0 0 220px; background:var(--surface-alt);
+  border-right:1px solid var(--border); padding:20px 12px;
+}
+.ph-sidebar-brand{
+  display:flex; align-items:center; gap:10px; padding:0 8px 18px; margin-bottom:8px;
+  border-bottom:1px solid var(--border);
+}
+.sidebar-btn{
+  flex-direction:row !important; justify-content:flex-start; gap:10px;
+  padding:10px 12px; border-radius:10px; width:100%;
+}
+.sidebar-btn .ic{font-size:17px;}
+.sidebar-btn .lbl{font-size:13px; font-weight:600;}
+.sidebar-btn.active{background:var(--primary-soft);}
+
+/* Coloana principală (header + conținut + bara de jos pe telefon) —
+   pe telefon ocupă tot #appState; pe calculator stă lângă meniul lateral. */
+.ph-main{flex:1; min-height:0; display:flex; flex-direction:column; position:relative; min-width:0;}
+
+/* Pe ecran larg, două carduri înrudite stau unul lângă altul în loc să se
+   înșire vertical (vezi media query de mai jos); pe telefon rămân stivuite. */
+.two-col-desktop{display:block;}
+.desktop-hide{}
 
 .field{margin-bottom:14px;}
 .field label{display:block; font-size:12.5px; color:var(--text-muted); margin-bottom:5px; font-weight:500;}
@@ -235,22 +265,6 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
 .appr-approve{background:var(--green); color:#fff;}
 .appr-reject{background:var(--red); color:#fff;}
 
-/* ---------- Grile de bifat (roluri / categorii permis) ---------- */
-.cat-grid{display:flex; flex-wrap:wrap; gap:6px;}
-.cat-check{
-  border:1.5px solid var(--border); border-radius:7px; padding:6px 11px; cursor:pointer;
-  font-family:'JetBrains Mono',monospace; font-size:12.5px; user-select:none; color:var(--text-muted);
-}
-.cat-check.active{background:var(--primary); border-color:var(--primary); color:#fff;}
-.toggle-row{display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;}
-
-/* ---------- Echipa mea (coordonator) ---------- */
-.team-card{background:var(--surface-alt); border-radius:12px; padding:14px; margin-bottom:12px;}
-.team-card .who{font-weight:600; font-size:14px;}
-.team-card .meta{font-size:12.5px; color:var(--text-muted); margin-top:3px;}
-.team-card .roluri-tag{font-size:12px; color:var(--text-muted); margin-top:2px;}
-.team-card .btn{margin-top:10px;}
-
 /* ---------- Reclamații pe categorii ---------- */
 .recl-group{margin-bottom:16px;}
 .recl-group-head{
@@ -272,6 +286,35 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
 .recl-item .suma{font-family:'JetBrains Mono',monospace; font-weight:600; white-space:nowrap;}
 .recl-item .row1 .suma.has-suma{color:var(--red);}
 .recl-item .row2{font-size:11.5px; color:var(--text-muted); margin-top:2px;}
+
+/* ==========================================================================
+   VERSIUNE WEB (calculator) — de la 860px în sus, portalul nu mai arată ca
+   un telefon micuț plutind în mijlocul ecranului: cardul se lărgește, bara
+   de jos e înlocuită de un meniu lateral, iar secțiunile înrudite din
+   fiecare tab stau două-n-două, folosind spațiul disponibil pe ecran.
+   Structura și ID-urile din HTML rămân identice — funcțiile JS care umplu
+   paginile cu date nu trebuie schimbate deloc, doar CSS-ul de mai jos.
+   ========================================================================== */
+@media (min-width:860px){
+  body{padding:32px; align-items:stretch;}
+  .phone-frame{
+    max-width:1080px; width:100%;
+    height:min(760px, calc(100vh - 64px));
+    border-radius:20px; margin:auto;
+  }
+  #preAppWrap{max-width:380px; margin:0 auto;}
+
+  #appState{flex-direction:row;}
+  .ph-sidebar{display:flex;}
+  .ph-tabbar{display:none;}
+  .ph-content{padding:28px 40px 32px;}
+
+  .two-col-desktop{display:grid; grid-template-columns:1fr 1fr; gap:28px; align-items:start;}
+  .desktop-hide{display:none;}
+
+  #approvalList{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  #approvalList .appr-card{margin-bottom:0;}
+}
 </style>
 </head>
 <body>
@@ -303,6 +346,31 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
 
   <!-- ============ APP (logged in) ============ -->
   <div id="appState">
+
+    <!-- Meniu lateral — vizibil doar pe ecran de calculator (vezi media query jos) -->
+    <nav class="ph-sidebar">
+      <div class="ph-sidebar-brand">
+        <div class="brand-mark" style="width:36px; height:36px; font-size:13px;">MTC</div>
+        <div style="min-width:0;">
+          <div style="font-weight:700; font-size:13.5px;">Portalul meu</div>
+          <div style="font-size:11px; color:var(--text-muted);">MTC Transport</div>
+        </div>
+      </div>
+      <button class="tab-btn sidebar-btn active" data-tab="acasa" onclick="switchTab('acasa')">
+        <span class="ic">🏠</span><span class="lbl">Acasă</span>
+      </button>
+      <button class="tab-btn sidebar-btn" data-tab="concediu" onclick="switchTab('concediu')">
+        <span class="ic">🌴</span><span class="lbl">Concediu</span>
+      </button>
+      <button class="tab-btn sidebar-btn" data-tab="reclamatii" onclick="switchTab('reclamatii')">
+        <span class="ic">📋</span><span class="lbl">Reclamații</span>
+      </button>
+      <button class="tab-btn sidebar-btn" data-tab="aprobari" id="tabBtnAprobariSidebar" style="display:none;" onclick="switchTab('aprobari')">
+        <span class="ic">✅</span><span class="lbl">Aprobări</span>
+      </button>
+    </nav>
+
+    <div class="ph-main">
     <header class="ph-header">
       <div class="ph-header-left">
         <div class="ph-avatar" id="ph_avatar">—</div>
@@ -333,12 +401,13 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
           </div>
         </div>
 
+        <div class="two-col-desktop">
         <div class="section">
           <h3>Următorul concediu</h3>
           <div id="g_nextLeave"><div class="vac-empty">Se încarcă...</div></div>
         </div>
 
-        <div class="section-divider"></div>
+        <div class="section-divider desktop-hide"></div>
 
         <div class="section">
           <h3>Contul meu</h3>
@@ -354,10 +423,12 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
           </div>
           <a class="logout" onclick="logout()">Ieși din cont</a>
         </div>
+        </div>
       </section>
 
       <!-- ---------- TAB: CONCEDIU ---------- -->
       <section id="tab-concediu" class="tab-panel">
+        <div class="two-col-desktop">
         <div class="section" style="margin-top:0;">
           <h3>Balanța mea</h3>
           <div id="vacationLoading" class="placeholder-box">Se încarcă din Concedii...</div>
@@ -381,11 +452,12 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
           <div id="vacationError" class="placeholder-box" style="display:none;"></div>
         </div>
 
-        <div class="section-divider"></div>
+        <div class="section-divider desktop-hide"></div>
 
         <div class="section">
           <h3>Cererile mele</h3>
           <div id="myRequestsList" class="vac-list"></div>
+        </div>
         </div>
       </section>
 
@@ -416,13 +488,17 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
           <h3>Reclamații</h3>
           <div id="reclamatiiLoading" class="placeholder-box">Se încarcă din Reclamații...</div>
           <div id="reclamatiiContent" style="display:none;">
-            <div class="vac-grid">
-              <div class="vac-box"><div class="vac-num" id="r_total">—</div><div class="vac-lbl">total</div></div>
-              <div class="vac-box"><div class="vac-num" id="r_rezolvate">—</div><div class="vac-lbl">rezolvate</div></div>
-              <div class="vac-box"><div class="vac-num" id="r_nerezolvate">—</div><div class="vac-lbl">nerezolvate</div></div>
+            <div class="two-col-desktop">
+            <div>
+              <div class="vac-grid">
+                <div class="vac-box"><div class="vac-num" id="r_total">—</div><div class="vac-lbl">total</div></div>
+                <div class="vac-box"><div class="vac-num" id="r_rezolvate">—</div><div class="vac-lbl">rezolvate</div></div>
+                <div class="vac-box"><div class="vac-num" id="r_nerezolvate">—</div><div class="vac-lbl">nerezolvate</div></div>
+              </div>
+              <div class="vac-extra" id="r_extra"></div>
             </div>
-            <div class="vac-extra" id="r_extra"></div>
             <div id="r_groups"></div>
+            </div>
           </div>
           <div id="reclamatiiError" class="placeholder-box" style="display:none;"></div>
         </div>
@@ -435,135 +511,6 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
           <div id="approvalList"></div>
         </div>
       </section>
-
-      <!-- ---------- TAB: ECHIPA MEA (doar coordonatori) ---------- -->
-      <section id="tab-echipa" class="tab-panel">
-        <div class="section" style="margin-top:0;">
-          <h3>Echipa mea</h3>
-          <div id="teamList"></div>
-        </div>
-        <div class="section-divider"></div>
-        <div class="section">
-          <h3>Propunerile mele</h3>
-          <div id="proposalsList"></div>
-        </div>
-      </section>
-
-      <!-- Buton plutitor + panou de propunere angajat nou, vizibil doar pe tabul Echipa mea -->
-      <button class="fab-btn" id="fabNewTeamMember" onclick="openTeamAddOverlay()" title="Propune angajat nou">+</button>
-      <div class="req-overlay" id="teamAddOverlay">
-        <div class="req-overlay-backdrop" onclick="closeTeamAddOverlay()"></div>
-        <div class="req-sheet">
-          <div class="req-sheet-head">
-            <h3>Angajat nou</h3>
-            <button class="ph-icon-btn" onclick="closeTeamAddOverlay()">✕</button>
-          </div>
-          <div class="req-form" style="margin-bottom:0;">
-            <div class="req-row">
-              <div class="field"><label>Prenume *</label><input type="text" id="ta_prenume"></div>
-              <div class="field"><label>Nume de familie *</label><input type="text" id="ta_numeFamilie"></div>
-            </div>
-            <div class="field"><label>Rol (poți bifa mai multe)</label><div class="cat-grid" id="taRolGrid"></div></div>
-            <div class="req-row">
-              <div class="field"><label>Locație</label>
-                <select id="ta_depot"><option>Ruhstorf</option><option>Eiselfing</option><option>Polling</option><option>Altul</option></select>
-              </div>
-              <div class="field"><label>Data nașterii</label><input type="date" id="ta_dataNasterii"></div>
-            </div>
-            <div class="req-row">
-              <div class="field"><label>Telefon</label><input type="text" id="ta_telefon" placeholder="+49 ..."></div>
-              <div class="field"><label>Email</label><input type="text" id="ta_email"></div>
-            </div>
-            <div class="field"><label>Stradă și număr</label><input type="text" id="ta_strada"></div>
-            <div class="req-row">
-              <div class="field"><label>Cod poștal</label><input type="text" id="ta_codPostal"></div>
-              <div class="field"><label>Oraș</label><input type="text" id="ta_oras"></div>
-            </div>
-            <div class="field"><label>Țară</label><input type="text" id="ta_tara" value="Germania"></div>
-            <div class="req-row">
-              <div class="field"><label>Data angajării</label><input type="date" id="ta_dataAngajare"></div>
-              <div class="field"><label>Status</label>
-                <select id="ta_status"><option>Activ</option><option>Inactiv</option><option>Arhivat</option></select>
-              </div>
-            </div>
-            <div class="field"><label>Cine îi aprobă cererile de concediu</label>
-              <select id="ta_coordonator">
-                <option value="raluca">Raluca</option>
-                <option value="madalina">Mădălina</option>
-                <option value="corina">Corina</option>
-                <option value="tania">Tania</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
-            <div class="field"><label>Categorii permis</label><div class="cat-grid" id="taCatGrid"></div></div>
-            <div class="req-row">
-              <div class="field"><label>Număr permis</label><input type="text" id="ta_numarPermis"></div>
-              <div class="field"><label>Data eliberării</label><input type="date" id="ta_dataEliberarePermis"></div>
-            </div>
-            <div class="field"><label>Data expirării permisului *</label><input type="date" id="ta_dataExpirarePermis"></div>
-            <label class="toggle-row" style="margin:6px 0 14px;"><input type="checkbox" id="ta_areCardTahograf"> Are card tahograf</label>
-            <button class="btn btn-primary" id="submitTeamAddBtn" onclick="submitTeamAdd()">Trimite propunerea</button>
-            <div id="ta_error" style="color:var(--red); font-size:12px; margin-top:8px; min-height:14px;"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="req-overlay" id="teamEditOverlay">
-        <div class="req-overlay-backdrop" onclick="closeTeamEditOverlay()"></div>
-        <div class="req-sheet">
-          <div class="req-sheet-head">
-            <h3>Editează — <span id="teamEditName"></span></h3>
-            <button class="ph-icon-btn" onclick="closeTeamEditOverlay()">✕</button>
-          </div>
-          <div class="req-form" style="margin-bottom:0;">
-            <div class="req-row">
-              <div class="field"><label>Prenume *</label><input type="text" id="te_prenume"></div>
-              <div class="field"><label>Nume de familie *</label><input type="text" id="te_numeFamilie"></div>
-            </div>
-            <div class="field"><label>Rol (poți bifa mai multe)</label><div class="cat-grid" id="teRolGrid"></div></div>
-            <div class="req-row">
-              <div class="field"><label>Locație</label>
-                <select id="te_depot"><option>Ruhstorf</option><option>Eiselfing</option><option>Polling</option><option>Altul</option></select>
-              </div>
-              <div class="field"><label>Data nașterii</label><input type="date" id="te_dataNasterii"></div>
-            </div>
-            <div class="req-row">
-              <div class="field"><label>Telefon</label><input type="text" id="te_telefon" placeholder="+49 ..."></div>
-              <div class="field"><label>Email</label><input type="text" id="te_email"></div>
-            </div>
-            <div class="field"><label>Stradă și număr</label><input type="text" id="te_strada"></div>
-            <div class="req-row">
-              <div class="field"><label>Cod poștal</label><input type="text" id="te_codPostal"></div>
-              <div class="field"><label>Oraș</label><input type="text" id="te_oras"></div>
-            </div>
-            <div class="field"><label>Țară</label><input type="text" id="te_tara"></div>
-            <div class="req-row">
-              <div class="field"><label>Data angajării</label><input type="date" id="te_dataAngajare"></div>
-              <div class="field"><label>Status</label>
-                <select id="te_status"><option>Activ</option><option>Inactiv</option><option>Arhivat</option></select>
-              </div>
-            </div>
-            <div class="field"><label>Cine îi aprobă cererile de concediu</label>
-              <select id="te_coordonator">
-                <option value="raluca">Raluca</option>
-                <option value="madalina">Mădălina</option>
-                <option value="corina">Corina</option>
-                <option value="tania">Tania</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
-            <div class="field"><label>Categorii permis</label><div class="cat-grid" id="teCatGrid"></div></div>
-            <div class="req-row">
-              <div class="field"><label>Număr permis</label><input type="text" id="te_numarPermis"></div>
-              <div class="field"><label>Data eliberării</label><input type="date" id="te_dataEliberarePermis"></div>
-            </div>
-            <div class="field"><label>Data expirării permisului</label><input type="date" id="te_dataExpirarePermis"></div>
-            <label class="toggle-row" style="margin:6px 0 14px;"><input type="checkbox" id="te_areCardTahograf"> Are card tahograf</label>
-            <button class="btn btn-primary" id="submitTeamEditBtn" onclick="submitTeamEdit()">Salvează modificările</button>
-            <div id="te_error" style="color:var(--red); font-size:12px; margin-top:8px; min-height:14px;"></div>
-          </div>
-        </div>
-      </div>
 
     </div>
 
@@ -580,10 +527,8 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
       <button class="tab-btn" data-tab="aprobari" id="tabBtnAprobari" style="display:none;" onclick="switchTab('aprobari')">
         <span class="ic">✅</span><span class="lbl">Aprobări</span>
       </button>
-      <button class="tab-btn" data-tab="echipa" id="tabBtnEchipa" style="display:none;" onclick="switchTab('echipa')">
-        <span class="ic">👥</span><span class="lbl">Echipa mea</span>
-      </button>
     </nav>
+    </div>
   </div>
 
 </div>
@@ -620,27 +565,6 @@ const RECLAMATII_CONFIG = {
 const reclamatiiApp = firebase.initializeApp(RECLAMATII_CONFIG, 'reclamatii');
 const reclamatiiFunctions = firebase.functions(reclamatiiApp);
 
-const CATEGORII_PERMIS = ["AM","A1","A2","A","B","BE","C1","C1E","C","CE","D1","D1E","D","DE"];
-const ROLURI_DISPONIBILE = ["Șofer","Dispecer","Administrativ","Mecanic","Altul"];
-const COORD_GROUP_LABELS = { raluca:'Raluca', madalina:'Mădălina', corina:'Corina', tania:'Tania', admin:'Admin' };
-
-/* Grile generice de bifat (roluri / categorii permis), scoping pe id de container
-   — la fel ca în index.html, ca să poată coexista mai multe grile independente. */
-function buildCheckGrid(containerId, list){
-  const grid = document.getElementById(containerId);
-  if(!grid) return;
-  grid.innerHTML = list.map(v=>`<div class="cat-check" data-cat="${v}" onclick="toggleCat(this)">${v}</div>`).join('');
-}
-function toggleCat(el){ el.classList.toggle('active'); }
-function getCheckedIn(gridId){
-  return Array.from(document.querySelectorAll('#'+gridId+' .cat-check.active')).map(e=>e.dataset.cat);
-}
-function setCheckedIn(gridId, vals){
-  document.querySelectorAll('#'+gridId+' .cat-check').forEach(el=>{
-    el.classList.toggle('active', (vals||[]).includes(el.dataset.cat));
-  });
-}
-
 function show(id){
   const preIds = ['loadingState','loginState','errorState'];
   const showingPre = preIds.includes(id);
@@ -659,10 +583,7 @@ function switchTab(name){
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active', p.id === 'tab-'+name));
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab === name));
   document.getElementById('fabNewRequest').classList.toggle('show', name === 'concediu');
-  document.getElementById('fabNewTeamMember').classList.toggle('show', name === 'echipa');
   closeRequestOverlay();
-  closeTeamAddOverlay();
-  closeTeamEditOverlay();
   const content = document.getElementById('phContent');
   if(content) content.scrollTop = 0;
 }
@@ -678,9 +599,6 @@ let currentMustChangePin = false;
 let lastVacData = null;
 let lastReclData = null;
 let lastMyRequests = null;
-let myCoordGroup = null;
-let teamCache = [];
-let editingTeamMemberId = null;
 
 async function init(){
   const todayStr = new Date().toISOString().slice(0,10);
@@ -748,16 +666,8 @@ async function loadProfile(){
   if(currentMustChangePin) togglePinChangeCard(true);
 
   const isCoordonator = !!e.rolAprobator;
-  myCoordGroup = e.rolAprobator || null;
   document.getElementById('tabBtnAprobari').style.display = isCoordonator ? 'flex' : 'none';
-  document.getElementById('tabBtnEchipa').style.display = isCoordonator ? 'flex' : 'none';
-
-  if(isCoordonator){
-    buildCheckGrid('taRolGrid', ROLURI_DISPONIBILE);
-    buildCheckGrid('taCatGrid', CATEGORII_PERMIS);
-    buildCheckGrid('teRolGrid', ROLURI_DISPONIBILE);
-    buildCheckGrid('teCatGrid', CATEGORII_PERMIS);
-  }
+  document.getElementById('tabBtnAprobariSidebar').style.display = isCoordonator ? 'flex' : 'none';
 
   switchTab('acasa');
   show('appState');
@@ -766,7 +676,6 @@ async function loadProfile(){
   loadMyRequests();
   if(isCoordonator){
     loadApprovalQueue();
-    loadMyTeam();
   }
 }
 
@@ -1058,219 +967,6 @@ async function decideRequest(requestId, decision){
   }catch(err){
     console.error(err);
     alert('Eroare la decizie: ' + (err.message||err));
-  }
-}
-
-/* ================= ECHIPA MEA (coordonator) ================= */
-async function loadMyTeam(){
-  const listEl = document.getElementById('teamList');
-  listEl.innerHTML = '<div class="vac-empty">Se încarcă echipa...</div>';
-  try{
-    const getMyTeam = functionsRef.httpsCallable('getMyTeam');
-    const result = await getMyTeam();
-    teamCache = result.data.lista || [];
-    renderTeamList();
-  }catch(err){
-    console.error(err);
-    listEl.innerHTML = '<div class="vac-empty">Nu am putut încărca echipa.</div>';
-  }
-  loadMyProposals();
-}
-
-function renderTeamList(){
-  const listEl = document.getElementById('teamList');
-  listEl.innerHTML = teamCache.length
-    ? teamCache.map(m=>{
-        const nume = m.numeComplet || ((m.numeFamilie||'')+' '+(m.prenume||'')).trim() || '—';
-        const roluri = (m.roluri||[]).join(', ') || '—';
-        return `
-        <div class="team-card">
-          <div class="who">${escapeHtmlP(nume)}</div>
-          <div class="meta">${escapeHtmlP(m.depot||'—')} · ${escapeHtmlP(m.telefon||'—')}</div>
-          <div class="roluri-tag">Rol: ${escapeHtmlP(roluri)}</div>
-          <button class="btn btn-secondary btn-small" style="width:100%;" onclick="openTeamEditOverlay('${m.id}')">Editează</button>
-        </div>`;
-      }).join('')
-    : '<div class="vac-empty">Nu ai încă niciun angajat atribuit.</div>';
-}
-
-async function loadMyProposals(){
-  const listEl = document.getElementById('proposalsList');
-  try{
-    const getMyProposals = functionsRef.httpsCallable('getMyProposals');
-    const result = await getMyProposals();
-    const lista = result.data.lista || [];
-    listEl.innerHTML = lista.length
-      ? lista.map(p=>`<div class="req-item">
-          <span>${escapeHtmlP(p.numeComplet||'—')}</span>
-          <span class="req-status ${p.status}">${REQ_STATUS_LABEL[p.status]||p.status}</span>
-        </div>`).join('')
-      : '<div class="vac-empty">Nicio propunere trimisă încă.</div>';
-  }catch(err){
-    console.error(err);
-    listEl.innerHTML = '<div class="vac-empty">Nu am putut încărca propunerile.</div>';
-  }
-}
-
-/* ---- Propune angajat nou ---- */
-function resetTeamAddForm(){
-  ['ta_prenume','ta_numeFamilie','ta_dataNasterii','ta_telefon','ta_email','ta_strada','ta_codPostal','ta_oras',
-   'ta_dataAngajare','ta_numarPermis','ta_dataEliberarePermis','ta_dataExpirarePermis'
-  ].forEach(id=>{ document.getElementById(id).value=''; });
-  document.getElementById('ta_tara').value = 'Germania';
-  document.getElementById('ta_depot').value = 'Ruhstorf';
-  document.getElementById('ta_status').value = 'Activ';
-  document.getElementById('ta_coordonator').value = myCoordGroup || 'admin';
-  document.getElementById('ta_areCardTahograf').checked = false;
-  setCheckedIn('taRolGrid', []);
-  setCheckedIn('taCatGrid', []);
-  document.getElementById('ta_error').textContent = '';
-}
-
-function openTeamAddOverlay(){
-  resetTeamAddForm();
-  document.getElementById('teamAddOverlay').classList.add('show');
-}
-function closeTeamAddOverlay(){
-  const el = document.getElementById('teamAddOverlay');
-  if(el) el.classList.remove('show');
-}
-
-let submittingTeamAdd = false;
-async function submitTeamAdd(){
-  if(submittingTeamAdd) return;
-  const prenume = document.getElementById('ta_prenume').value.trim();
-  const numeFamilie = document.getElementById('ta_numeFamilie').value.trim();
-  const dataExpirarePermis = document.getElementById('ta_dataExpirarePermis').value;
-  const errEl = document.getElementById('ta_error');
-  errEl.textContent = '';
-  if(!prenume || !numeFamilie){ errEl.textContent = 'Prenumele și numele de familie sunt obligatorii.'; return; }
-  if(!dataExpirarePermis){ errEl.textContent = 'Data expirării permisului este obligatorie.'; return; }
-
-  const btn = document.getElementById('submitTeamAddBtn');
-  submittingTeamAdd = true;
-  btn.disabled = true;
-  const originalLabel = btn.textContent;
-  btn.textContent = 'Se trimite...';
-
-  const payload = {
-    prenume, numeFamilie,
-    roluri: getCheckedIn('taRolGrid'),
-    depot: document.getElementById('ta_depot').value,
-    dataNasterii: document.getElementById('ta_dataNasterii').value,
-    telefon: document.getElementById('ta_telefon').value.trim(),
-    email: document.getElementById('ta_email').value.trim(),
-    strada: document.getElementById('ta_strada').value.trim(),
-    codPostal: document.getElementById('ta_codPostal').value.trim(),
-    oras: document.getElementById('ta_oras').value.trim(),
-    tara: document.getElementById('ta_tara').value.trim(),
-    dataAngajare: document.getElementById('ta_dataAngajare').value,
-    status: document.getElementById('ta_status').value,
-    coordonator: document.getElementById('ta_coordonator').value,
-    categoriiPermis: getCheckedIn('taCatGrid'),
-    numarPermis: document.getElementById('ta_numarPermis').value.trim(),
-    dataEliberarePermis: document.getElementById('ta_dataEliberarePermis').value,
-    dataExpirarePermis,
-    areCardTahograf: document.getElementById('ta_areCardTahograf').checked
-  };
-
-  try{
-    const submitProposal = functionsRef.httpsCallable('submitEmployeeProposal');
-    await submitProposal({ date: payload });
-    closeTeamAddOverlay();
-    loadMyProposals();
-  }catch(err){
-    console.error(err);
-    errEl.textContent = err.message || 'Eroare la trimitere.';
-  }finally{
-    submittingTeamAdd = false;
-    btn.disabled = false;
-    btn.textContent = originalLabel;
-  }
-}
-
-/* ---- Editează un membru existent din echipă ---- */
-function openTeamEditOverlay(memberId){
-  const m = teamCache.find(x=>x.id===memberId);
-  if(!m) return;
-  editingTeamMemberId = memberId;
-  document.getElementById('teamEditName').textContent = m.numeComplet || ((m.numeFamilie||'')+' '+(m.prenume||'')).trim();
-  document.getElementById('te_prenume').value = m.prenume || '';
-  document.getElementById('te_numeFamilie').value = m.numeFamilie || '';
-  setCheckedIn('teRolGrid', m.roluri || []);
-  document.getElementById('te_depot').value = m.depot || 'Ruhstorf';
-  document.getElementById('te_dataNasterii').value = m.dataNasterii || '';
-  document.getElementById('te_telefon').value = m.telefon || '';
-  document.getElementById('te_email').value = m.email || '';
-  document.getElementById('te_strada').value = m.strada || '';
-  document.getElementById('te_codPostal').value = m.codPostal || '';
-  document.getElementById('te_oras').value = m.oras || '';
-  document.getElementById('te_tara').value = m.tara || 'Germania';
-  document.getElementById('te_dataAngajare').value = m.dataAngajare || '';
-  document.getElementById('te_status').value = m.status || 'Activ';
-  document.getElementById('te_coordonator').value = m.coordonator || myCoordGroup || '';
-  setCheckedIn('teCatGrid', m.categoriiPermis || []);
-  document.getElementById('te_numarPermis').value = m.numarPermis || '';
-  document.getElementById('te_dataEliberarePermis').value = m.dataEliberarePermis || '';
-  document.getElementById('te_dataExpirarePermis').value = m.dataExpirarePermis || '';
-  document.getElementById('te_areCardTahograf').checked = !!m.areCardTahograf;
-  document.getElementById('te_error').textContent = '';
-  document.getElementById('teamEditOverlay').classList.add('show');
-}
-function closeTeamEditOverlay(){
-  const el = document.getElementById('teamEditOverlay');
-  if(el) el.classList.remove('show');
-  editingTeamMemberId = null;
-}
-
-let submittingTeamEdit = false;
-async function submitTeamEdit(){
-  if(submittingTeamEdit || !editingTeamMemberId) return;
-  const prenume = document.getElementById('te_prenume').value.trim();
-  const numeFamilie = document.getElementById('te_numeFamilie').value.trim();
-  const errEl = document.getElementById('te_error');
-  errEl.textContent = '';
-  if(!prenume || !numeFamilie){ errEl.textContent = 'Prenumele și numele de familie sunt obligatorii.'; return; }
-
-  const btn = document.getElementById('submitTeamEditBtn');
-  submittingTeamEdit = true;
-  btn.disabled = true;
-  const originalLabel = btn.textContent;
-  btn.textContent = 'Se salvează...';
-
-  const changes = {
-    prenume, numeFamilie,
-    roluri: getCheckedIn('teRolGrid'),
-    depot: document.getElementById('te_depot').value,
-    dataNasterii: document.getElementById('te_dataNasterii').value,
-    telefon: document.getElementById('te_telefon').value.trim(),
-    email: document.getElementById('te_email').value.trim(),
-    strada: document.getElementById('te_strada').value.trim(),
-    codPostal: document.getElementById('te_codPostal').value.trim(),
-    oras: document.getElementById('te_oras').value.trim(),
-    tara: document.getElementById('te_tara').value.trim(),
-    dataAngajare: document.getElementById('te_dataAngajare').value,
-    status: document.getElementById('te_status').value,
-    coordonator: document.getElementById('te_coordonator').value,
-    categoriiPermis: getCheckedIn('teCatGrid'),
-    numarPermis: document.getElementById('te_numarPermis').value.trim(),
-    dataEliberarePermis: document.getElementById('te_dataEliberarePermis').value,
-    dataExpirarePermis: document.getElementById('te_dataExpirarePermis').value,
-    areCardTahograf: document.getElementById('te_areCardTahograf').checked
-  };
-
-  try{
-    const updateMember = functionsRef.httpsCallable('updateTeamMember');
-    await updateMember({ targetId: editingTeamMemberId, changes });
-    closeTeamEditOverlay();
-    loadMyTeam();
-  }catch(err){
-    console.error(err);
-    errEl.textContent = err.message || 'Eroare la salvare.';
-  }finally{
-    submittingTeamEdit = false;
-    btn.disabled = false;
-    btn.textContent = originalLabel;
   }
 }
 
