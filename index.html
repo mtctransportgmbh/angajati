@@ -297,6 +297,17 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
 .appr-approve{background:var(--green); color:#fff;}
 .appr-reject{background:var(--red); color:#fff;}
 
+/* ---------- Angajați propuși (de coordonatori) ---------- */
+.badge-count{
+  background:var(--red); color:#fff; border-radius:100px; font-size:11px; font-weight:700;
+  padding:1px 7px; margin-left:6px;
+}
+.prop-card{background:var(--surface-alt); border-radius:12px; padding:14px; margin-bottom:12px;}
+.prop-card .who{font-weight:600; font-size:14px;}
+.prop-card .coord{font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.03em;}
+.prop-card .meta{font-size:12.5px; color:var(--text-muted); margin-top:4px;}
+.prop-card .roluri-tag{font-size:12px; color:var(--text-muted); margin-top:4px;}
+
 /* ---------- ACCES / PIN ---------- */
 .access-body{padding:22px 24px;}
 .access-row{display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border);}
@@ -371,6 +382,7 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
     <button class="view-tab-btn active" id="tabBtn-angajati" onclick="switchView('angajati')">👥 Angajați</button>
     <button class="view-tab-btn" id="tabBtn-distante" onclick="switchView('distante')">📍 Distanțe</button>
     <button class="view-tab-btn" id="tabBtn-aprobari" onclick="switchView('aprobari')">✅ Aprobări concediu</button>
+    <button class="view-tab-btn" id="tabBtn-propuneri" onclick="switchView('propuneri')">🆕 Angajați propuși<span class="badge-count" id="propuneriBadge" style="display:none;"></span></button>
   </div>
 
   <main id="view-angajati">
@@ -467,6 +479,14 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
     <div class="dist-panel">
       <h3 style="margin:0 0 4px;">Cereri de concediu — toate (admin vede tot, indiferent de coordonator)</h3>
       <div id="adminApprovalList" style="margin-top:14px;"></div>
+    </div>
+  </main>
+
+  <main id="view-propuneri" style="display:none;">
+    <div class="dist-panel">
+      <h3 style="margin:0 0 4px;">Angajați propuși de coordonatori</h3>
+      <div style="color:var(--text-muted); font-size:12.5px; margin-bottom:10px;">Coordonatorii pot propune angajați noi din portal, dar aceștia devin activi în sistem abia după ce sunt aprobați aici.</div>
+      <div id="propuneriList" style="margin-top:14px;"></div>
     </div>
   </main>
 
@@ -677,6 +697,9 @@ let revealedPin = null; // ținut doar în memorie, niciodată scris în Firesto
 let fixedPoints = [];
 let unsubFixedPoints = null;
 let currentView = 'angajati';
+let propuneriPending = [];
+let unsubPropuneri = null;
+let approvingProposalId = null; // id-ul propunerii aprobate curent, în timp ce modalul e deschis
 
 function initBoard(){
   buildCatGrid();
@@ -687,6 +710,11 @@ function initBoard(){
     renderFixedPoints();
     renderDistanceTable();
   }, err=>console.error('puncte_fixe:', err));
+  unsubPropuneri = db.collection('angajati_propuneri').where('status','==','in_asteptare').onSnapshot(snap=>{
+    propuneriPending = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+    updatePropuneriBadge();
+    if(currentView==='propuneri') renderPropuneri();
+  }, err=>console.error('angajati_propuneri:', err));
   unsub = db.collection('angajati').onSnapshot(snap=>{
     employees = snap.docs.map(d=>({ id:d.id, ...d.data() }));
     renderBoard();
@@ -997,7 +1025,7 @@ function openModal(id){
   }
   document.getElementById('editBackdrop').classList.add('show');
 }
-function closeModal(){ document.getElementById('editBackdrop').classList.remove('show'); editingId=null; }
+function closeModal(){ document.getElementById('editBackdrop').classList.remove('show'); editingId=null; approvingProposalId=null; }
 
 async function nextEmployeeId(){
   const counterRef = db.collection('meta').doc('counter');
@@ -1065,6 +1093,12 @@ async function saveEmployee(){
       data.employeeId = await nextEmployeeId();
       data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
       await db.collection('angajati').add(data);
+      if(approvingProposalId){
+        await db.collection('angajati_propuneri').doc(approvingProposalId).update({
+          status: 'aprobat',
+          decisAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
     }
     closeModal();
   }catch(err){
@@ -1217,11 +1251,14 @@ function switchView(name){
   document.getElementById('view-angajati').style.display = name==='angajati' ? 'block' : 'none';
   document.getElementById('view-distante').style.display = name==='distante' ? 'block' : 'none';
   document.getElementById('view-aprobari').style.display = name==='aprobari' ? 'block' : 'none';
+  document.getElementById('view-propuneri').style.display = name==='propuneri' ? 'block' : 'none';
   document.getElementById('tabBtn-angajati').classList.toggle('active', name==='angajati');
   document.getElementById('tabBtn-distante').classList.toggle('active', name==='distante');
   document.getElementById('tabBtn-aprobari').classList.toggle('active', name==='aprobari');
+  document.getElementById('tabBtn-propuneri').classList.toggle('active', name==='propuneri');
   if(name==='distante'){ renderFixedPoints(); renderDistanceTable(); }
   if(name==='aprobari'){ loadAdminApprovalQueue(); }
+  if(name==='propuneri'){ renderPropuneri(); }
 }
 
 async function loadAdminApprovalQueue(){
@@ -1265,6 +1302,90 @@ async function adminDecideRequest(requestId, decision){
   }catch(err){
     console.error(err);
     alert('Eroare la decizie: ' + (err.message||err));
+  }
+}
+
+/* ================= ANGAJAȚI PROPUȘI (de coordonatori) ================= */
+const COORD_GROUP_LABELS = { raluca:'Raluca', madalina:'Mădălina', corina:'Corina', tania:'Tania', admin:'Admin' };
+
+function updatePropuneriBadge(){
+  const badge = document.getElementById('propuneriBadge');
+  if(propuneriPending.length){
+    badge.style.display = 'inline-block';
+    badge.textContent = propuneriPending.length;
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function renderPropuneri(){
+  const listEl = document.getElementById('propuneriList');
+  if(!propuneriPending.length){
+    listEl.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">Nicio propunere în așteptare momentan.</div>';
+    return;
+  }
+  listEl.innerHTML = propuneriPending.map(p=>{
+    const d = p.date || {};
+    const roluriTxt = (d.roluri && d.roluri.length) ? d.roluri.join(', ') : '—';
+    const grupTxt = COORD_GROUP_LABELS[p.propusDeGrup] || p.propusDeGrup || '—';
+    return `
+      <div class="prop-card">
+        <div class="coord">Propus de ${escapeHtml(p.propusDeNume||grupTxt)} (${escapeHtml(grupTxt)})</div>
+        <div class="who">${escapeHtml(d.numeComplet||'—')}</div>
+        <div class="meta">${escapeHtml(d.depot||'—')} · ${escapeHtml(d.telefon||'—')} · ${escapeHtml(d.email||'—')}</div>
+        <div class="roluri-tag">Rol: ${escapeHtml(roluriTxt)}</div>
+        <div class="appr-actions">
+          <button class="appr-approve" onclick="aprobaPropunere('${p.id}')">Aprobă (deschide fișa)</button>
+          <button class="appr-reject" onclick="respingePropunere('${p.id}')">Respinge</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function aprobaPropunere(propId){
+  const p = propuneriPending.find(x=>x.id===propId);
+  if(!p) return;
+  const d = p.date || {};
+  approvingProposalId = propId;
+  openModal(null);
+  document.getElementById('modalTitleText').textContent = 'Aprobă angajat propus';
+  document.getElementById('f_prenume').value = d.prenume || '';
+  document.getElementById('f_numeFamilie').value = d.numeFamilie || '';
+  setRoluri(d.roluri || []);
+  document.getElementById('f_depot').value = d.depot || 'Ruhstorf';
+  document.getElementById('f_dataNasterii').value = d.dataNasterii || '';
+  document.getElementById('f_telefon').value = d.telefon || '';
+  document.getElementById('f_email').value = d.email || '';
+  document.getElementById('f_strada').value = d.strada || '';
+  document.getElementById('f_codPostal').value = d.codPostal || '';
+  document.getElementById('f_oras').value = d.oras || '';
+  document.getElementById('f_tara').value = d.tara || 'Germania';
+  document.getElementById('f_dataAngajare').value = d.dataAngajare || '';
+  document.getElementById('f_status').value = d.status || 'Activ';
+  document.getElementById('f_coordonator').value = d.coordonator || p.propusDeGrup || '';
+  // rolAprobator (dacă noul angajat e la rândul lui coordonator) NU vine
+  // niciodată din propunere — asta o decide exclusiv adminul, aici.
+  document.getElementById('f_rolAprobator').value = '';
+  setCats(d.categoriiPermis || []);
+  document.getElementById('f_numarPermis').value = d.numarPermis || '';
+  document.getElementById('f_dataEliberarePermis').value = d.dataEliberarePermis || '';
+  document.getElementById('f_dataExpirarePermis').value = d.dataExpirarePermis || '';
+  document.getElementById('f_areTahograf').checked = !!d.areCardTahograf;
+  toggleTahoFields();
+  toggleTerminareField();
+}
+
+async function respingePropunere(propId){
+  const motivRespingere = prompt('Motivul respingerii (opțional):') || '';
+  try{
+    await db.collection('angajati_propuneri').doc(propId).update({
+      status: 'respins',
+      motivRespingere,
+      decisAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }catch(err){
+    console.error(err);
+    alert('Eroare la respingere: ' + (err.message||err));
   }
 }
 
