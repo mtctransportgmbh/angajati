@@ -549,7 +549,7 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
         <h3 style="margin:0; color:var(--red);">⚠ Alerte expirări — camion</h3>
         <button class="btn btn-secondary" style="width:auto;" onclick="openCoordAlertSettingsModal()">⚙ Setări alerte</button>
       </div>
-      <div style="color:var(--text-muted); font-size:12.5px; margin-bottom:6px;">Alertele astea țin cont doar de șoferii de camion din echipa ta (categorii C1/C1E/C/CE, ADR, modul Cod 95, card tahograf) — la câte zile înainte de expirare vrei să apară, alegi tu din „Setări alerte”.</div>
+      <div style="color:var(--text-muted); font-size:12.5px; margin-bottom:6px;">Alertele astea țin cont doar de șoferii de camion din echipa ta (categorii C1/C1E/C/CE, ADR, modul Cod 95, card tahograf) — cu câte luni înainte de expirare vrei să apară, alegi tu din „Setări alerte”.</div>
       <div id="coordAlertList" style="font-size:13px;"></div>
     </div>
     <div class="dist-panel">
@@ -772,7 +772,7 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
   <div class="modal">
     <div class="modal-head"><h2>Setări alerte camion</h2><button class="modal-close" onclick="closeCoordAlertSettingsModal()">✕</button></div>
     <div class="modal-body">
-      <p class="hint" style="margin-top:0;">Alege cu câte zile înainte de expirare vrei să primești alertă — separat pentru fiecare categorie de camion, ADR, modulul (Cod 95) și cardul de tahograf. Setările astea sunt doar ale tale, pentru echipa ta.</p>
+      <p class="hint" style="margin-top:0;">Alege cu câte LUNI înainte de expirare vrei să primești alertă — separat pentru fiecare categorie de camion, ADR, modulul (Cod 95) și cardul de tahograf. Setările astea sunt doar ale tale, pentru echipa ta.</p>
       <div class="form-grid" id="coordAlertSettingsFields"></div>
     </div>
     <div class="modal-foot">
@@ -2424,18 +2424,20 @@ async function loadMyTeamCoord(){
 
 /* ================= ALERTE CAMION (coordonator) =================
    Doar coordonatorii care au \u0219oferi de camion \u00een echip\u0103 v\u0103d acest panou.
-   Pragurile (c\u00e2te zile \u00eenainte de expirare) sunt setate de fiecare
-   coordonator pentru propria echip\u0103, separat pe fiecare categorie de
+   Pragurile sunt setate de fiecare coordonator pentru propria echip\u0103, \u00een
+   LUNI \u00eenainte de expirare (nu zile) \u2014 separat pe fiecare categorie de
    camion, ADR, modul (Cod 95) \u0219i card tahograf \u2014 vezi getMyAlertSettings/
-   saveMyAlertSettings din functions/index.js. */
+   saveMyAlertSettings din functions/index.js. La afi\u0219are, lunile se
+   transform\u0103 \u00een zile (\u00d7 30) ca s\u0103 fie comparate cu datele de expirare. */
 const ALERT_ITEM_TYPES = ["C1","C1E","C","CE","ADR","Modul95","Tahograf"];
 const ALERT_ITEM_LABELS = {
   C1:'Categoria C1', C1E:'Categoria C1E', C:'Categoria C', CE:'Categoria CE',
   ADR:'ADR', Modul95:'Modul conduc\u0103tor auto (Cod 95)', Tahograf:'Card tahograf'
 };
+const ZILE_PE_LUNA_ALERTA = 30;
 function defaultAlertSettings(){
   const o = {};
-  ALERT_ITEM_TYPES.forEach(t=>o[t]=30);
+  ALERT_ITEM_TYPES.forEach(t=>o[t]=1); // implicit: 1 lun\u0103 \u00eenainte
   return o;
 }
 let coordAlertSettings = defaultAlertSettings();
@@ -2455,8 +2457,8 @@ function openCoordAlertSettingsModal(){
   const container = document.getElementById('coordAlertSettingsFields');
   container.innerHTML = ALERT_ITEM_TYPES.map(t=>`
     <div class="field">
-      <label>${ALERT_ITEM_LABELS[t]} \u2014 zile \u00eenainte</label>
-      <input type="number" min="1" max="365" id="coordAlertSet_${t}" value="${coordAlertSettings[t]||30}">
+      <label>${ALERT_ITEM_LABELS[t]} \u2014 luni \u00eenainte</label>
+      <input type="number" min="1" max="24" id="coordAlertSet_${t}" value="${coordAlertSettings[t]||1}">
     </div>
   `).join('');
   document.getElementById('coordAlertSettingsBackdrop').classList.add('show');
@@ -2468,7 +2470,7 @@ async function saveCoordAlertSettingsModal(){
   const praguri = {};
   ALERT_ITEM_TYPES.forEach(t=>{
     const v = parseInt(document.getElementById('coordAlertSet_'+t).value, 10);
-    praguri[t] = (v && v>0 && v<=365) ? v : 30;
+    praguri[t] = (v && v>0 && v<=24) ? v : 1;
   });
   try{
     const saveMyAlertSettings = functionsRef.httpsCallable('saveMyAlertSettings');
@@ -2487,22 +2489,22 @@ function renderCoordAlerts(){
   const camionMembers = coordTeamCache.filter(m=>(m.categoriiPermis||[]).some(c=>CATEGORII_CAMION.includes(c)));
   if(!camionMembers.length){ panel.style.display = 'none'; return; }
   panel.style.display = '';
+  const pragZile = (tip)=>(coordAlertSettings[tip]||1) * ZILE_PE_LUNA_ALERTA;
   const items = [];
   camionMembers.forEach(m=>{
     const nume = m.numeComplet || ((m.numeFamilie||'')+' '+(m.prenume||'')).trim() || '\u2014';
     const expCat = m.expirariCategorii || {};
     (m.categoriiPermis||[]).filter(c=>CATEGORII_CAMION.includes(c)).forEach(c=>{
       const d = daysUntil(expCat[c]);
-      const prag = coordAlertSettings[c]||30;
-      if(d!==null && d<=prag) items.push({name:nume, type:ALERT_ITEM_LABELS[c], days:d});
+      if(d!==null && d<=pragZile(c)) items.push({name:nume, type:ALERT_ITEM_LABELS[c], days:d});
     });
     const adr = daysUntil(m.dataExpirareADR);
-    if(adr!==null && adr<=(coordAlertSettings.ADR||30)) items.push({name:nume, type:ALERT_ITEM_LABELS.ADR, days:adr});
+    if(adr!==null && adr<=pragZile('ADR')) items.push({name:nume, type:ALERT_ITEM_LABELS.ADR, days:adr});
     const mod95 = daysUntil(m.dataExpirareModul95);
-    if(mod95!==null && mod95<=(coordAlertSettings.Modul95||30)) items.push({name:nume, type:ALERT_ITEM_LABELS.Modul95, days:mod95});
+    if(mod95!==null && mod95<=pragZile('Modul95')) items.push({name:nume, type:ALERT_ITEM_LABELS.Modul95, days:mod95});
     if(m.areCardTahograf){
       const taho = daysUntil(m.dataExpirareTahograf);
-      if(taho!==null && taho<=(coordAlertSettings.Tahograf||30)) items.push({name:nume, type:ALERT_ITEM_LABELS.Tahograf, days:taho});
+      if(taho!==null && taho<=pragZile('Tahograf')) items.push({name:nume, type:ALERT_ITEM_LABELS.Tahograf, days:taho});
     }
   });
   items.sort((a,b)=>a.days-b.days);
