@@ -241,6 +241,10 @@ tbody tr:hover{background:#FAFBFC;}
 #tahoFields.show{display:grid;}
 #coordTahoFields{display:none;}
 #coordTahoFields.show{display:grid;}
+#camionFields{display:none;}
+#camionFields.show{display:block;}
+#coordCamionFields{display:none;}
+#coordCamionFields.show{display:block;}
 #terminareField{display:none;}
 #terminareField.show{display:flex;}
 #copiiField{display:none;}
@@ -361,24 +365,25 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
 </head>
 <body>
 
-<!-- ============ PIN GATE ============ -->
-<div id="pinGate">
+<!-- ============ PIN GATE (admin) — ascuns implicit, se ajunge aici doar
+     scriind "admin" în locul numărului personal, pe ecranul de coordonator ============ -->
+<div id="pinGate" style="display:none;">
   <div class="pinCard">
     <span class="tag">MTC Transport</span>
-    <h1>Angajați MTC</h1>
-    <p>Introdu codul PIN pentru acces</p>
-    <input type="password" id="pinInput" maxlength="10" inputmode="numeric" autocomplete="off" placeholder="••••••">
+    <h1>Admin</h1>
+    <p>Introdu parola de admin</p>
+    <input type="password" id="pinInput" maxlength="40" autocomplete="off" placeholder="Parolă">
     <button class="btn btn-primary" onclick="checkPin()">Intră</button>
     <div id="pinError"></div>
-    <div style="margin-top:14px;"><a href="#" onclick="showCoordGate(); return false;" style="font-size:12px; color:var(--text-muted);">Sunt coordonator, nu admin →</a></div>
+    <div style="margin-top:14px;"><a href="#" onclick="showCoordGate(); return false;" style="font-size:12px; color:var(--text-muted);">← Înapoi</a></div>
   </div>
 </div>
 
-<!-- ============ COORDONATOR: LOGIN ============ -->
-<div id="coordGate" style="display:none; position:fixed; inset:0; background:var(--primary); align-items:center; justify-content:center; z-index:999;">
+<!-- ============ COORDONATOR: LOGIN (ecranul implicit) ============ -->
+<div id="coordGate" style="display:flex; position:fixed; inset:0; background:var(--primary); align-items:center; justify-content:center; z-index:999;">
   <div class="pinCard">
     <span class="tag">MTC Transport</span>
-    <h1>Coordonator</h1>
+    <h1>Angajați MTC</h1>
     <p>Loghează-te cu numărul personal și PIN-ul tău — același cont ca la portalul de telefon.</p>
     <div style="text-align:left;">
       <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:4px;">Număr personal</label>
@@ -390,7 +395,6 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
     </div>
     <button class="btn btn-primary" onclick="coordLogin()">Intră</button>
     <div id="coordLoginError" style="color:var(--red); font-size:12.5px; margin-top:10px; min-height:16px;"></div>
-    <div style="margin-top:6px;"><a href="#" onclick="showAdminGate(); return false;" style="font-size:12px; color:var(--text-muted);">← Sunt admin</a></div>
   </div>
 </div>
 
@@ -622,16 +626,20 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
         <div class="field full"><label id="coordExpLabel">Data expirării *</label><input type="date" id="coord_dataExpirarePermis"></div>
       </div>
 
-      <div class="section-label">Card tahograf (Fahrerkarte)</div>
-      <label class="toggle-row"><input type="checkbox" id="coord_areCardTahograf" onchange="toggleCoordTahoFields()"> Angajatul are card tahograf</label>
-      <div class="form-grid" id="coordTahoFields">
-        <div class="field"><label>Număr card</label><input type="text" id="coord_numarTahograf"></div>
-        <div class="field"><label>Data expirării</label><input type="date" id="coord_dataExpirareTahograf"></div>
-      </div>
+      <div id="coordCamionFields">
+        <p class="hint" style="margin-top:2px;">Câmpurile de mai jos apar doar dacă e bifată o categorie de camion (C1/C1E/C/CE) mai sus — la categoria B nu sunt relevante.</p>
+        <div class="section-label">Card tahograf (Fahrerkarte)</div>
+        <label class="toggle-row"><input type="checkbox" id="coord_areCardTahograf" onchange="toggleCoordTahoFields()"> Angajatul are card tahograf</label>
+        <div class="form-grid" id="coordTahoFields">
+          <div class="field"><label>Număr card</label><input type="text" id="coord_numarTahograf"></div>
+          <div class="field"><label>Data expirării</label><input type="date" id="coord_dataExpirareTahograf"></div>
+        </div>
 
-      <div class="section-label">Calificări suplimentare</div>
-      <div class="form-grid">
-        <div class="field full"><label>Modul conducător auto (Cod 95) — data expirării</label><input type="date" id="coord_dataExpirareModul95"></div>
+        <div class="section-label">Calificări suplimentare</div>
+        <div class="form-grid">
+          <div class="field"><label>Modul conducător auto (Cod 95) — data expirării</label><input type="date" id="coord_dataExpirareModul95"></div>
+          <div class="field"><label>ADR — valabil până la</label><input type="date" id="coord_dataExpirareADR"></div>
+        </div>
       </div>
 
       <div class="section-label">Date personale suplimentare</div>
@@ -696,6 +704,13 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
           </select>
         </div>
         <div class="field full" id="coord_asigMedicalaAltaField"><label>Numele casei de asigurări</label><input type="text" id="coord_asigurareMedicalaAlta"></div>
+      </div>
+
+      <div class="section-label">Contact de urgență</div>
+      <div class="form-grid">
+        <div class="field"><label>Nume complet</label><input type="text" id="coord_contactUrgentaNume"></div>
+        <div class="field"><label>Telefon</label><input type="text" id="coord_contactUrgentaTelefon" placeholder="+49 ..."></div>
+        <div class="field"><label>Relație</label><input type="text" id="coord_contactUrgentaRelatie" placeholder="ex: soție, părinte"></div>
       </div>
 
       <div id="coord_error" style="color:var(--red); font-size:12.5px; margin-top:14px; min-height:16px;"></div>
@@ -787,16 +802,20 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
         <div class="field full"><label>Data expirării *</label><input type="date" id="f_dataExpirarePermis"></div>
       </div>
 
-      <div class="section-label">Card tahograf (Fahrerkarte)</div>
-      <label class="toggle-row"><input type="checkbox" id="f_areTahograf" onchange="toggleTahoFields()"> Angajatul are card tahograf</label>
-      <div class="form-grid" id="tahoFields">
-        <div class="field"><label>Număr card</label><input type="text" id="f_numarTahograf"></div>
-        <div class="field"><label>Data expirării</label><input type="date" id="f_dataExpirareTahograf"></div>
-      </div>
+      <div id="camionFields">
+        <p class="hint" style="margin-top:2px;">Câmpurile de mai jos apar doar dacă angajatul are bifată o categorie de camion (C1/C1E/C/CE) mai sus — la categoria B nu sunt relevante.</p>
+        <div class="section-label">Card tahograf (Fahrerkarte)</div>
+        <label class="toggle-row"><input type="checkbox" id="f_areTahograf" onchange="toggleTahoFields()"> Angajatul are card tahograf</label>
+        <div class="form-grid" id="tahoFields">
+          <div class="field"><label>Număr card</label><input type="text" id="f_numarTahograf"></div>
+          <div class="field"><label>Data expirării</label><input type="date" id="f_dataExpirareTahograf"></div>
+        </div>
 
-      <div class="section-label">Calificări suplimentare</div>
-      <div class="form-grid">
-        <div class="field full"><label>Modul conducător auto (Cod 95) — data expirării</label><input type="date" id="f_dataExpirareModul95"></div>
+        <div class="section-label">Calificări suplimentare</div>
+        <div class="form-grid">
+          <div class="field"><label>Modul conducător auto (Cod 95) — data expirării</label><input type="date" id="f_dataExpirareModul95"></div>
+          <div class="field"><label>ADR — valabil până la</label><input type="date" id="f_dataExpirareADR"></div>
+        </div>
       </div>
 
       <div class="section-label">Date personale suplimentare</div>
@@ -863,12 +882,34 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
         <div class="field full" id="asigMedicalaAltaField"><label>Numele casei de asigurări</label><input type="text" id="f_asigurareMedicalaAlta"></div>
       </div>
 
+      <div class="section-label">Contact de urgență</div>
+      <div class="form-grid">
+        <div class="field"><label>Nume complet</label><input type="text" id="f_contactUrgentaNume"></div>
+        <div class="field"><label>Telefon</label><input type="text" id="f_contactUrgentaTelefon" placeholder="+49 ..."></div>
+        <div class="field"><label>Relație</label><input type="text" id="f_contactUrgentaRelatie" placeholder="ex: soție, părinte"></div>
+      </div>
+
       <div class="section-label">Notițe</div>
       <div class="field full"><textarea id="f_notite" placeholder="Observații interne..."></textarea></div>
     </div>
     <div class="modal-foot">
       <button class="btn btn-secondary" onclick="closeModal()">Anulează</button>
       <button class="btn btn-primary" onclick="saveEmployee()">Salvează</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: VIZUALIZARE (read-only) ============ -->
+<div class="modal-backdrop" id="viewBackdrop">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="viewModalTitle">Fișă angajat</h2>
+      <button class="modal-close" onclick="closeViewModal()">✕</button>
+    </div>
+    <div class="modal-body" id="viewModalBody"></div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeViewModal()">Închide</button>
+      <button class="btn btn-primary" id="viewModalEditBtn">Editează</button>
     </div>
   </div>
 </div>
@@ -911,7 +952,7 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
 const firebaseConfig = window.FIREBASE_CONFIG;
 // PIN-ul de admin NU mai stă în client — e verificat server-side în funcția checkAdminPin.
 const CATEGORII_PERMIS = ["AM","A1","A2","A","B","BE","C1","C1E","C","CE","D1","D1E","D","DE"];
-const ROLURI_DISPONIBILE = ["Șofer","Dispecer","Administrativ","Mecanic","Altul"];
+const ROLURI_DISPONIBILE = ["Șofer","Șofer pachete","Dispecer","Administrativ","Mecanic","Altul"];
 
 // Boardul de admin folosește o instanță Firebase separată de cea din
 // portal.html ("adminBoard" în loc de aplicația implicită). Dacă ar folosi
@@ -1003,6 +1044,15 @@ async function coordLogin(){
   const pin = document.getElementById('coordPin').value.trim();
   const errEl = document.getElementById('coordLoginError');
   errEl.textContent = '';
+  // Comutator ascuns spre ecranul de admin: nu există niciun buton/link
+  // vizibil care să dea de gol că boardul are și un mod de admin — se scrie
+  // pur și simplu "admin" în locul numărului personal.
+  if(numarPersonal.toLowerCase()==='admin'){
+    document.getElementById('coordNumarPersonal').value = '';
+    document.getElementById('coordPin').value = '';
+    showAdminGate();
+    return;
+  }
   try{
     const login = functionsRef.httpsCallable('employeeLogin');
     const result = await login({ numarPersonal, pin });
@@ -1129,7 +1179,24 @@ function buildRolGrid(){
     `<div class="cat-check" data-cat="${r}" onclick="toggleCat(this)">${r}</div>`
   ).join('');
 }
-function toggleCat(el){ el.classList.toggle('active'); }
+function toggleCat(el){
+  el.classList.toggle('active');
+  const gridId = el.parentElement.id;
+  if(gridId==='catGrid') updateCamionFieldsVisibility('f');
+  if(gridId==='coordCatGrid') updateCamionFieldsVisibility('coord');
+}
+// Tahograf, modulul de conducător auto (Cod 95) și ADR sunt relevante doar
+// pentru categoriile de camion (C1/C1E/C/CE) — la categoria B (mașină) nu au
+// ce căuta, deci ținem casetele ascunse până se bifează o categorie de camion.
+// Datele deja completate NU se șterg dacă se debifează — rămân doar ascunse.
+const CATEGORII_CAMION = ["C1","C1E","C","CE"];
+function updateCamionFieldsVisibility(prefix){
+  const gridId = prefix==='coord' ? 'coordCatGrid' : 'catGrid';
+  const wrapId = prefix==='coord' ? 'coordCamionFields' : 'camionFields';
+  const isCamion = getCheckedIn(gridId).some(c=>CATEGORII_CAMION.includes(c));
+  const wrap = document.getElementById(wrapId);
+  if(wrap) wrap.classList.toggle('show', isCamion);
+}
 function getCheckedIn(gridId){
   return Array.from(document.querySelectorAll('#'+gridId+' .cat-check.active')).map(e=>e.dataset.cat);
 }
@@ -1302,9 +1369,9 @@ function renderBoard(){
 
   body.innerHTML = list.map(e=>{
     return `
-    <tr>
+    <tr onclick="openViewModal('${e.id}')" style="cursor:pointer;">
       <td style="padding:0; width:4px;"><div class="tab ${rowTabClass(e)}"></div></td>
-      <td class="rowcheck"><input type="checkbox" class="rowSelect" data-id="${e.id}" ${selectedIds.has(e.id)?'checked':''} onchange="toggleRowSelect('${e.id}', this.checked)"></td>
+      <td class="rowcheck" onclick="event.stopPropagation()"><input type="checkbox" class="rowSelect" data-id="${e.id}" ${selectedIds.has(e.id)?'checked':''} onchange="toggleRowSelect('${e.id}', this.checked)"></td>
       <td><span class="id-tag mono">${e.employeeId||'—'}</span></td>
       <td class="name-cell"><b>${escapeHtml(displayNumeFamilie(e))}</b><small>${escapeHtml(addressLine(e))}${e.telefon?' · '+escapeHtml(e.telefon):''}</small></td>
       <td>${escapeHtml(displayPrenume(e))}</td>
@@ -1313,7 +1380,7 @@ function renderBoard(){
       <td>${accessChip(e)}</td>
       <td>${vacationCell(e)}</td>
       <td><span class="status-pill status-${e.status||'Activ'}">${e.status||'Activ'}</span></td>
-      <td>
+      <td onclick="event.stopPropagation()">
         <div class="row-actions">
           <div class="icon-btn" onclick="openAccessModal('${e.id}')" title="Acces cont">🔑</div>
           <div class="icon-btn" onclick="openModal('${e.id}')" title="Editează">✎</div>
@@ -1336,6 +1403,101 @@ function addressLine(e){
 function escapeHtml(s){
   return s.replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
+
+/* ================= VIZUALIZARE (read-only) ================= */
+// Click pe un rând din board / pe un card din "Echipa mea" deschide asta —
+// o fișă needitabilă, separat de modalul de editare (care rămâne accesibil
+// doar din butonul explicit "Editează"). Funcționează la fel pentru admin
+// (obiectul complet din `employees`) și pentru coordonator (obiectul mai
+// restrâns întors de getMyTeam, din `coordTeamCache`) — câmpurile care
+// lipsesc din al doilea caz (ex: numarPersonal, notițe) pur și simplu nu
+// se afișează.
+function viewRow(label, value){
+  const v = (value===null || value===undefined || value==='') ? '—' : escapeHtml(String(value));
+  return `<div class="access-row"><label>${label}</label><span>${v}</span></div>`;
+}
+function viewSection(title, rowsHtml){
+  if(!rowsHtml) return '';
+  return `<div class="section-label">${title}</div><div class="access-body" style="padding:2px 0 14px;">${rowsHtml}</div>`;
+}
+function buildViewHtml(p, isCoord){
+  const roluri = (p.roluri && p.roluri.length) ? p.roluri.join(', ') : (p.rol || '');
+  const cats = (p.categoriiPermis||[]).join(', ');
+  const isCamion = (p.categoriiPermis||[]).some(c=>CATEGORII_CAMION.includes(c));
+  let html = '';
+
+  let general = viewRow('Nume complet', p.numeComplet || ((p.numeFamilie||'')+' '+(p.prenume||'')).trim());
+  if(p.employeeId!==undefined) general += viewRow('Cod angajat', p.employeeId);
+  if(!isCoord && p.numarPersonal!==undefined) general += viewRow('Număr personal (login)', p.numarPersonal);
+  general += viewRow('Rol', roluri);
+  general += viewRow('Locație', p.depot);
+  general += viewRow('Data nașterii', p.dataNasterii);
+  general += viewRow('Telefon', p.telefon);
+  general += viewRow('Email', p.email);
+  html += viewSection('Date generale', general);
+
+  html += viewSection('Adresă',
+    viewRow('Stradă și număr', p.strada) +
+    viewRow('Cod poștal', p.codPostal) +
+    viewRow('Oraș', p.oras) +
+    viewRow('Țară', p.tara));
+
+  let angajare = viewRow('Data angajării', p.dataAngajare) + viewRow('Status', p.status);
+  if(!isCoord && p.dataIncetare) angajare += viewRow('Data încetării', p.dataIncetare);
+  angajare += viewRow('Coordonator (aprobă concediul)', COORD_GROUP_LABELS[p.coordonator]||p.coordonator);
+  if(!isCoord && p.rolAprobator) angajare += viewRow('E coordonator pentru', COORD_GROUP_LABELS[p.rolAprobator]||p.rolAprobator);
+  html += viewSection('Angajare', angajare);
+
+  html += viewSection('Permis de conducere',
+    viewRow('Categorii', cats) +
+    viewRow('Număr permis', p.numarPermis) +
+    viewRow('Data eliberării', p.dataEliberarePermis) +
+    viewRow('Data expirării', p.dataExpirarePermis));
+
+  if(isCamion){
+    let camion = viewRow('Are card tahograf', p.areCardTahograf ? 'Da' : 'Nu');
+    if(p.areCardTahograf){
+      camion += viewRow('Număr card tahograf', p.numarTahograf);
+      camion += viewRow('Data expirării tahograf', p.dataExpirareTahograf);
+    }
+    camion += viewRow('Modul conducător auto (Cod 95) — expiră', p.dataExpirareModul95);
+    camion += viewRow('ADR — valabil până la', p.dataExpirareADR);
+    html += viewSection('Card tahograf & calificări (categorie camion)', camion);
+  }
+
+  const copiiTxt = p.areCopii==='da' ? ('Da'+(p.numarCopii?' ('+p.numarCopii+')':'')) : (p.areCopii==='nu' ? 'Nu' : '');
+  html += viewSection('Date personale suplimentare',
+    viewRow('Cetățenia', p.cetatenie) +
+    viewRow('CNP', p.cnp) +
+    viewRow('Data expirării buletin / CI', p.dataExpirareBuletin) +
+    viewRow('Sozialversicherungsnummer', p.sozialversicherungsnummer) +
+    viewRow('Identifikationsnummer (Steuer-ID)', p.identnummer) +
+    viewRow('Steuerklasse', p.steuerklasse) +
+    viewRow('Stare civilă', p.stareCivila) +
+    viewRow('Are copii', copiiTxt) +
+    viewRow('Asigurare medicală', p.asigurareMedicala));
+
+  html += viewSection('Contact de urgență',
+    viewRow('Nume complet', p.contactUrgentaNume) +
+    viewRow('Telefon', p.contactUrgentaTelefon) +
+    viewRow('Relație', p.contactUrgentaRelatie));
+
+  if(!isCoord && p.notite){
+    html += `<div class="section-label">Notițe</div><div style="font-size:13px; color:var(--text); white-space:pre-wrap; padding:2px 0 14px;">${escapeHtml(p.notite)}</div>`;
+  }
+
+  return html;
+}
+function openViewModal(id, isCoord){
+  const p = isCoord ? coordTeamCache.find(x=>x.id===id) : employees.find(x=>x.id===id);
+  if(!p) return;
+  document.getElementById('viewModalTitle').textContent = p.numeComplet || 'Fișă angajat';
+  document.getElementById('viewModalBody').innerHTML = buildViewHtml(p, !!isCoord);
+  const editBtn = document.getElementById('viewModalEditBtn');
+  editBtn.onclick = ()=>{ closeViewModal(); isCoord ? openCoordModal(id) : openModal(id); };
+  document.getElementById('viewBackdrop').classList.add('show');
+}
+function closeViewModal(){ document.getElementById('viewBackdrop').classList.remove('show'); }
 
 function renderStats(){
   const active = employees.filter(e=>e.status!=='Arhivat');
@@ -1389,8 +1551,9 @@ function openModal(id){
   document.getElementById('modalIdTag').style.display='none';
   ['prenume','numeFamilie','numarPersonal','dataNasterii','telefon','email','strada','codPostal','oras','tara',
    'dataAngajare','dataIncetare','numarPermis','dataEliberarePermis','dataExpirarePermis',
-   'numarTahograf','dataExpirareTahograf','dataExpirareModul95',
+   'numarTahograf','dataExpirareTahograf','dataExpirareModul95','dataExpirareADR',
    'cetatenie','cnp','dataExpirareBuletin','sozialversicherungsnummer','identnummer','numarCopii',
+   'contactUrgentaNume','contactUrgentaTelefon','contactUrgentaRelatie',
    'notite'].forEach(f=>document.getElementById('f_'+f).value='');
   document.getElementById('f_tara').value='Germania';
   document.getElementById('f_depot').value='Ruhstorf';
@@ -1408,6 +1571,7 @@ function openModal(id){
   toggleTerminareField();
   toggleCopiiField();
   toggleAsigMedicalaAltaField();
+  updateCamionFieldsVisibility('f');
 
   if(id){
     const e = employees.find(x=>x.id===id);
@@ -1440,6 +1604,10 @@ function openModal(id){
       document.getElementById('f_numarTahograf').value = e.numarTahograf||'';
       document.getElementById('f_dataExpirareTahograf').value = e.dataExpirareTahograf||'';
       document.getElementById('f_dataExpirareModul95').value = e.dataExpirareModul95||'';
+      document.getElementById('f_dataExpirareADR').value = e.dataExpirareADR||'';
+      document.getElementById('f_contactUrgentaNume').value = e.contactUrgentaNume||'';
+      document.getElementById('f_contactUrgentaTelefon').value = e.contactUrgentaTelefon||'';
+      document.getElementById('f_contactUrgentaRelatie').value = e.contactUrgentaRelatie||'';
       document.getElementById('f_cetatenie').value = e.cetatenie||'';
       document.getElementById('f_cnp').value = e.cnp||'';
       document.getElementById('f_dataExpirareBuletin').value = e.dataExpirareBuletin||'';
@@ -1456,6 +1624,7 @@ function openModal(id){
       toggleTerminareField();
       toggleCopiiField();
       toggleAsigMedicalaAltaField();
+      updateCamionFieldsVisibility('f');
     }
   } else {
     document.getElementById('modalTitleText').textContent = 'Angajat nou';
@@ -1520,6 +1689,10 @@ async function saveEmployee(){
     numarTahograf: document.getElementById('f_numarTahograf').value.trim(),
     dataExpirareTahograf: document.getElementById('f_dataExpirareTahograf').value,
     dataExpirareModul95: document.getElementById('f_dataExpirareModul95').value,
+    dataExpirareADR: document.getElementById('f_dataExpirareADR').value,
+    contactUrgentaNume: document.getElementById('f_contactUrgentaNume').value.trim(),
+    contactUrgentaTelefon: document.getElementById('f_contactUrgentaTelefon').value.trim(),
+    contactUrgentaRelatie: document.getElementById('f_contactUrgentaRelatie').value.trim(),
     cetatenie: document.getElementById('f_cetatenie').value.trim(),
     cnp: document.getElementById('f_cnp').value.trim(),
     dataExpirareBuletin: document.getElementById('f_dataExpirareBuletin').value,
@@ -1819,8 +1992,28 @@ function aprobaPropunere(propId){
   document.getElementById('f_dataEliberarePermis').value = d.dataEliberarePermis || '';
   document.getElementById('f_dataExpirarePermis').value = d.dataExpirarePermis || '';
   document.getElementById('f_areTahograf').checked = !!d.areCardTahograf;
+  document.getElementById('f_numarTahograf').value = d.numarTahograf || '';
+  document.getElementById('f_dataExpirareTahograf').value = d.dataExpirareTahograf || '';
+  document.getElementById('f_dataExpirareModul95').value = d.dataExpirareModul95 || '';
+  document.getElementById('f_dataExpirareADR').value = d.dataExpirareADR || '';
+  document.getElementById('f_cetatenie').value = d.cetatenie || '';
+  document.getElementById('f_cnp').value = d.cnp || '';
+  document.getElementById('f_dataExpirareBuletin').value = d.dataExpirareBuletin || '';
+  document.getElementById('f_sozialversicherungsnummer').value = d.sozialversicherungsnummer || '';
+  document.getElementById('f_identnummer').value = d.identnummer || '';
+  document.getElementById('f_steuerklasse').value = d.steuerklasse || '';
+  document.getElementById('f_stareCivila').value = d.stareCivila || '';
+  document.getElementById('f_areCopii').value = d.areCopii || '';
+  document.getElementById('f_numarCopii').value = d.numarCopii || '';
+  fillAsigurareMedicala('f_asigurareMedicala','f_asigurareMedicalaAlta', d.asigurareMedicala||'');
+  document.getElementById('f_contactUrgentaNume').value = d.contactUrgentaNume || '';
+  document.getElementById('f_contactUrgentaTelefon').value = d.contactUrgentaTelefon || '';
+  document.getElementById('f_contactUrgentaRelatie').value = d.contactUrgentaRelatie || '';
   toggleTahoFields();
   toggleTerminareField();
+  toggleCopiiField();
+  toggleAsigMedicalaAltaField();
+  updateCamionFieldsVisibility('f');
 }
 
 async function respingePropunere(propId){
@@ -2046,11 +2239,11 @@ function renderCoordTeamList(){
         const nume = m.numeComplet || ((m.numeFamilie||'')+' '+(m.prenume||'')).trim() || '\u2014';
         const roluri = (m.roluri||[]).join(', ') || '\u2014';
         return `
-        <div class="appr-card">
+        <div class="appr-card" onclick="openViewModal('${m.id}', true)" style="cursor:pointer;">
           <div class="who">${escapeHtml(nume)}</div>
           <div class="when">${escapeHtml(m.depot||'\u2014')} \u00b7 ${escapeHtml(m.telefon||'\u2014')} \u00b7 ${escapeHtml(m.email||'\u2014')}</div>
           <div class="motiv">Rol: ${escapeHtml(roluri)}</div>
-          <div class="appr-actions">
+          <div class="appr-actions" onclick="event.stopPropagation()">
             <button style="background:var(--primary); color:#fff;" onclick="openCoordModal('${m.id}')">Editeaz\u0103</button>
           </div>
         </div>`;
@@ -2085,8 +2278,9 @@ function openCoordModal(memberId){
   ['coord_prenume','coord_numeFamilie','coord_dataNasterii','coord_telefon','coord_email','coord_strada',
    'coord_codPostal','coord_oras','coord_dataAngajare','coord_numarPermis','coord_dataEliberarePermis',
    'coord_dataExpirarePermis','coord_numarTahograf','coord_dataExpirareTahograf','coord_dataExpirareModul95',
-   'coord_cetatenie','coord_cnp','coord_dataExpirareBuletin','coord_sozialversicherungsnummer',
-   'coord_identnummer','coord_numarCopii'].forEach(id=>{ document.getElementById(id).value=''; });
+   'coord_dataExpirareADR','coord_cetatenie','coord_cnp','coord_dataExpirareBuletin','coord_sozialversicherungsnummer',
+   'coord_identnummer','coord_numarCopii','coord_contactUrgentaNume','coord_contactUrgentaTelefon',
+   'coord_contactUrgentaRelatie'].forEach(id=>{ document.getElementById(id).value=''; });
   document.getElementById('coord_tara').value = 'Germania';
   document.getElementById('coord_depot').value = 'Ruhstorf';
   document.getElementById('coord_status').value = 'Activ';
@@ -2102,6 +2296,7 @@ function openCoordModal(memberId){
   toggleCoordTahoFields();
   toggleCoordCopiiField();
   toggleCoordAsigMedicalaAltaField();
+  updateCamionFieldsVisibility('coord');
 
   if(memberId){
     const m = coordTeamCache.find(x=>x.id===memberId);
@@ -2129,6 +2324,10 @@ function openCoordModal(memberId){
       document.getElementById('coord_numarTahograf').value = m.numarTahograf||'';
       document.getElementById('coord_dataExpirareTahograf').value = m.dataExpirareTahograf||'';
       document.getElementById('coord_dataExpirareModul95').value = m.dataExpirareModul95||'';
+      document.getElementById('coord_dataExpirareADR').value = m.dataExpirareADR||'';
+      document.getElementById('coord_contactUrgentaNume').value = m.contactUrgentaNume||'';
+      document.getElementById('coord_contactUrgentaTelefon').value = m.contactUrgentaTelefon||'';
+      document.getElementById('coord_contactUrgentaRelatie').value = m.contactUrgentaRelatie||'';
       document.getElementById('coord_cetatenie').value = m.cetatenie||'';
       document.getElementById('coord_cnp').value = m.cnp||'';
       document.getElementById('coord_dataExpirareBuletin').value = m.dataExpirareBuletin||'';
@@ -2142,6 +2341,7 @@ function openCoordModal(memberId){
       toggleCoordTahoFields();
       toggleCoordCopiiField();
       toggleCoordAsigMedicalaAltaField();
+      updateCamionFieldsVisibility('coord');
     }
     document.getElementById('coordExpLabel').textContent = 'Data expir\u0103rii';
   } else {
@@ -2195,6 +2395,10 @@ async function saveCoordMember(){
     numarTahograf: document.getElementById('coord_numarTahograf').value.trim(),
     dataExpirareTahograf: document.getElementById('coord_dataExpirareTahograf').value,
     dataExpirareModul95: document.getElementById('coord_dataExpirareModul95').value,
+    dataExpirareADR: document.getElementById('coord_dataExpirareADR').value,
+    contactUrgentaNume: document.getElementById('coord_contactUrgentaNume').value.trim(),
+    contactUrgentaTelefon: document.getElementById('coord_contactUrgentaTelefon').value.trim(),
+    contactUrgentaRelatie: document.getElementById('coord_contactUrgentaRelatie').value.trim(),
     cetatenie: document.getElementById('coord_cetatenie').value.trim(),
     cnp: document.getElementById('coord_cnp').value.trim(),
     dataExpirareBuletin: document.getElementById('coord_dataExpirareBuletin').value,

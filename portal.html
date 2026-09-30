@@ -362,7 +362,7 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
       <button class="tab-btn sidebar-btn" data-tab="concediu" onclick="switchTab('concediu')">
         <span class="ic">🌴</span><span class="lbl">Concediu</span>
       </button>
-      <button class="tab-btn sidebar-btn" data-tab="reclamatii" onclick="switchTab('reclamatii')">
+      <button class="tab-btn sidebar-btn" data-tab="reclamatii" id="tabBtnReclamatiiSidebar" style="display:none;" onclick="switchTab('reclamatii')">
         <span class="ic">📋</span><span class="lbl">Reclamații</span>
       </button>
       <button class="tab-btn sidebar-btn" data-tab="aprobari" id="tabBtnAprobariSidebar" style="display:none;" onclick="switchTab('aprobari')">
@@ -521,7 +521,7 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
       <button class="tab-btn" data-tab="concediu" onclick="switchTab('concediu')">
         <span class="ic">🌴</span><span class="lbl">Concediu</span>
       </button>
-      <button class="tab-btn" data-tab="reclamatii" onclick="switchTab('reclamatii')">
+      <button class="tab-btn" data-tab="reclamatii" id="tabBtnReclamatii" style="display:none;" onclick="switchTab('reclamatii')">
         <span class="ic">📋</span><span class="lbl">Reclamații</span>
       </button>
       <button class="tab-btn" data-tab="aprobari" id="tabBtnAprobari" style="display:none;" onclick="switchTab('aprobari')">
@@ -678,10 +678,18 @@ async function loadProfile(){
   document.getElementById('tabBtnAprobari').style.display = isCoordonator ? 'flex' : 'none';
   document.getElementById('tabBtnAprobariSidebar').style.display = isCoordonator ? 'flex' : 'none';
 
+  // Reclamațiile sunt relevante doar pentru șoferii de pachete — restul
+  // angajaților (dispeceri, administrativ, mecanici, alți șoferi) nu au
+  // nevoie de tabul ăsta. Se activează bifând rolul "Șofer pachete" din
+  // fișa angajatului (index.html / Echipa mea).
+  const poateVedeaReclamatii = (e.roluri||[]).includes('Șofer pachete');
+  document.getElementById('tabBtnReclamatii').style.display = poateVedeaReclamatii ? 'flex' : 'none';
+  document.getElementById('tabBtnReclamatiiSidebar').style.display = poateVedeaReclamatii ? 'flex' : 'none';
+
   switchTab('acasa');
   show('appState');
   loadVacationData();
-  loadReclamatiiData();
+  if(poateVedeaReclamatii) loadReclamatiiData();
   loadMyRequests();
   if(isCoordonator){
     loadApprovalQueue();
