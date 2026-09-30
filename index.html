@@ -65,7 +65,7 @@ h1,h2,h3,.display{font-family:'Space Grotesk',sans-serif;}
 .pinCard h1{font-size:20px; margin:0 0 6px;}
 .pinCard p{color:var(--text-muted); font-size:13px; margin:0 0 20px;}
 #pinInput{
-  width:100%; padding:12px; font-size:20px; text-align:center; letter-spacing:.3em;
+  width:100%; padding:12px; font-size:16px; text-align:center; letter-spacing:.05em;
   border:1.5px solid var(--border); border-radius:8px; font-family:'JetBrains Mono',monospace;
   margin-bottom:12px;
 }
@@ -372,7 +372,7 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
     <span class="tag">MTC Transport</span>
     <h1>Admin</h1>
     <p>Introdu parola de admin</p>
-    <input type="password" id="pinInput" maxlength="40" autocomplete="off" placeholder="Parolă">
+    <input type="password" id="pinInput" maxlength="40" inputmode="text" autocomplete="new-password" placeholder="Parolă">
     <button class="btn btn-primary" onclick="checkPin()">Intră</button>
     <div id="pinError"></div>
     <div style="margin-top:14px;"><a href="#" onclick="showCoordGate(); return false;" style="font-size:12px; color:var(--text-muted);">← Înapoi</a></div>
@@ -544,6 +544,14 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
     </div>
   </header>
   <main style="max-width:900px; margin:0 auto; padding:28px 32px 60px;">
+    <div class="dist-panel" id="coordAlertPanel" style="display:none;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; flex-wrap:wrap; gap:10px;">
+        <h3 style="margin:0; color:var(--red);">⚠ Alerte expirări — camion</h3>
+        <button class="btn btn-secondary" style="width:auto;" onclick="openCoordAlertSettingsModal()">⚙ Setări alerte</button>
+      </div>
+      <div style="color:var(--text-muted); font-size:12.5px; margin-bottom:6px;">Alertele astea țin cont doar de șoferii de camion din echipa ta (categorii C1/C1E/C/CE, ADR, modul Cod 95, card tahograf) — la câte zile înainte de expirare vrei să apară, alegi tu din „Setări alerte”.</div>
+      <div id="coordAlertList" style="font-size:13px;"></div>
+    </div>
     <div class="dist-panel">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; flex-wrap:wrap; gap:10px;">
         <h3 style="margin:0;">Echipa mea</h3>
@@ -640,7 +648,43 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
         <div class="form-grid">
           <div class="field"><label>Modul conducător auto (Cod 95) — data expirării</label><input type="date" id="coord_dataExpirareModul95"></div>
           <div class="field"><label>ADR — valabil până la</label><input type="date" id="coord_dataExpirareADR"></div>
+          <div class="field"><label>Permisul e emis în</label>
+            <select id="coord_permisTaraEmitere">
+              <option value="">— selectează —</option>
+              <option value="România">România</option>
+              <option value="Germania">Germania</option>
+              <option value="Polonia">Polonia</option>
+              <option value="Ungaria">Ungaria</option>
+              <option value="Bulgaria">Bulgaria</option>
+              <option value="Republica Moldova">Republica Moldova</option>
+              <option value="Ucraina">Ucraina</option>
+              <option value="Serbia">Serbia</option>
+              <option value="Croația">Croația</option>
+              <option value="Slovenia">Slovenia</option>
+              <option value="Slovacia">Slovacia</option>
+              <option value="Cehia">Cehia</option>
+              <option value="Austria">Austria</option>
+              <option value="Elveția">Elveția</option>
+              <option value="Italia">Italia</option>
+              <option value="Franța">Franța</option>
+              <option value="Spania">Spania</option>
+              <option value="Portugalia">Portugalia</option>
+              <option value="Grecia">Grecia</option>
+              <option value="Turcia">Turcia</option>
+              <option value="Olanda">Olanda</option>
+              <option value="Belgia">Belgia</option>
+              <option value="Lituania">Lituania</option>
+              <option value="Letonia">Letonia</option>
+              <option value="Estonia">Estonia</option>
+              <option value="Marea Britanie">Marea Britanie</option>
+              <option value="Altă țară">Altă țară</option>
+            </select>
+          </div>
         </div>
+
+        <div class="section-label">Expirare pe categorii de permis</div>
+        <p class="hint" style="margin-top:2px;">Fiecare categorie de camion bifată mai sus poate expira la o dată diferită de restul permisului (ex: reînnoire periodică pentru C/CE) — data de la „Permis de conducere” rămâne data principală a permisului.</p>
+        <div class="form-grid" id="coordCamionCatExpiryFields"></div>
       </div>
 
       <div class="section-label">Date personale suplimentare</div>
@@ -719,6 +763,21 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
     <div class="modal-foot">
       <button class="btn btn-secondary" onclick="closeCoordModal()">Anulează</button>
       <button class="btn btn-primary" id="submitCoordBtn" style="width:auto;" onclick="saveCoordMember()">Trimite propunerea</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: SETĂRI ALERTE CAMION (coordonator) ============ -->
+<div class="modal-backdrop" id="coordAlertSettingsBackdrop">
+  <div class="modal">
+    <div class="modal-head"><h2>Setări alerte camion</h2><button class="modal-close" onclick="closeCoordAlertSettingsModal()">✕</button></div>
+    <div class="modal-body">
+      <p class="hint" style="margin-top:0;">Alege cu câte zile înainte de expirare vrei să primești alertă — separat pentru fiecare categorie de camion, ADR, modulul (Cod 95) și cardul de tahograf. Setările astea sunt doar ale tale, pentru echipa ta.</p>
+      <div class="form-grid" id="coordAlertSettingsFields"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeCoordAlertSettingsModal()">Anulează</button>
+      <button class="btn btn-primary" style="width:auto;" onclick="saveCoordAlertSettingsModal()">Salvează</button>
     </div>
   </div>
 </div>
@@ -816,7 +875,43 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
         <div class="form-grid">
           <div class="field"><label>Modul conducător auto (Cod 95) — data expirării</label><input type="date" id="f_dataExpirareModul95"></div>
           <div class="field"><label>ADR — valabil până la</label><input type="date" id="f_dataExpirareADR"></div>
+          <div class="field"><label>Permisul e emis în</label>
+            <select id="f_permisTaraEmitere">
+              <option value="">— selectează —</option>
+              <option value="România">România</option>
+              <option value="Germania">Germania</option>
+              <option value="Polonia">Polonia</option>
+              <option value="Ungaria">Ungaria</option>
+              <option value="Bulgaria">Bulgaria</option>
+              <option value="Republica Moldova">Republica Moldova</option>
+              <option value="Ucraina">Ucraina</option>
+              <option value="Serbia">Serbia</option>
+              <option value="Croația">Croația</option>
+              <option value="Slovenia">Slovenia</option>
+              <option value="Slovacia">Slovacia</option>
+              <option value="Cehia">Cehia</option>
+              <option value="Austria">Austria</option>
+              <option value="Elveția">Elveția</option>
+              <option value="Italia">Italia</option>
+              <option value="Franța">Franța</option>
+              <option value="Spania">Spania</option>
+              <option value="Portugalia">Portugalia</option>
+              <option value="Grecia">Grecia</option>
+              <option value="Turcia">Turcia</option>
+              <option value="Olanda">Olanda</option>
+              <option value="Belgia">Belgia</option>
+              <option value="Lituania">Lituania</option>
+              <option value="Letonia">Letonia</option>
+              <option value="Estonia">Estonia</option>
+              <option value="Marea Britanie">Marea Britanie</option>
+              <option value="Altă țară">Altă țară</option>
+            </select>
+          </div>
         </div>
+
+        <div class="section-label">Expirare pe categorii de permis</div>
+        <p class="hint" style="margin-top:2px;">Fiecare categorie de camion bifată mai sus poate expira la o dată diferită de restul permisului (ex: reînnoire periodică pentru C/CE) — data de la „Permis de conducere” rămâne data principală a permisului.</p>
+        <div class="form-grid" id="camionCatExpiryFields"></div>
       </div>
 
       <div class="section-label">Date personale suplimentare</div>
@@ -1197,6 +1292,46 @@ function updateCamionFieldsVisibility(prefix){
   const isCamion = getCheckedIn(gridId).some(c=>CATEGORII_CAMION.includes(c));
   const wrap = document.getElementById(wrapId);
   if(wrap) wrap.classList.toggle('show', isCamion);
+  renderCamionCatExpiryInputs(prefix);
+}
+
+// Expirare pe categorii de permis (doar camion): fiecare categorie C1/C1E/C/CE
+// bifată poate avea propria dată de expirare (reînnoiri periodice), diferită
+// de data principală a permisului. Valorile completate se țin într-un obiect
+// în memorie cât timp e deschis modalul, ca să nu se piardă când lista de
+// câmpuri se redesenează la fiecare bifare/debifare a categoriilor.
+let camionCatExpiryValues = {};
+let coordCamionCatExpiryValues = {};
+function renderCamionCatExpiryInputs(prefix){
+  const gridId = prefix==='coord' ? 'coordCatGrid' : 'catGrid';
+  const containerId = prefix==='coord' ? 'coordCamionCatExpiryFields' : 'camionCatExpiryFields';
+  const valuesObj = prefix==='coord' ? coordCamionCatExpiryValues : camionCatExpiryValues;
+  const container = document.getElementById(containerId);
+  if(!container) return;
+  const checked = getCheckedIn(gridId).filter(c=>CATEGORII_CAMION.includes(c));
+  if(!checked.length){
+    container.innerHTML = '<p class="hint" style="margin:0;">Bifează o categorie de camion (C1/C1E/C/CE) mai sus ca să apară aici.</p>';
+    return;
+  }
+  container.innerHTML = checked.map(cat=>`
+    <div class="field">
+      <label>${cat} — expiră</label>
+      <input type="date" id="${prefix}_catexp_${cat}" value="${valuesObj[cat]||''}"
+        onchange="setCamionCatExpiryValue('${prefix}','${cat}', this.value)">
+    </div>
+  `).join('');
+}
+function setCamionCatExpiryValue(prefix, cat, val){
+  const obj = prefix==='coord' ? coordCamionCatExpiryValues : camionCatExpiryValues;
+  if(val) obj[cat] = val; else delete obj[cat];
+}
+function getExpirariCategorii(prefix){
+  const gridId = prefix==='coord' ? 'coordCatGrid' : 'catGrid';
+  const valuesObj = prefix==='coord' ? coordCamionCatExpiryValues : camionCatExpiryValues;
+  const checked = getCheckedIn(gridId).filter(c=>CATEGORII_CAMION.includes(c));
+  const out = {};
+  checked.forEach(cat=>{ if(valuesObj[cat]) out[cat] = valuesObj[cat]; });
+  return out;
 }
 function getCheckedIn(gridId){
   return Array.from(document.querySelectorAll('#'+gridId+' .cat-check.active')).map(e=>e.dataset.cat);
@@ -1290,6 +1425,17 @@ function rowTabClass(emp){
   const p = daysUntil(emp.dataExpirarePermis);
   const t = emp.areCardTahograf ? daysUntil(emp.dataExpirareTahograf) : null;
   const vals = [p,t].filter(v=>v!==null && v!==undefined);
+  const isCamion = (emp.categoriiPermis||[]).some(c=>CATEGORII_CAMION.includes(c));
+  if(isCamion){
+    const adr = daysUntil(emp.dataExpirareADR);
+    const mod95 = daysUntil(emp.dataExpirareModul95);
+    [adr, mod95].forEach(v=>{ if(v!==null && v!==undefined) vals.push(v); });
+    const expCat = emp.expirariCategorii||{};
+    (emp.categoriiPermis||[]).filter(c=>CATEGORII_CAMION.includes(c)).forEach(c=>{
+      const d = daysUntil(expCat[c]);
+      if(d!==null && d!==undefined) vals.push(d);
+    });
+  }
   if(vals.some(v=>v<=30)) return 'red';
   if(vals.some(v=>v<=90)) return 'amber';
   if(vals.length) return 'green';
@@ -1463,7 +1609,15 @@ function buildViewHtml(p, isCoord){
     }
     camion += viewRow('Modul conducător auto (Cod 95) — expiră', p.dataExpirareModul95);
     camion += viewRow('ADR — valabil până la', p.dataExpirareADR);
+    camion += viewRow('Permisul e emis în', p.permisTaraEmitere);
     html += viewSection('Card tahograf & calificări (categorie camion)', camion);
+
+    const expCat = p.expirariCategorii || {};
+    const expCatRows = CATEGORII_CAMION
+      .filter(c=>(p.categoriiPermis||[]).includes(c) && expCat[c])
+      .map(c=>viewRow('Categoria ' + c + ' — expiră', expCat[c]))
+      .join('');
+    if(expCatRows) html += viewSection('Expirare pe categorii de permis', expCatRows);
   }
 
   const copiiTxt = p.areCopii==='da' ? ('Da'+(p.numarCopii?' ('+p.numarCopii+')':'')) : (p.areCopii==='nu' ? 'Nu' : '');
@@ -1500,13 +1654,42 @@ function openViewModal(id, isCoord){
 }
 function closeViewModal(){ document.getElementById('viewBackdrop').classList.remove('show'); }
 
+// Lista completă de documente cu dată de expirare, pentru board-ul de admin
+// (prag fix 30 de zile pentru toți — pragurile personalizate pe tip, setate
+// de fiecare coordonator, se aplică doar în "Echipa mea", nu aici).
+// Include acum, pe lângă permis + tahograf, și tot ce ține strict de
+// categoria camion: ADR, modulul (Cod 95) și expirarea pe fiecare
+// categorie de camion bifată (C1/C1E/C/CE) în parte.
+function computeAlertItems(){
+  const active = employees.filter(e=>e.status!=='Arhivat');
+  const items = [];
+  active.forEach(e=>{
+    const p = daysUntil(e.dataExpirarePermis);
+    if(p!==null && p<=30) items.push({id:e.id, name:e.numeComplet, type:'permis', days:p});
+    if(e.areCardTahograf){
+      const t = daysUntil(e.dataExpirareTahograf);
+      if(t!==null && t<=30) items.push({id:e.id, name:e.numeComplet, type:'card tahograf', days:t});
+    }
+    const isCamion = (e.categoriiPermis||[]).some(c=>CATEGORII_CAMION.includes(c));
+    if(isCamion){
+      const adr = daysUntil(e.dataExpirareADR);
+      if(adr!==null && adr<=30) items.push({id:e.id, name:e.numeComplet, type:'ADR', days:adr});
+      const mod95 = daysUntil(e.dataExpirareModul95);
+      if(mod95!==null && mod95<=30) items.push({id:e.id, name:e.numeComplet, type:'modul (Cod 95)', days:mod95});
+      const expCat = e.expirariCategorii||{};
+      (e.categoriiPermis||[]).filter(c=>CATEGORII_CAMION.includes(c)).forEach(c=>{
+        const d = daysUntil(expCat[c]);
+        if(d!==null && d<=30) items.push({id:e.id, name:e.numeComplet, type:'categoria '+c, days:d});
+      });
+    }
+  });
+  items.sort((a,b)=>a.days-b.days);
+  return items;
+}
+
 function renderStats(){
   const active = employees.filter(e=>e.status!=='Arhivat');
-  const soon = active.filter(e=>{
-    const p = daysUntil(e.dataExpirarePermis);
-    const t = e.areCardTahograf ? daysUntil(e.dataExpirareTahograf) : null;
-    return (p!==null && p<=30) || (t!==null && t<=30);
-  });
+  const soonIds = new Set(computeAlertItems().map(i=>i.id));
   // Numărul total de "Șoferi" din statistici include ambele tipuri —
   // șofer camion și șofer pachete — e o cifră de ansamblu, nu contează
   // distincția aici (distincția contează doar la Reclamații și la
@@ -1518,22 +1701,12 @@ function renderStats(){
   document.getElementById('statsRow').innerHTML = `
     <div class="stat"><b>${active.length}</b><small>Total angajați</small></div>
     <div class="stat"><b>${soferi.length}</b><small>Șoferi</small></div>
-    <div class="stat ${soon.length?'alert-red':''}"><b>${soon.length}</b><small>Expiră ≤30z</small></div>
+    <div class="stat ${soonIds.size?'alert-red':''}"><b>${soonIds.size}</b><small>Expiră ≤30z</small></div>
   `;
 }
 
 function renderAlerts(){
-  const active = employees.filter(e=>e.status!=='Arhivat');
-  const items = [];
-  active.forEach(e=>{
-    const p = daysUntil(e.dataExpirarePermis);
-    if(p!==null && p<=30) items.push({name:e.numeComplet, type:'permis', days:p});
-    if(e.areCardTahograf){
-      const t = daysUntil(e.dataExpirareTahograf);
-      if(t!==null && t<=30) items.push({name:e.numeComplet, type:'card tahograf', days:t});
-    }
-  });
-  items.sort((a,b)=>a.days-b.days);
+  const items = computeAlertItems();
   const banner = document.getElementById('alertBanner');
   if(!items.length){ banner.classList.remove('show'); return; }
   banner.classList.add('show');
@@ -1559,7 +1732,7 @@ function openModal(id){
   document.getElementById('modalIdTag').style.display='none';
   ['prenume','numeFamilie','numarPersonal','dataNasterii','telefon','email','strada','codPostal','oras','tara',
    'dataAngajare','dataIncetare','numarPermis','dataEliberarePermis','dataExpirarePermis',
-   'numarTahograf','dataExpirareTahograf','dataExpirareModul95','dataExpirareADR',
+   'numarTahograf','dataExpirareTahograf','dataExpirareModul95','dataExpirareADR','permisTaraEmitere',
    'cetatenie','cnp','dataExpirareBuletin','sozialversicherungsnummer','identnummer','numarCopii',
    'contactUrgentaNume','contactUrgentaTelefon','contactUrgentaRelatie',
    'notite'].forEach(f=>document.getElementById('f_'+f).value='');
@@ -1575,6 +1748,7 @@ function openModal(id){
   fillAsigurareMedicala('f_asigurareMedicala','f_asigurareMedicalaAlta','');
   setCats([]);
   setRoluri([]);
+  camionCatExpiryValues = {};
   toggleTahoFields();
   toggleTerminareField();
   toggleCopiiField();
@@ -1613,6 +1787,7 @@ function openModal(id){
       document.getElementById('f_dataExpirareTahograf').value = e.dataExpirareTahograf||'';
       document.getElementById('f_dataExpirareModul95').value = e.dataExpirareModul95||'';
       document.getElementById('f_dataExpirareADR').value = e.dataExpirareADR||'';
+      document.getElementById('f_permisTaraEmitere').value = e.permisTaraEmitere||'';
       document.getElementById('f_contactUrgentaNume').value = e.contactUrgentaNume||'';
       document.getElementById('f_contactUrgentaTelefon').value = e.contactUrgentaTelefon||'';
       document.getElementById('f_contactUrgentaRelatie').value = e.contactUrgentaRelatie||'';
@@ -1628,6 +1803,7 @@ function openModal(id){
       fillAsigurareMedicala('f_asigurareMedicala','f_asigurareMedicalaAlta', e.asigurareMedicala||'');
       document.getElementById('f_notite').value = e.notite||'';
       setCats(e.categoriiPermis||[]);
+      camionCatExpiryValues = Object.assign({}, e.expirariCategorii||{});
       toggleTahoFields();
       toggleTerminareField();
       toggleCopiiField();
@@ -1690,6 +1866,7 @@ async function saveEmployee(){
     coordonator: document.getElementById('f_coordonator').value,
     rolAprobator: document.getElementById('f_rolAprobator').value,
     categoriiPermis: getSelectedCats(),
+    expirariCategorii: getExpirariCategorii('f'),
     numarPermis: document.getElementById('f_numarPermis').value.trim(),
     dataEliberarePermis: document.getElementById('f_dataEliberarePermis').value,
     dataExpirarePermis: expPermis,
@@ -1698,6 +1875,7 @@ async function saveEmployee(){
     dataExpirareTahograf: document.getElementById('f_dataExpirareTahograf').value,
     dataExpirareModul95: document.getElementById('f_dataExpirareModul95').value,
     dataExpirareADR: document.getElementById('f_dataExpirareADR').value,
+    permisTaraEmitere: document.getElementById('f_permisTaraEmitere').value,
     contactUrgentaNume: document.getElementById('f_contactUrgentaNume').value.trim(),
     contactUrgentaTelefon: document.getElementById('f_contactUrgentaTelefon').value.trim(),
     contactUrgentaRelatie: document.getElementById('f_contactUrgentaRelatie').value.trim(),
@@ -1996,6 +2174,7 @@ function aprobaPropunere(propId){
   // niciodată din propunere — asta o decide exclusiv adminul, aici.
   document.getElementById('f_rolAprobator').value = '';
   setCats(d.categoriiPermis || []);
+  camionCatExpiryValues = Object.assign({}, d.expirariCategorii||{});
   document.getElementById('f_numarPermis').value = d.numarPermis || '';
   document.getElementById('f_dataEliberarePermis').value = d.dataEliberarePermis || '';
   document.getElementById('f_dataExpirarePermis').value = d.dataExpirarePermis || '';
@@ -2004,6 +2183,7 @@ function aprobaPropunere(propId){
   document.getElementById('f_dataExpirareTahograf').value = d.dataExpirareTahograf || '';
   document.getElementById('f_dataExpirareModul95').value = d.dataExpirareModul95 || '';
   document.getElementById('f_dataExpirareADR').value = d.dataExpirareADR || '';
+  document.getElementById('f_permisTaraEmitere').value = d.permisTaraEmitere || '';
   document.getElementById('f_cetatenie').value = d.cetatenie || '';
   document.getElementById('f_cnp').value = d.cnp || '';
   document.getElementById('f_dataExpirareBuletin').value = d.dataExpirareBuletin || '';
@@ -2234,10 +2414,104 @@ async function loadMyTeamCoord(){
     coordTeamCache = result.data.lista || [];
     coordMyGroup = result.data.myGroup || null;
     renderCoordTeamList();
+    await loadCoordAlertSettings();
+    renderCoordAlerts();
   }catch(err){
     console.error(err);
     listEl.innerHTML = '<div style="color:var(--red); font-size:13px;">Eroare la \u00eenc\u0103rcare: ' + (err.message||err) + '</div>';
   }
+}
+
+/* ================= ALERTE CAMION (coordonator) =================
+   Doar coordonatorii care au \u0219oferi de camion \u00een echip\u0103 v\u0103d acest panou.
+   Pragurile (c\u00e2te zile \u00eenainte de expirare) sunt setate de fiecare
+   coordonator pentru propria echip\u0103, separat pe fiecare categorie de
+   camion, ADR, modul (Cod 95) \u0219i card tahograf \u2014 vezi getMyAlertSettings/
+   saveMyAlertSettings din functions/index.js. */
+const ALERT_ITEM_TYPES = ["C1","C1E","C","CE","ADR","Modul95","Tahograf"];
+const ALERT_ITEM_LABELS = {
+  C1:'Categoria C1', C1E:'Categoria C1E', C:'Categoria C', CE:'Categoria CE',
+  ADR:'ADR', Modul95:'Modul conduc\u0103tor auto (Cod 95)', Tahograf:'Card tahograf'
+};
+function defaultAlertSettings(){
+  const o = {};
+  ALERT_ITEM_TYPES.forEach(t=>o[t]=30);
+  return o;
+}
+let coordAlertSettings = defaultAlertSettings();
+
+async function loadCoordAlertSettings(){
+  try{
+    const getMyAlertSettings = functionsRef.httpsCallable('getMyAlertSettings');
+    const result = await getMyAlertSettings();
+    coordAlertSettings = Object.assign(defaultAlertSettings(), result.data.praguri||{});
+  }catch(err){
+    console.error(err);
+    coordAlertSettings = defaultAlertSettings();
+  }
+}
+
+function openCoordAlertSettingsModal(){
+  const container = document.getElementById('coordAlertSettingsFields');
+  container.innerHTML = ALERT_ITEM_TYPES.map(t=>`
+    <div class="field">
+      <label>${ALERT_ITEM_LABELS[t]} \u2014 zile \u00eenainte</label>
+      <input type="number" min="1" max="365" id="coordAlertSet_${t}" value="${coordAlertSettings[t]||30}">
+    </div>
+  `).join('');
+  document.getElementById('coordAlertSettingsBackdrop').classList.add('show');
+}
+function closeCoordAlertSettingsModal(){
+  document.getElementById('coordAlertSettingsBackdrop').classList.remove('show');
+}
+async function saveCoordAlertSettingsModal(){
+  const praguri = {};
+  ALERT_ITEM_TYPES.forEach(t=>{
+    const v = parseInt(document.getElementById('coordAlertSet_'+t).value, 10);
+    praguri[t] = (v && v>0 && v<=365) ? v : 30;
+  });
+  try{
+    const saveMyAlertSettings = functionsRef.httpsCallable('saveMyAlertSettings');
+    const result = await saveMyAlertSettings({ praguri });
+    coordAlertSettings = Object.assign(defaultAlertSettings(), result.data.praguri||praguri);
+    closeCoordAlertSettingsModal();
+    renderCoordAlerts();
+  }catch(err){
+    console.error(err);
+    alert('Eroare la salvarea set\u0103rilor: ' + (err.message||err));
+  }
+}
+
+function renderCoordAlerts(){
+  const panel = document.getElementById('coordAlertPanel');
+  const camionMembers = coordTeamCache.filter(m=>(m.categoriiPermis||[]).some(c=>CATEGORII_CAMION.includes(c)));
+  if(!camionMembers.length){ panel.style.display = 'none'; return; }
+  panel.style.display = '';
+  const items = [];
+  camionMembers.forEach(m=>{
+    const nume = m.numeComplet || ((m.numeFamilie||'')+' '+(m.prenume||'')).trim() || '\u2014';
+    const expCat = m.expirariCategorii || {};
+    (m.categoriiPermis||[]).filter(c=>CATEGORII_CAMION.includes(c)).forEach(c=>{
+      const d = daysUntil(expCat[c]);
+      const prag = coordAlertSettings[c]||30;
+      if(d!==null && d<=prag) items.push({name:nume, type:ALERT_ITEM_LABELS[c], days:d});
+    });
+    const adr = daysUntil(m.dataExpirareADR);
+    if(adr!==null && adr<=(coordAlertSettings.ADR||30)) items.push({name:nume, type:ALERT_ITEM_LABELS.ADR, days:adr});
+    const mod95 = daysUntil(m.dataExpirareModul95);
+    if(mod95!==null && mod95<=(coordAlertSettings.Modul95||30)) items.push({name:nume, type:ALERT_ITEM_LABELS.Modul95, days:mod95});
+    if(m.areCardTahograf){
+      const taho = daysUntil(m.dataExpirareTahograf);
+      if(taho!==null && taho<=(coordAlertSettings.Tahograf||30)) items.push({name:nume, type:ALERT_ITEM_LABELS.Tahograf, days:taho});
+    }
+  });
+  items.sort((a,b)=>a.days-b.days);
+  const listEl = document.getElementById('coordAlertList');
+  listEl.innerHTML = items.length
+    ? '<ul style="margin:8px 0 0; padding-left:18px;">' + items.map(i=>
+        `<li><b>${escapeHtml(i.name)}</b> \u2014 ${escapeHtml(i.type)} ${i.days<0?`expirat de ${Math.abs(i.days)} zile`:`expir\u0103 \u00een ${i.days} zile`}</li>`
+      ).join('') + '</ul>'
+    : '<div style="color:var(--text-muted);">Niciun document nu se apropie de pragurile setate, momentan.</div>';
 }
 
 function renderCoordTeamList(){
@@ -2286,7 +2560,7 @@ function openCoordModal(memberId){
   ['coord_prenume','coord_numeFamilie','coord_dataNasterii','coord_telefon','coord_email','coord_strada',
    'coord_codPostal','coord_oras','coord_dataAngajare','coord_numarPermis','coord_dataEliberarePermis',
    'coord_dataExpirarePermis','coord_numarTahograf','coord_dataExpirareTahograf','coord_dataExpirareModul95',
-   'coord_dataExpirareADR','coord_cetatenie','coord_cnp','coord_dataExpirareBuletin','coord_sozialversicherungsnummer',
+   'coord_dataExpirareADR','coord_permisTaraEmitere','coord_cetatenie','coord_cnp','coord_dataExpirareBuletin','coord_sozialversicherungsnummer',
    'coord_identnummer','coord_numarCopii','coord_contactUrgentaNume','coord_contactUrgentaTelefon',
    'coord_contactUrgentaRelatie'].forEach(id=>{ document.getElementById(id).value=''; });
   document.getElementById('coord_tara').value = 'Germania';
@@ -2300,6 +2574,7 @@ function openCoordModal(memberId){
   fillAsigurareMedicala('coord_asigurareMedicala','coord_asigurareMedicalaAlta','');
   setCheckedIn('coordRolGrid', []);
   setCheckedIn('coordCatGrid', []);
+  coordCamionCatExpiryValues = {};
   document.getElementById('coord_error').textContent = '';
   toggleCoordTahoFields();
   toggleCoordCopiiField();
@@ -2325,6 +2600,7 @@ function openCoordModal(memberId){
       document.getElementById('coord_status').value = m.status||'Activ';
       document.getElementById('coord_coordonator').value = m.coordonator||coordMyGroup||'';
       setCheckedIn('coordCatGrid', m.categoriiPermis||[]);
+      coordCamionCatExpiryValues = Object.assign({}, m.expirariCategorii||{});
       document.getElementById('coord_numarPermis').value = m.numarPermis||'';
       document.getElementById('coord_dataEliberarePermis').value = m.dataEliberarePermis||'';
       document.getElementById('coord_dataExpirarePermis').value = m.dataExpirarePermis||'';
@@ -2333,6 +2609,7 @@ function openCoordModal(memberId){
       document.getElementById('coord_dataExpirareTahograf').value = m.dataExpirareTahograf||'';
       document.getElementById('coord_dataExpirareModul95').value = m.dataExpirareModul95||'';
       document.getElementById('coord_dataExpirareADR').value = m.dataExpirareADR||'';
+      document.getElementById('coord_permisTaraEmitere').value = m.permisTaraEmitere||'';
       document.getElementById('coord_contactUrgentaNume').value = m.contactUrgentaNume||'';
       document.getElementById('coord_contactUrgentaTelefon').value = m.contactUrgentaTelefon||'';
       document.getElementById('coord_contactUrgentaRelatie').value = m.contactUrgentaRelatie||'';
@@ -2396,6 +2673,7 @@ async function saveCoordMember(){
     status: document.getElementById('coord_status').value,
     coordonator: document.getElementById('coord_coordonator').value,
     categoriiPermis: getCheckedIn('coordCatGrid'),
+    expirariCategorii: getExpirariCategorii('coord'),
     numarPermis: document.getElementById('coord_numarPermis').value.trim(),
     dataEliberarePermis: document.getElementById('coord_dataEliberarePermis').value,
     dataExpirarePermis,
@@ -2404,6 +2682,7 @@ async function saveCoordMember(){
     dataExpirareTahograf: document.getElementById('coord_dataExpirareTahograf').value,
     dataExpirareModul95: document.getElementById('coord_dataExpirareModul95').value,
     dataExpirareADR: document.getElementById('coord_dataExpirareADR').value,
+    permisTaraEmitere: document.getElementById('coord_permisTaraEmitere').value,
     contactUrgentaNume: document.getElementById('coord_contactUrgentaNume').value.trim(),
     contactUrgentaTelefon: document.getElementById('coord_contactUrgentaTelefon').value.trim(),
     contactUrgentaRelatie: document.getElementById('coord_contactUrgentaRelatie').value.trim(),
