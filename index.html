@@ -441,7 +441,8 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
         </select>
         <select id="filterRol" onchange="renderBoard()">
           <option value="">Toate rolurile</option>
-          <option value="Șofer">Șofer</option>
+          <option value="Șofer camion">Șofer camion</option>
+          <option value="Șofer pachete">Șofer pachete</option>
           <option value="Dispecer">Dispecer</option>
           <option value="Administrativ">Administrativ</option>
           <option value="Mecanic">Mecanic</option>
@@ -952,7 +953,7 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
 const firebaseConfig = window.FIREBASE_CONFIG;
 // PIN-ul de admin NU mai stă în client — e verificat server-side în funcția checkAdminPin.
 const CATEGORII_PERMIS = ["AM","A1","A2","A","B","BE","C1","C1E","C","CE","D1","D1E","D","DE"];
-const ROLURI_DISPONIBILE = ["Șofer","Șofer pachete","Dispecer","Administrativ","Mecanic","Altul"];
+const ROLURI_DISPONIBILE = ["Șofer camion","Șofer pachete","Dispecer","Administrativ","Mecanic","Altul"];
 
 // Boardul de admin folosește o instanță Firebase separată de cea din
 // portal.html ("adminBoard" în loc de aplicația implicită). Dacă ar folosi
@@ -1506,7 +1507,14 @@ function renderStats(){
     const t = e.areCardTahograf ? daysUntil(e.dataExpirareTahograf) : null;
     return (p!==null && p<=30) || (t!==null && t<=30);
   });
-  const soferi = active.filter(e=>(e.roluri && e.roluri.length) ? e.roluri.includes('Șofer') : e.rol==='Șofer');
+  // Numărul total de "Șoferi" din statistici include ambele tipuri —
+  // șofer camion și șofer pachete — e o cifră de ansamblu, nu contează
+  // distincția aici (distincția contează doar la Reclamații și la
+  // câmpurile de camion din fișă).
+  const soferi = active.filter(e=>{
+    const rl = (e.roluri && e.roluri.length) ? e.roluri : (e.rol ? [e.rol] : []);
+    return rl.includes('Șofer camion') || rl.includes('Șofer pachete') || rl.includes('Șofer');
+  });
   document.getElementById('statsRow').innerHTML = `
     <div class="stat"><b>${active.length}</b><small>Total angajați</small></div>
     <div class="stat"><b>${soferi.length}</b><small>Șoferi</small></div>
