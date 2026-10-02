@@ -162,9 +162,15 @@ tbody tr:hover{background:#FAFBFC;}
   font-family:'JetBrains Mono',monospace; font-size:11.5px; background:var(--surface-alt);
   padding:3px 8px; border-radius:5px; letter-spacing:.04em;
 }
-.name-cell{min-width:190px;}
-.name-cell b{display:block; font-size:13.5px; line-height:1.35;}
-.name-cell small{display:block; color:var(--text-muted); font-size:11.5px; margin-top:4px; line-height:1.4;}
+.identity{display:flex; align-items:center; gap:10px; min-width:210px;}
+.avatar{
+  width:34px; height:34px; border-radius:50%; flex-shrink:0;
+  background:var(--primary-soft); color:var(--primary);
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:12.5px; letter-spacing:.01em;
+}
+.identity-text b{display:block; font-size:13.5px; line-height:1.3;}
+.identity-text small{display:block; color:var(--text-muted); font-size:11.5px; margin-top:3px; line-height:1.4;}
 .chip{
   display:inline-flex; align-items:center; gap:5px; padding:4px 9px; border-radius:100px;
   font-size:11.5px; font-weight:600; white-space:nowrap;
@@ -451,6 +457,7 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
         <label class="checkbtn"><input type="checkbox" id="filterArhivat" onchange="renderBoard()"> Arată arhivați</label>
       </div>
       <div style="display:flex; gap:10px;">
+        <button class="btn btn-secondary" onclick="openAdminAlertSettingsModal()">✉ Alerte email</button>
         <button class="btn btn-secondary" onclick="printSelectedSheets()">🖨 Fișe acces (selectați)</button>
         <button class="btn btn-secondary" onclick="exportCSV()">⬇ Export CSV</button>
         <button class="btn btn-primary" onclick="openModal()">+ Angajat nou</button>
@@ -464,8 +471,7 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
             <th></th>
             <th class="rowcheck"><input type="checkbox" id="selectAllBox" onchange="toggleSelectAll(this)"></th>
             <th onclick="setSort('employeeId')">Cod</th>
-            <th onclick="setSort('numeFamilie')">Nume</th>
-            <th onclick="setSort('prenume')">Prenume</th>
+            <th onclick="setSort('numeComplet')">Angajat</th>
             <th onclick="setSort('rol')">Rol · Locație</th>
             <th onclick="setSort('dataExpirarePermis')">Expiră permis</th>
             <th>Acces cont</th>
@@ -1040,6 +1046,25 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
   </div>
 </div>
 
+<!-- ============ MODAL: ALERTE EMAIL (admin) ============ -->
+<div class="modal-backdrop" id="adminAlertSettingsBackdrop">
+  <div class="modal">
+    <div class="modal-head"><h2>Alerte email — expirări</h2><button class="modal-close" onclick="closeAdminAlertSettingsModal()">✕</button></div>
+    <div class="modal-body">
+      <p class="hint" style="margin-top:0;">O dată pe zi, sistemul trimite pe email un rezumat al documentelor care expiră în curând: tu primești tot (camion + restul angajaților), iar fiecare coordonator primește doar alertele echipei lui de camion, la pragurile pe care și le-a setat singur.</p>
+      <div class="form-grid">
+        <div class="field full"><label>Email-ul tău (unde primești toate alertele)</label><input type="email" id="adminAlert_email" placeholder="ex: birou@mtc-transport.de"></div>
+        <div class="field"><label>Restul angajaților (ex: șoferi de pachete) — luni înainte</label><input type="number" min="1" max="24" id="adminAlert_luniGeneral" value="2"></div>
+      </div>
+      <p class="hint">Pragul de mai sus se aplică doar angajaților care NU au o categorie de camion (ei au deja pragurile lor separate, setate de coordonator). Trimiterea zilnică efectivă pe email trebuie activată o singură dată de cineva cu acces la Firebase (vezi instrucțiunile primite separat) — panoul ăsta doar salvează la ce prag și pe ce adresă.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeAdminAlertSettingsModal()">Anulează</button>
+      <button class="btn btn-primary" style="width:auto;" onclick="saveAdminAlertSettingsModal()">Salvează</button>
+    </div>
+  </div>
+</div>
+
 <div id="printSheets"></div>
 
 <script>
@@ -1229,6 +1254,7 @@ let approvingProposalId = null; // id-ul propunerii aprobate curent, în timp ce
 function initBoard(){
   buildCatGrid();
   buildRolGrid();
+  loadAdminAlertSettings();
   if(unsub) return;
   unsubFixedPoints = db.collection('puncte_fixe').onSnapshot(snap=>{
     fixedPoints = snap.docs.map(d=>({ id:d.id, ...d.data() }));
@@ -1255,7 +1281,7 @@ function initBoard(){
       }
     }catch(e){ claimsInfo = 'eroare: ' + e.message; }
     document.getElementById('boardBody').innerHTML =
-      `<tr><td colspan="11" style="padding:24px; color:var(--red);">
+      `<tr><td colspan="10" style="padding:24px; color:var(--red);">
         Eroare de conectare la Firestore: ${err.message}<br><br>
         <b>Claims curente (trimite-mi exact linia asta):</b><br>
         <span class="mono" style="font-size:12px;">${claimsInfo}</span>
@@ -1520,8 +1546,15 @@ function renderBoard(){
       <td style="padding:0; width:4px;"><div class="tab ${rowTabClass(e)}"></div></td>
       <td class="rowcheck" onclick="event.stopPropagation()"><input type="checkbox" class="rowSelect" data-id="${e.id}" ${selectedIds.has(e.id)?'checked':''} onchange="toggleRowSelect('${e.id}', this.checked)"></td>
       <td><span class="id-tag mono">${e.employeeId||'—'}</span></td>
-      <td class="name-cell"><b>${escapeHtml(displayNumeFamilie(e))}</b><small>${escapeHtml(addressLine(e))}${e.telefon?' · '+escapeHtml(e.telefon):''}</small></td>
-      <td>${escapeHtml(displayPrenume(e))}</td>
+      <td>
+        <div class="identity">
+          <div class="avatar">${escapeHtml(initials(e))}</div>
+          <div class="identity-text">
+            <b>${escapeHtml(displayPrenume(e))} ${escapeHtml(displayNumeFamilie(e))}</b>
+            <small>${escapeHtml(addressLine(e))}${e.telefon?' · '+escapeHtml(e.telefon):''}</small>
+          </div>
+        </div>
+      </td>
       <td>${rolesText(e)} <span style="color:var(--text-muted);">· ${escapeHtml(e.depot||'—')}</span></td>
       <td>${expiryChip(e.dataExpirarePermis)}</td>
       <td>${accessChip(e)}</td>
@@ -1542,6 +1575,12 @@ function renderBoard(){
   renderDistanceTable();
 }
 
+function initials(e){
+  const n = displayNumeFamilie(e), p = displayPrenume(e);
+  const a = (p||'').trim()[0] || '';
+  const b = (n||'').trim()[0] || '';
+  return (a+b).toUpperCase() || '—';
+}
 function addressLine(e){
   const parts = [e.strada, e.oras].filter(Boolean);
   return parts.length ? parts.join(', ') : (e.dataAngajare||'');
@@ -1660,6 +1699,50 @@ function closeViewModal(){ document.getElementById('viewBackdrop').classList.rem
 // Include acum, pe lângă permis + tahograf, și tot ce ține strict de
 // categoria camion: ADR, modulul (Cod 95) și expirarea pe fiecare
 // categorie de camion bifată (C1/C1E/C/CE) în parte.
+/* ================= ALERTE EMAIL (setări admin) =================
+   Emailul tău + pragul (în luni) pentru angajații FĂRĂ categorie de camion
+   (ex: șoferi de pachete) — folosite doar de job-ul zilnic de trimitere
+   email din functions/index.js (dailyExpiryDigest). Șoferii de camion au
+   deja pragurile lor separate, setate de fiecare coordonator. Adminul
+   scrie direct în meta/alertSettingsAdmin (același tipar ca meta/counter). */
+let adminAlertSettings = { emailAdmin:'', luniGeneral:2 };
+async function loadAdminAlertSettings(){
+  try{
+    const snap = await db.collection('meta').doc('alertSettingsAdmin').get();
+    if(snap.exists){
+      const d = snap.data();
+      adminAlertSettings = {
+        emailAdmin: d.emailAdmin || '',
+        luniGeneral: (Number(d.luniGeneral)>0) ? Number(d.luniGeneral) : 2
+      };
+    }
+  }catch(err){ console.error(err); }
+}
+function openAdminAlertSettingsModal(){
+  document.getElementById('adminAlert_email').value = adminAlertSettings.emailAdmin || '';
+  document.getElementById('adminAlert_luniGeneral').value = adminAlertSettings.luniGeneral || 2;
+  document.getElementById('adminAlertSettingsBackdrop').classList.add('show');
+}
+function closeAdminAlertSettingsModal(){
+  document.getElementById('adminAlertSettingsBackdrop').classList.remove('show');
+}
+async function saveAdminAlertSettingsModal(){
+  const emailAdmin = document.getElementById('adminAlert_email').value.trim();
+  let luniGeneral = parseInt(document.getElementById('adminAlert_luniGeneral').value, 10);
+  if(!(luniGeneral>0 && luniGeneral<=24)) luniGeneral = 2;
+  try{
+    await db.collection('meta').doc('alertSettingsAdmin').set({
+      emailAdmin, luniGeneral,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge:true });
+    adminAlertSettings = { emailAdmin, luniGeneral };
+    closeAdminAlertSettingsModal();
+  }catch(err){
+    console.error(err);
+    alert('Eroare la salvare: ' + (err.message||err));
+  }
+}
+
 function computeAlertItems(){
   const active = employees.filter(e=>e.status!=='Arhivat');
   const items = [];
