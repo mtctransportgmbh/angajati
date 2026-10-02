@@ -1550,7 +1550,7 @@ function renderBoard(){
         <div class="identity">
           <div class="avatar">${escapeHtml(initials(e))}</div>
           <div class="identity-text">
-            <b>${escapeHtml(displayPrenume(e))} ${escapeHtml(displayNumeFamilie(e))}</b>
+            <b>${escapeHtml(displayNumeFamilie(e))} ${escapeHtml(displayPrenume(e))}</b>
             <small>${escapeHtml(addressLine(e))}${e.telefon?' · '+escapeHtml(e.telefon):''}</small>
           </div>
         </div>
@@ -1577,8 +1577,8 @@ function renderBoard(){
 
 function initials(e){
   const n = displayNumeFamilie(e), p = displayPrenume(e);
-  const a = (p||'').trim()[0] || '';
-  const b = (n||'').trim()[0] || '';
+  const a = (n||'').trim()[0] || '';
+  const b = (p||'').trim()[0] || '';
   return (a+b).toUpperCase() || '—';
 }
 function addressLine(e){
