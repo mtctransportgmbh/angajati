@@ -234,18 +234,50 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
 .fab-btn.show{display:flex;}
 .fab-btn:active{transform:scale(.94);}
 
-/* ---------- Panou "cerere nouă" (peste conținut, ca un bottom sheet) ---------- */
-.req-overlay{position:absolute; inset:0; z-index:50; display:none;}
-.req-overlay.show{display:block;}
+/* ---------- Panou "cerere nouă": ecran complet cu calendar de aglomerare ---------- */
+.req-overlay{position:fixed; inset:0; z-index:100; display:none; align-items:center; justify-content:center;}
+.req-overlay.show{display:flex;}
 .req-overlay-backdrop{position:absolute; inset:0; background:rgba(20,26,34,.45);}
 .req-sheet{
-  position:absolute; left:0; right:0; bottom:0; background:var(--surface);
-  border-radius:20px 20px 0 0; padding:18px 20px calc(22px + env(safe-area-inset-bottom));
-  box-shadow:0 -8px 30px rgba(0,0,0,.15); animation:sheetUp .18s ease-out;
-  max-height:min(70vh, 520px); overflow-y:auto; -webkit-overflow-scrolling:touch;
+  position:relative; width:100%; max-width:440px; height:100%; max-height:100dvh;
+  background:var(--surface); display:flex; flex-direction:column;
+  animation:sheetUp .18s ease-out;
 }
+@media (min-width:480px){ .req-sheet{height:min(780px, 94dvh); border-radius:22px; overflow:hidden; box-shadow:0 12px 40px rgba(0,0,0,.25);} }
+.req-sheet-scroll{flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:0 16px 8px;}
+.req-sheet-foot{padding:12px 16px calc(14px + env(safe-area-inset-bottom)); border-top:1px solid var(--border); background:var(--surface);}
+/* calendar */
+.cal-nav{display:flex; align-items:center; justify-content:space-between; margin:6px 0 10px;}
+.cal-nav b{font-family:'Space Grotesk',sans-serif; font-size:16px; text-transform:capitalize;}
+.cal-nav button{width:36px; height:36px; border-radius:10px; border:1px solid var(--border); background:var(--surface); font-size:16px; cursor:pointer; color:var(--text);}
+.cal-nav button:disabled{opacity:.35; cursor:default;}
+.cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:4px;}
+.cal-dow{text-align:center; font-size:11px; color:var(--text-muted); padding:2px 0 4px; font-weight:600;}
+.cal-day{
+  aspect-ratio:1/1.08; border-radius:10px; border:2px solid transparent; background:var(--green-soft); color:var(--green);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:14px; font-weight:600;
+  cursor:pointer; position:relative; padding:0; font-family:inherit; line-height:1.1;
+}
+.cal-day small{font-size:9.5px; font-weight:500; opacity:.85; min-height:11px;}
+.cal-day.lvl-y{background:var(--amber-soft); color:#8A6300;}
+.cal-day.lvl-r{background:var(--red-soft); color:var(--red);}
+.cal-day.off{background:var(--surface-alt); color:var(--text-muted); font-weight:500;}
+.cal-day.past{background:transparent; color:#B5BBC4; cursor:default; font-weight:400;}
+.cal-day.blank{visibility:hidden; cursor:default;}
+.cal-day.in-sel{border-color:var(--primary); box-shadow:inset 0 0 0 100px rgba(30,58,95,.14);}
+.cal-day.sel-edge{background:var(--primary); border-color:var(--primary); color:#fff;}
+.cal-day.today::after{content:''; position:absolute; bottom:3px; width:4px; height:4px; border-radius:50%; background:currentColor;}
+.cal-day.mine::before{content:''; position:absolute; top:3px; right:4px; width:7px; height:7px; border-radius:50%; background:var(--primary); border:1.5px solid #fff;}
+.cal-legend{display:flex; flex-wrap:wrap; gap:10px 14px; font-size:11.5px; color:var(--text-muted); margin:12px 0 4px;}
+.cal-legend i{display:inline-block; width:12px; height:12px; border-radius:4px; vertical-align:-2px; margin-right:5px;}
+.cal-sum{background:var(--surface-alt); border-radius:12px; padding:11px 13px; margin:10px 0; font-size:13px; min-height:20px;}
+.cal-sum b{font-family:'JetBrains Mono',monospace; font-size:12.5px;}
+.cal-sum .busy-r{color:var(--red); font-weight:600;}
+.cal-sum .busy-y{color:#8A6300; font-weight:600;}
+.cal-sum .busy-g{color:var(--green); font-weight:600;}
+.cal-status{font-size:12px; color:var(--text-muted); margin:6px 0 2px;}
 @keyframes sheetUp{from{transform:translateY(16px); opacity:.6;} to{transform:translateY(0); opacity:1;}}
-.req-sheet-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
+.req-sheet-head{display:flex; align-items:center; justify-content:space-between; padding:16px 16px 8px;}
 .req-sheet-head h3{font-size:16px; margin:0;}
 .btn:disabled{opacity:.6; cursor:not-allowed;}
 
@@ -386,6 +418,7 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
 
       <!-- ---------- TAB: ACASĂ ---------- -->
       <section id="tab-acasa" class="tab-panel active">
+        <div id="dataFreshness" style="display:none; font-size:12px; color:var(--text-muted); margin:0 0 10px;"></div>
         <div class="glance-row">
           <div class="glance-tile" onclick="switchTab('concediu')">
             <div class="glance-num" id="g_vacRamase">—</div>
@@ -467,17 +500,30 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
         <div class="req-overlay-backdrop" onclick="closeRequestOverlay()"></div>
         <div class="req-sheet">
           <div class="req-sheet-head">
-            <h3>Cerere de concediu</h3>
+            <h3>Alege perioada de concediu</h3>
             <button class="ph-icon-btn" onclick="closeRequestOverlay()">✕</button>
           </div>
-          <div class="req-form" style="margin-bottom:0;">
-            <div class="req-row">
-              <div class="field"><label>De la</label><input type="date" id="req_start"></div>
-              <div class="field"><label>Până la</label><input type="date" id="req_end"></div>
+          <div class="req-sheet-scroll">
+            <div class="cal-nav">
+              <button id="calPrev" onclick="calShift(-1)" aria-label="Luna anterioară">‹</button>
+              <b id="calTitle">—</b>
+              <button id="calNext" onclick="calShift(1)" aria-label="Luna următoare">›</button>
             </div>
+            <div class="cal-grid" id="calDow"></div>
+            <div class="cal-grid" id="calGrid"></div>
+            <div class="cal-status" id="calStatus"></div>
+            <div class="cal-legend">
+              <span><i style="background:var(--green-soft); border:1px solid var(--green)"></i>Liber (0–2 colegi)</span>
+              <span><i style="background:var(--amber-soft); border:1px solid var(--amber)"></i>Destul de ocupat (3–4)</span>
+              <span><i style="background:var(--red-soft); border:1px solid var(--red)"></i>Aglomerat (5+)</span>
+              <span><i style="background:var(--surface-alt)"></i>Zi liberă</span>
+            </div>
+            <div class="cal-sum" id="calSummary">Atinge prima zi, apoi ultima zi de concediu.</div>
             <div class="field"><label>Motiv (opțional)</label><input type="text" id="req_motiv" maxlength="300" placeholder="ex: vacanță în familie"></div>
-            <button class="btn btn-primary" id="submitReqBtn" onclick="submitRequest()">Trimite cererea</button>
-            <div id="req_error" style="color:var(--red); font-size:12px; margin-top:8px; min-height:14px;"></div>
+            <div id="req_error" style="color:var(--red); font-size:12px; min-height:14px;"></div>
+          </div>
+          <div class="req-sheet-foot">
+            <button class="btn btn-primary" id="submitReqBtn" onclick="submitRequest()" disabled>Trimite cererea</button>
           </div>
         </div>
       </div>
@@ -595,11 +641,143 @@ function switchTab(name){
   if(content) content.scrollTop = 0;
 }
 
+/* ================= CALENDAR DE CERERE CONCEDIU ================= */
+const CAL_RED = 5, CAL_YELLOW = 3; // 5+ persoane = aglomerat, 3-4 = destul de ocupat
+let calData = null;       // { counts, libere:Set, mine:[...] } de la server
+let calMonth = null;      // primul al lunii afișate (Date)
+let calStart = null, calEnd = null; // 'YYYY-MM-DD'
+let calMinMonth = null, calMaxMonth = null;
+
+function calKey(y,m,d){ return y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0'); }
+function calFmt(k){ const [y,m,d]=k.split('-').map(Number); return d+' '+MONTHS_RO[m-1]; }
+
 function openRequestOverlay(){
   document.getElementById('requestOverlay').classList.add('show');
+  const now = new Date();
+  calMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  calMinMonth = new Date(calMonth);
+  calMaxMonth = new Date(now.getFullYear(), now.getMonth()+11, 1);
+  calStart = calEnd = null;
+  document.getElementById('req_error').textContent = '';
+  document.getElementById('calDow').innerHTML = ['L','M','M','J','V','S','D'].map(x=>'<div class="cal-dow">'+x+'</div>').join('');
+  renderCalendar();
+  loadCalendar();
 }
 function closeRequestOverlay(){
   document.getElementById('requestOverlay').classList.remove('show');
+}
+
+async function loadCalendar(){
+  const uid = auth.currentUser.uid;
+  const statusEl = document.getElementById('calStatus');
+  const cached = cacheGet(uid, 'calendar');
+  if(cached){ calData = { counts: cached.counts, libere: new Set(cached.libere), mine: cached.mine||[] }; renderCalendar(); statusEl.textContent = 'Se actualizează ocuparea…'; }
+  else { statusEl.textContent = 'Se încarcă ocuparea…'; }
+  try{
+    const idToken = await auth.currentUser.getIdToken();
+    const fn = concediiFunctions.httpsCallable('getLeaveCalendar');
+    const r = await fn({ idToken });
+    cacheSet(uid, 'calendar', r.data);
+    calData = { counts: r.data.counts, libere: new Set(r.data.libere), mine: r.data.mine||[] };
+    statusEl.textContent = '';
+    renderCalendar();
+  }catch(err){
+    console.error(err);
+    statusEl.textContent = cached
+      ? 'Nu am putut actualiza ocuparea — culorile pot fi depășite.'
+      : 'Nu am putut încărca ocuparea colegilor (' + (err.message||err.code||err) + '). Poți totuși alege perioada.';
+  }
+}
+
+function calShift(delta){
+  const n = new Date(calMonth.getFullYear(), calMonth.getMonth()+delta, 1);
+  if(n < calMinMonth || n > calMaxMonth) return;
+  calMonth = n;
+  renderCalendar();
+}
+
+function calLevel(n){ return n >= CAL_RED ? 'r' : (n >= CAL_YELLOW ? 'y' : 'g'); }
+
+function renderCalendar(){
+  const y = calMonth.getFullYear(), m = calMonth.getMonth();
+  document.getElementById('calTitle').textContent = calMonth.toLocaleDateString('ro-RO', { month:'long', year:'numeric' });
+  document.getElementById('calPrev').disabled = calMonth <= calMinMonth;
+  document.getElementById('calNext').disabled = calMonth >= calMaxMonth;
+
+  const first = new Date(y, m, 1);
+  const lead = (first.getDay() + 6) % 7; // luni = 0
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const now = new Date();
+  const todayK = calKey(now.getFullYear(), now.getMonth(), now.getDate());
+  const counts = calData ? calData.counts : {};
+  const libere = calData ? calData.libere : new Set();
+  const mineDays = new Set();
+  if(calData) calData.mine.forEach(p=>{
+    const s = new Date(p.start+'T00:00:00'), e = new Date(p.end+'T00:00:00');
+    for(let d=new Date(s); d<=e; d.setDate(d.getDate()+1)) mineDays.add(calKey(d.getFullYear(), d.getMonth(), d.getDate()));
+  });
+
+  let h = '';
+  for(let i=0;i<lead;i++) h += '<button class="cal-day blank" tabindex="-1"></button>';
+  for(let d=1; d<=daysInMonth; d++){
+    const k = calKey(y,m,d);
+    const past = k < todayK;
+    const cls = ['cal-day'];
+    const n = counts[k] || 0;
+    if(past) cls.push('past');
+    else if(libere.has(k)) cls.push('off');
+    else cls.push('lvl-' + calLevel(n));
+    if(k === todayK) cls.push('today');
+    if(mineDays.has(k)) cls.push('mine');
+    if(calStart){
+      const e = calEnd || calStart;
+      if(k >= calStart && k <= e) cls.push('in-sel');
+      if(k === calStart || k === e) cls.push('sel-edge');
+    }
+    const sub = (!past && n>0 && !libere.has(k)) ? n : '';
+    h += `<button class="${cls.join(' ')}" ${past?'disabled':''} onclick="calPick('${k}')">${d}<small>${sub}</small></button>`;
+  }
+  document.getElementById('calGrid').innerHTML = h;
+  renderCalSummary();
+}
+
+function calPick(k){
+  if(!calStart || calEnd){ calStart = k; calEnd = null; }
+  else if(k < calStart){ calStart = k; }
+  else { calEnd = k; }
+  renderCalendar();
+}
+
+function renderCalSummary(){
+  const el = document.getElementById('calSummary');
+  const btn = document.getElementById('submitReqBtn');
+  if(!calStart){
+    el.textContent = 'Atinge prima zi, apoi ultima zi de concediu.';
+    btn.disabled = true;
+    return;
+  }
+  const end = calEnd || calStart;
+  const counts = calData ? calData.counts : {};
+  const libere = calData ? calData.libere : new Set();
+  let workdays = 0, maxN = 0, redDays = 0;
+  for(let d=new Date(calStart+'T00:00:00'), e=new Date(end+'T00:00:00'); d<=e; d.setDate(d.getDate()+1)){
+    const k = calKey(d.getFullYear(), d.getMonth(), d.getDate());
+    if(!libere.has(k)){
+      workdays++;
+      const n = counts[k] || 0;
+      if(n > maxN) maxN = n;
+      if(n >= CAL_RED) redDays++;
+    }
+  }
+  const label = calStart === end ? calFmt(calStart) : calFmt(calStart) + ' → ' + calFmt(end);
+  let note;
+  if(!calData) note = '';
+  else if(maxN >= CAL_RED) note = `<div class="busy-r">Perioadă aglomerată: ${redDays} ${redDays===1?'zi cu':'zile cu'} ${CAL_RED}+ colegi deja în concediu sau cu cerere. Cererea poate fi respinsă.</div>`;
+  else if(maxN >= CAL_YELLOW) note = `<div class="busy-y">Destul de ocupat: până la ${maxN} colegi în aceeași perioadă.</div>`;
+  else note = `<div class="busy-g">Perioadă liberă — maxim ${maxN} ${maxN===1?'coleg':'colegi'} în concediu.</div>`;
+  const hint = (!calEnd && calStart) ? '<div style="color:var(--text-muted); margin-top:4px;">Atinge ultima zi sau trimite doar această zi.</div>' : '';
+  el.innerHTML = `<b>${label}</b> · ${workdays} ${workdays===1?'zi lucrătoare':'zile lucrătoare'}${note}${hint}`;
+  btn.disabled = false;
 }
 
 let currentMustChangePin = false;
@@ -608,9 +786,6 @@ let lastReclData = null;
 let lastMyRequests = null;
 
 async function init(){
-  const todayStr = new Date().toISOString().slice(0,10);
-  document.getElementById('req_start').min = todayStr;
-  document.getElementById('req_end').min = todayStr;
 
   const params = new URLSearchParams(window.location.search);
   const qrToken = params.get('login');
@@ -662,38 +837,114 @@ function initialsFromName(nume){
   return (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
 }
 
+/* ================= CACHE LOCAL (afișare instantanee) =================
+   Ultimele date primite (profil, concedii, reclamații, cereri) se țin pe
+   dispozitiv, legate de contul angajatului. La următoarea logare, ecranul se
+   umple pe loc din ele, iar datele proaspete sosesc în fundal și le
+   înlocuiesc. Se șterge complet când apeși "Ieși din cont". Nu se salvează
+   nimic despre alți angajați (coada de aprobare a coordonatorului nu intră
+   aici) și nimic mai vechi de 7 zile nu se mai afișează. */
+const CACHE_PREFIX = 'mtc_portal_cache_v1:';
+const CACHE_MAX_AGE_MS = 7*24*3600*1000;
+function cacheGet(uid, name){
+  try{
+    const raw = localStorage.getItem(CACHE_PREFIX + uid + ':' + name);
+    if(!raw) return null;
+    const o = JSON.parse(raw);
+    if(!o || (Date.now() - o.t) > CACHE_MAX_AGE_MS) return null;
+    return o.d;
+  }catch(e){ return null; }
+}
+function cacheSet(uid, name, data){
+  try{ localStorage.setItem(CACHE_PREFIX + uid + ':' + name, JSON.stringify({ t: Date.now(), d: data })); }catch(e){}
+}
+function cacheClearAll(){
+  try{
+    Object.keys(localStorage).filter(k=>k.startsWith(CACHE_PREFIX)).forEach(k=>localStorage.removeItem(k));
+  }catch(e){}
+}
+
+// Mică notă pe ecranul principal cât datele afișate sunt cele salvate la
+// ultima vizită: "se actualizează…", sau — dacă reîmprospătarea a eșuat —
+// avertisment că cifrele pot fi vechi (ca să nu te bazezi pe ele pe nevăzute).
+let refreshPending = 0;
+let refreshFailed = false;
+function noteRefreshStart(){ refreshPending++; updateFreshness(); }
+function noteRefreshEnd(ok){
+  refreshPending = Math.max(0, refreshPending-1);
+  if(!ok) refreshFailed = true;
+  updateFreshness();
+}
+function updateFreshness(){
+  const el = document.getElementById('dataFreshness');
+  if(!el) return;
+  if(refreshPending > 0){
+    el.textContent = 'Se actualizează datele…';
+    el.style.display = 'block';
+  } else if(refreshFailed){
+    el.textContent = 'Nu am putut actualiza — vezi datele salvate la ultima vizită, pot fi depășite.';
+    el.style.display = 'block';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
 async function loadProfile(){
   const uid = auth.currentUser.uid;
+  const cachedProfile = cacheGet(uid, 'profile');
+  const started = { recl:false, appr:false };
+
+  function applyProfile(e){
+    document.getElementById('welcomeName').textContent = e.numeComplet || '—';
+    document.getElementById('ph_avatar').textContent = initialsFromName(e.numeComplet);
+    if(currentMustChangePin) togglePinChangeCard(true);
+
+    const isCoordonator = !!e.rolAprobator;
+    document.getElementById('tabBtnAprobari').style.display = isCoordonator ? 'flex' : 'none';
+    document.getElementById('tabBtnAprobariSidebar').style.display = isCoordonator ? 'flex' : 'none';
+
+    // Reclamațiile sunt relevante doar pentru șoferii de pachete — restul
+    // angajaților (dispeceri, administrativ, mecanici, alți șoferi) nu au
+    // nevoie de tabul ăsta. Se activează bifând rolul "Șofer pachete" din
+    // fișa angajatului (index.html / Echipa mea).
+    const poateVedeaReclamatii = (e.roluri||[]).includes('Șofer pachete');
+    document.getElementById('tabBtnReclamatii').style.display = poateVedeaReclamatii ? 'flex' : 'none';
+    document.getElementById('tabBtnReclamatiiSidebar').style.display = poateVedeaReclamatii ? 'flex' : 'none';
+    return { isCoordonator, poateVedeaReclamatii };
+  }
+  function startRoleDependentLoads(flags){
+    if(flags.poateVedeaReclamatii && !started.recl){ started.recl = true; loadReclamatiiData(); }
+    if(flags.isCoordonator && !started.appr){ started.appr = true; loadApprovalQueue(); }
+  }
+
+  // 1) Avem profilul de la ultima vizită? Arată aplicația IMEDIAT, fără să
+  //    aștepte nicio cerere în rețea.
+  if(cachedProfile){
+    const flags = applyProfile(cachedProfile);
+    switchTab('acasa');
+    show('appState');
+    startRoleDependentLoads(flags);
+  }
+
+  // 2) Concediile și cererile nu depind de profil — pornesc chiar acum, în
+  //    paralel cu citirea profilului (înainte așteptau după el).
+  loadVacationData();
+  loadMyRequests();
+
+  // 3) Profilul proaspăt (rolurile pot fi schimbate între timp).
   const doc = await db.collection('angajati').doc(uid).get();
   if(!doc.exists){
     showError('Contul nu are un profil asociat. Contactează administratorul.');
     return;
   }
   const e = doc.data();
-  document.getElementById('welcomeName').textContent = e.numeComplet || '—';
-  document.getElementById('ph_avatar').textContent = initialsFromName(e.numeComplet);
-  if(currentMustChangePin) togglePinChangeCard(true);
-
-  const isCoordonator = !!e.rolAprobator;
-  document.getElementById('tabBtnAprobari').style.display = isCoordonator ? 'flex' : 'none';
-  document.getElementById('tabBtnAprobariSidebar').style.display = isCoordonator ? 'flex' : 'none';
-
-  // Reclamațiile sunt relevante doar pentru șoferii de pachete — restul
-  // angajaților (dispeceri, administrativ, mecanici, alți șoferi) nu au
-  // nevoie de tabul ăsta. Se activează bifând rolul "Șofer pachete" din
-  // fișa angajatului (index.html / Echipa mea).
-  const poateVedeaReclamatii = (e.roluri||[]).includes('Șofer pachete');
-  document.getElementById('tabBtnReclamatii').style.display = poateVedeaReclamatii ? 'flex' : 'none';
-  document.getElementById('tabBtnReclamatiiSidebar').style.display = poateVedeaReclamatii ? 'flex' : 'none';
-
-  switchTab('acasa');
-  show('appState');
-  loadVacationData();
-  if(poateVedeaReclamatii) loadReclamatiiData();
-  loadMyRequests();
-  if(isCoordonator){
-    loadApprovalQueue();
+  cacheSet(uid, 'profile', { numeComplet: e.numeComplet || '', roluri: e.roluri || [], rolAprobator: e.rolAprobator || '' });
+  const flags = applyProfile(e);
+  if(!cachedProfile){
+    switchTab('acasa');
+    show('appState');
   }
+  startRoleDependentLoads(flags);
 }
 
 /* ================= HOME: quick-glance summary ================= */
@@ -748,60 +999,77 @@ function renderNextLeave(l){
   </div>`;
 }
 
+function renderVacation(d){
+  const loadingEl = document.getElementById('vacationLoading');
+  const contentEl = document.getElementById('vacationContent');
+  const errorEl = document.getElementById('vacationError');
+  lastVacData = d;
+  loadingEl.style.display = 'none';
+
+  if(!d.linked){
+    contentEl.style.display = 'none';
+    errorEl.style.display = 'block';
+    errorEl.textContent = d.reason || 'Contul nu e încă legat de Concedii.';
+    updateHomeGlance();
+    return;
+  }
+  errorEl.style.display = 'none';
+
+  document.getElementById('v_ramase').textContent = d.remaining;
+  document.getElementById('v_folosite').textContent = d.usedLeaves;
+  document.getElementById('v_total').textContent = d.totalAvailable;
+
+  const extraParts = [];
+  if(d.carryOver) extraParts.push(`<span><b>${d.carryOver}</b> reportate din anul trecut</span>`);
+  if(d.usedKrank) extraParts.push(`<span><b>${d.usedKrank}</b> zile Krank folosite</span>`);
+  if(d.usedUnpaid) extraParts.push(`<span><b>${d.usedUnpaid}</b> zile fără plată folosite</span>`);
+  document.getElementById('v_extra').innerHTML = extraParts.join('');
+
+  const nextEl = document.getElementById('v_next');
+  nextEl.innerHTML = d.upcoming.length
+    ? renderNextLeave(d.upcoming[0])
+    : '<div class="vac-empty">Niciun concediu planificat.</div>';
+
+  const restUpcoming = d.upcoming.slice(1);
+  const upcomingEl = document.getElementById('v_upcoming');
+  upcomingEl.innerHTML = restUpcoming.length
+    ? restUpcoming.map(l=>`<div class="vac-item"><span>${l.start} → ${l.end}</span></div>`).join('')
+    : '<div class="vac-empty">Niciun alt concediu planificat.</div>';
+
+  const pastEl = document.getElementById('v_past');
+  pastEl.innerHTML = d.past.length
+    ? d.past.map(l=>`<div class="vac-item"><span>${l.start} → ${l.end}</span></div>`).join('')
+    : '<div class="vac-empty">Niciun concediu luat anul acesta.</div>';
+
+  contentEl.style.display = 'block';
+  updateHomeGlance();
+}
+
 async function loadVacationData(){
   const loadingEl = document.getElementById('vacationLoading');
   const contentEl = document.getElementById('vacationContent');
   const errorEl = document.getElementById('vacationError');
-  loadingEl.style.display = 'block';
-  contentEl.style.display = 'none';
-  errorEl.style.display = 'none';
+  const uid = auth.currentUser.uid;
+  const cached = cacheGet(uid, 'vacation');
+  if(cached){
+    renderVacation(cached);
+    noteRefreshStart();
+  } else {
+    loadingEl.style.display = 'block';
+    contentEl.style.display = 'none';
+    errorEl.style.display = 'none';
+  }
 
   try{
     const idToken = await auth.currentUser.getIdToken();
     const getMyLeaveData = concediiFunctions.httpsCallable('getMyLeaveData');
     const result = await getMyLeaveData({ idToken });
-    const d = result.data;
-    lastVacData = d;
-
-    if(!d.linked){
-      loadingEl.style.display = 'none';
-      errorEl.style.display = 'block';
-      errorEl.textContent = d.reason || 'Contul nu e încă legat de Concedii.';
-      updateHomeGlance();
-      return;
-    }
-
-    document.getElementById('v_ramase').textContent = d.remaining;
-    document.getElementById('v_folosite').textContent = d.usedLeaves;
-    document.getElementById('v_total').textContent = d.totalAvailable;
-
-    const extraParts = [];
-    if(d.carryOver) extraParts.push(`<span><b>${d.carryOver}</b> reportate din anul trecut</span>`);
-    if(d.usedKrank) extraParts.push(`<span><b>${d.usedKrank}</b> zile Krank folosite</span>`);
-    if(d.usedUnpaid) extraParts.push(`<span><b>${d.usedUnpaid}</b> zile fără plată folosite</span>`);
-    document.getElementById('v_extra').innerHTML = extraParts.join('');
-
-    const nextEl = document.getElementById('v_next');
-    nextEl.innerHTML = d.upcoming.length
-      ? renderNextLeave(d.upcoming[0])
-      : '<div class="vac-empty">Niciun concediu planificat.</div>';
-
-    const restUpcoming = d.upcoming.slice(1);
-    const upcomingEl = document.getElementById('v_upcoming');
-    upcomingEl.innerHTML = restUpcoming.length
-      ? restUpcoming.map(l=>`<div class="vac-item"><span>${l.start} → ${l.end}</span></div>`).join('')
-      : '<div class="vac-empty">Niciun alt concediu planificat.</div>';
-
-    const pastEl = document.getElementById('v_past');
-    pastEl.innerHTML = d.past.length
-      ? d.past.map(l=>`<div class="vac-item"><span>${l.start} → ${l.end}</span></div>`).join('')
-      : '<div class="vac-empty">Niciun concediu luat anul acesta.</div>';
-
-    loadingEl.style.display = 'none';
-    contentEl.style.display = 'block';
-    updateHomeGlance();
+    cacheSet(uid, 'vacation', result.data);
+    renderVacation(result.data);
+    if(cached) noteRefreshEnd(true);
   }catch(err){
     console.error(err);
+    if(cached){ noteRefreshEnd(false); return; }
     loadingEl.style.display = 'none';
     errorEl.style.display = 'block';
     errorEl.textContent = 'Nu am putut încărca datele de concediu (' + (err.message||err.code||err) + ').';
@@ -810,70 +1078,86 @@ async function loadVacationData(){
 
 const STATUS_LABEL = { rezolvata:'Rezolvată', nerezolvata:'Nerezolvată', neprelucrat:'În procesare', checking:'În verificare', parsing:'În procesare', error:'Eroare', ready:'În procesare' };
 
+function renderReclamatii(d){
+  const loadingEl = document.getElementById('reclamatiiLoading');
+  const contentEl = document.getElementById('reclamatiiContent');
+  const errorEl = document.getElementById('reclamatiiError');
+  loadingEl.style.display = 'none';
+
+  if(!d.linked){
+    contentEl.style.display = 'none';
+    errorEl.style.display = 'block';
+    errorEl.textContent = d.reason || 'Contul nu e încă legat de Reclamații.';
+    lastReclData = { nerezolvate: 0 };
+    updateHomeGlance();
+    return;
+  }
+  errorEl.style.display = 'none';
+  lastReclData = d;
+
+  document.getElementById('r_total').textContent = d.total;
+  document.getElementById('r_rezolvate').textContent = d.rezolvate;
+  document.getElementById('r_nerezolvate').textContent = d.nerezolvate;
+
+  const extraParts = [];
+  extraParts.push(`<span><b>€${d.totalSuma.toFixed(2)}</b> sumă totală</span>`);
+  if(d.inProcesare) extraParts.push(`<span><b>${d.inProcesare}</b> în procesare</span>`);
+  document.getElementById('r_extra').innerHTML = extraParts.join('');
+
+  const nerezolvateList = d.lista.filter(r=>r.status==='nerezolvata');
+  const rezolvateList = d.lista.filter(r=>r.status==='rezolvata');
+  const alteleList = d.lista.filter(r=>r.status!=='nerezolvata' && r.status!=='rezolvata');
+
+  function reclItem(r){
+    const suma = r.suma>0 ? `<span class="suma has-suma">€${r.suma.toFixed(2)}</span>` : `<span class="suma">—</span>`;
+    return `<div class="recl-item st-${r.status}">
+      <div class="row1"><span>${escapeHtmlP(r.client||'—')}</span>${suma}</div>
+      <div class="row2">${r.data||'fără dată'}${r.belegNr?' · #'+escapeHtmlP(r.belegNr):''}</div>
+    </div>`;
+  }
+  function reclGroup(title, cls, list){
+    if(!list.length) return '';
+    return `<div class="recl-group">
+      <div class="recl-group-head ${cls}">${title} <span class="count">${list.length}</span></div>
+      ${list.map(reclItem).join('')}
+    </div>`;
+  }
+
+  document.getElementById('r_groups').innerHTML =
+    reclGroup('Nerezolvate', 'nerezolvate', nerezolvateList) +
+    reclGroup('Rezolvate', 'rezolvate', rezolvateList) +
+    reclGroup('În procesare', '', alteleList) +
+    (d.lista.length ? '' : '<div class="vac-empty">Nicio reclamație înregistrată.</div>');
+
+  contentEl.style.display = 'block';
+  updateHomeGlance();
+}
+
 async function loadReclamatiiData(){
   const loadingEl = document.getElementById('reclamatiiLoading');
   const contentEl = document.getElementById('reclamatiiContent');
   const errorEl = document.getElementById('reclamatiiError');
-  loadingEl.style.display = 'block';
-  contentEl.style.display = 'none';
-  errorEl.style.display = 'none';
+  const uid = auth.currentUser.uid;
+  const cached = cacheGet(uid, 'reclamatii');
+  if(cached){
+    renderReclamatii(cached);
+    noteRefreshStart();
+  } else {
+    loadingEl.style.display = 'block';
+    contentEl.style.display = 'none';
+    errorEl.style.display = 'none';
+  }
 
   try{
     const idToken = await auth.currentUser.getIdToken();
     const getMyReclamatii = reclamatiiFunctions.httpsCallable('getMyReclamatii');
     const result = await getMyReclamatii({ idToken });
-    const d = result.data;
-
-    if(!d.linked){
-      loadingEl.style.display = 'none';
-      errorEl.style.display = 'block';
-      errorEl.textContent = d.reason || 'Contul nu e încă legat de Reclamații.';
-      lastReclData = { nerezolvate: 0 };
-      updateHomeGlance();
-      return;
-    }
-
-    lastReclData = d;
-
-    document.getElementById('r_total').textContent = d.total;
-    document.getElementById('r_rezolvate').textContent = d.rezolvate;
-    document.getElementById('r_nerezolvate').textContent = d.nerezolvate;
-
-    const extraParts = [];
-    extraParts.push(`<span><b>€${d.totalSuma.toFixed(2)}</b> sumă totală</span>`);
-    if(d.inProcesare) extraParts.push(`<span><b>${d.inProcesare}</b> în procesare</span>`);
-    document.getElementById('r_extra').innerHTML = extraParts.join('');
-
-    const nerezolvateList = d.lista.filter(r=>r.status==='nerezolvata');
-    const rezolvateList = d.lista.filter(r=>r.status==='rezolvata');
-    const alteleList = d.lista.filter(r=>r.status!=='nerezolvata' && r.status!=='rezolvata');
-
-    function reclItem(r){
-      const suma = r.suma>0 ? `<span class="suma has-suma">€${r.suma.toFixed(2)}</span>` : `<span class="suma">—</span>`;
-      return `<div class="recl-item st-${r.status}">
-        <div class="row1"><span>${escapeHtmlP(r.client||'—')}</span>${suma}</div>
-        <div class="row2">${r.data||'fără dată'}${r.belegNr?' · #'+escapeHtmlP(r.belegNr):''}</div>
-      </div>`;
-    }
-    function reclGroup(title, cls, list){
-      if(!list.length) return '';
-      return `<div class="recl-group">
-        <div class="recl-group-head ${cls}">${title} <span class="count">${list.length}</span></div>
-        ${list.map(reclItem).join('')}
-      </div>`;
-    }
-
-    document.getElementById('r_groups').innerHTML =
-      reclGroup('Nerezolvate', 'nerezolvate', nerezolvateList) +
-      reclGroup('Rezolvate', 'rezolvate', rezolvateList) +
-      reclGroup('În procesare', '', alteleList) +
-      (d.lista.length ? '' : '<div class="vac-empty">Nicio reclamație înregistrată.</div>');
-
-    loadingEl.style.display = 'none';
-    contentEl.style.display = 'block';
-    updateHomeGlance();
+    cacheSet(uid, 'reclamatii', result.data);
+    renderReclamatii(result.data);
+    if(cached) noteRefreshEnd(true);
   }catch(err){
     console.error(err);
+    if(cached){ noteRefreshEnd(false); return; }
     loadingEl.style.display = 'none';
     errorEl.style.display = 'block';
     errorEl.textContent = 'Nu am putut încărca reclamațiile (' + (err.message||err.code||err) + ').';
@@ -890,13 +1174,12 @@ const REQ_STATUS_LABEL = { in_asteptare:'În așteptare', aprobat:'Aprobat', res
 let submittingRequest = false;
 async function submitRequest(){
   if(submittingRequest) return; // apărare împotriva apăsărilor multiple / dublurilor
-  const start = document.getElementById('req_start').value;
-  const end = document.getElementById('req_end').value;
+  const start = calStart;
+  const end = calEnd || calStart;
   const motiv = document.getElementById('req_motiv').value.trim();
   const errEl = document.getElementById('req_error');
   errEl.textContent = '';
-  if(!start || !end){ errEl.textContent = 'Alege perioada.'; return; }
-  if(end < start){ errEl.textContent = 'Data de final e înainte de data de început.'; return; }
+  if(!start || !end){ errEl.textContent = 'Alege perioada în calendar.'; return; }
 
   const btn = document.getElementById('submitReqBtn');
   submittingRequest = true;
@@ -908,9 +1191,9 @@ async function submitRequest(){
     const idToken = await auth.currentUser.getIdToken();
     const submit = concediiFunctions.httpsCallable('submitLeaveRequest');
     await submit({ idToken, start, end, motiv });
-    document.getElementById('req_start').value = '';
-    document.getElementById('req_end').value = '';
     document.getElementById('req_motiv').value = '';
+    calStart = calEnd = null;
+    try{ localStorage.removeItem(CACHE_PREFIX + auth.currentUser.uid + ':calendar'); }catch(e){}
     closeRequestOverlay();
     loadMyRequests();
   }catch(err){
@@ -918,28 +1201,42 @@ async function submitRequest(){
     errEl.textContent = err.message || 'Eroare la trimitere.';
   }finally{
     submittingRequest = false;
-    btn.disabled = false;
+    btn.disabled = !calStart;
     btn.textContent = originalLabel;
   }
 }
 
+function renderMyRequests(lista){
+  const listEl = document.getElementById('myRequestsList');
+  lastMyRequests = lista;
+  listEl.innerHTML = lista.length
+    ? lista.map(r=>`<div class="req-item">
+        <span>${r.start} → ${r.end}${r.motiv?' · '+escapeHtmlP(r.motiv):''}</span>
+        <span class="req-status ${r.status}">${REQ_STATUS_LABEL[r.status]||r.status}</span>
+      </div>`).join('')
+    : '<div class="vac-empty">Nicio cerere trimisă încă.</div>';
+  updateHomeGlance();
+}
+
 async function loadMyRequests(){
   const listEl = document.getElementById('myRequestsList');
+  const uid = auth.currentUser.uid;
+  const cached = cacheGet(uid, 'requests');
+  if(cached){
+    renderMyRequests(cached);
+    noteRefreshStart();
+  }
   try{
     const idToken = await auth.currentUser.getIdToken();
     const getMyRequests = concediiFunctions.httpsCallable('getMyRequests');
     const result = await getMyRequests({ idToken });
     const lista = result.data.lista || [];
-    lastMyRequests = lista;
-    listEl.innerHTML = lista.length
-      ? lista.map(r=>`<div class="req-item">
-          <span>${r.start} → ${r.end}${r.motiv?' · '+escapeHtmlP(r.motiv):''}</span>
-          <span class="req-status ${r.status}">${REQ_STATUS_LABEL[r.status]||r.status}</span>
-        </div>`).join('')
-      : '<div class="vac-empty">Nicio cerere trimisă încă.</div>';
-    updateHomeGlance();
+    cacheSet(uid, 'requests', lista);
+    renderMyRequests(lista);
+    if(cached) noteRefreshEnd(true);
   }catch(err){
     console.error(err);
+    if(cached){ noteRefreshEnd(false); return; }
     listEl.innerHTML = '<div class="vac-empty">Nu am putut încărca cererile tale.</div>';
   }
 }
@@ -1018,8 +1315,17 @@ async function setNewPin(){
 }
 
 function logout(){
+  cacheClearAll();
   auth.signOut().then(()=>{ window.location.href = window.location.pathname; });
 }
+
+// Încălzește funcția de logare cât timp angajatul tastează numărul/PIN-ul
+// (la login prin QR nu are rost — acolo logarea pornește imediat).
+try{
+  if(!new URLSearchParams(window.location.search).get('login')){
+    functionsRef.httpsCallable('employeeLogin')({ warmup:true }).catch(()=>{});
+  }
+}catch(e){}
 
 init();
 </script>
