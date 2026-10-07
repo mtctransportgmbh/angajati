@@ -73,7 +73,7 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
   padding:10px 12px; border-radius:10px; width:100%;
 }
 .sidebar-btn .ic{font-size:17px;}
-.sidebar-btn .lbl{font-size:13px; font-weight:600;}
+.sidebar-btn .lbl{font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.07em;}
 .sidebar-btn.active{background:var(--primary-soft);}
 
 /* Coloana principală (header + conținut + bara de jos pe telefon) —
@@ -134,12 +134,13 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
   padding-bottom:max(6px, env(safe-area-inset-bottom));
 }
 .tab-btn{
-  flex:1; border:none; background:none; padding:10px 4px 8px; display:flex; flex-direction:column;
-  align-items:center; gap:3px; cursor:pointer; color:var(--text-muted); font-family:'Inter',sans-serif;
+  flex:1; border:1.5px solid transparent; background:none; margin:6px 3px 2px; padding:7px 2px 6px; border-radius:12px;
+  display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer; color:var(--text-muted);
+  font-family:'Space Grotesk','Inter',sans-serif; transition:.12s;
 }
-.tab-btn .ic{font-size:19px; line-height:1;}
-.tab-btn .lbl{font-size:10.5px; font-weight:600;}
-.tab-btn.active{color:var(--primary);}
+.tab-btn .ic{font-size:18px; line-height:1;}
+.tab-btn .lbl{font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.07em;}
+.tab-btn.active{color:var(--primary); border-color:var(--primary); background:var(--primary-soft);}
 .tab-btn.active .ic{transform:scale(1.08);}
 
 /* ---------- Home: quick-glance tiles ---------- */
@@ -235,7 +236,7 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
 .fab-btn:active{transform:scale(.94);}
 
 /* ---------- Panou "cerere nouă": ecran complet cu calendar de aglomerare ---------- */
-.req-overlay{position:fixed; inset:0; z-index:100; display:none; align-items:center; justify-content:center;}
+.req-overlay{position:fixed; inset:0; z-index:2000; display:none; align-items:center; justify-content:center;}
 .req-overlay.show{display:flex;}
 .req-overlay-backdrop{position:absolute; inset:0; background:rgba(20,26,34,.45);}
 .req-sheet{
@@ -317,6 +318,8 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
 .recl-item .row1{display:flex; justify-content:space-between; align-items:baseline; font-size:13px; gap:8px;}
 .recl-item .suma{font-family:'JetBrains Mono',monospace; font-weight:600; white-space:nowrap;}
 .recl-item .row1 .suma.has-suma{color:var(--red);}
+.recl-item .marca-chip{background:var(--primary-soft); color:var(--primary); border-radius:6px; padding:1px 7px; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;}
+.recl-item .rez-la{color:var(--green); font-weight:600;}
 .recl-item .row2{font-size:11.5px; color:var(--text-muted); margin-top:2px;}
 
 /* ==========================================================================
@@ -467,9 +470,9 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
           <div id="vacationLoading" class="placeholder-box">Se încarcă din Concedii...</div>
           <div id="vacationContent" style="display:none;">
             <div class="vac-grid">
-              <div class="vac-box"><div class="vac-num" id="v_ramase">—</div><div class="vac-lbl">rămase</div></div>
-              <div class="vac-box"><div class="vac-num" id="v_folosite">—</div><div class="vac-lbl">folosite</div></div>
-              <div class="vac-box"><div class="vac-num" id="v_total">—</div><div class="vac-lbl">total anul acesta</div></div>
+              <div class="vac-box"><div class="vac-num" id="v_ramase">—</div><div class="vac-lbl">zile rămase</div></div>
+              <div class="vac-box"><div class="vac-num" id="v_folosite">—</div><div class="vac-lbl">zile folosite</div></div>
+              <div class="vac-box"><div class="vac-num" id="v_total">—</div><div class="vac-lbl" id="v_totalLbl">zile anul acesta</div></div>
             </div>
             <div class="vac-extra" id="v_extra"></div>
 
@@ -481,6 +484,8 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
 
             <div class="vac-list-title">Concedii trecute (anul acesta)</div>
             <div id="v_past" class="vac-list"></div>
+
+            <div id="v_other"></div>
           </div>
           <div id="vacationError" class="placeholder-box" style="display:none;"></div>
         </div>
@@ -652,7 +657,10 @@ function calKey(y,m,d){ return y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).p
 function calFmt(k){ const [y,m,d]=k.split('-').map(Number); return d+' '+MONTHS_RO[m-1]; }
 
 function openRequestOverlay(){
-  document.getElementById('requestOverlay').classList.add('show');
+  const ov = document.getElementById('requestOverlay');
+  // mutat direct în <body>, ca să stea deasupra antetului fix (inițiale, nume, firmă)
+  if(ov.parentNode !== document.body) document.body.appendChild(ov);
+  ov.classList.add('show');
   const now = new Date();
   calMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   calMinMonth = new Date(calMonth);
@@ -1018,10 +1026,11 @@ function renderVacation(d){
   document.getElementById('v_ramase').textContent = d.remaining;
   document.getElementById('v_folosite').textContent = d.usedLeaves;
   document.getElementById('v_total').textContent = d.totalAvailable;
+  document.getElementById('v_totalLbl').textContent = 'zile anul acesta' + (d.carryOver ? ' (cu reportate)' : '');
 
   const extraParts = [];
   if(d.carryOver) extraParts.push(`<span><b>${d.carryOver}</b> reportate din anul trecut</span>`);
-  if(d.usedKrank) extraParts.push(`<span><b>${d.usedKrank}</b> zile Krank folosite</span>`);
+  if(d.usedKrank) extraParts.push(`<span><b>${d.usedKrank}</b> zile de concediu medical</span>`);
   if(d.usedUnpaid) extraParts.push(`<span><b>${d.usedUnpaid}</b> zile fără plată folosite</span>`);
   document.getElementById('v_extra').innerHTML = extraParts.join('');
 
@@ -1040,6 +1049,25 @@ function renderVacation(d){
   pastEl.innerHTML = d.past.length
     ? d.past.map(l=>`<div class="vac-item"><span>${l.start} → ${l.end}</span></div>`).join('')
     : '<div class="vac-empty">Niciun concediu luat anul acesta.</div>';
+
+  // Alte absențe: concediu medical (Krank), fără plată, evenimente speciale…
+  const OTHER_LABELS = { krankLeaves:'Concediu medical', unpaidLeaves:'Concediu fără plată' };
+  const groups = [
+    { titlu: OTHER_LABELS.krankLeaves, list: d.krankLeaves || [] },
+    { titlu: OTHER_LABELS.unpaidLeaves, list: d.unpaidLeaves || [] }
+  ].concat((d.altele || []).map(g=>({
+    titlu: OTHER_LABELS[g.tip] || (g.tip.replace(/([A-Z])/g,' $1').replace(/^./,c=>c.toUpperCase())),
+    list: g.perioade
+  })));
+  const fmtP = l => {
+    const f = x => { const [yy,mm,dd]=x.split('-').map(Number); return dd+' '+MONTHS_RO[mm-1]+' '+yy; };
+    return l.start===l.end ? f(l.start) : f(l.start)+' → '+f(l.end);
+  };
+  document.getElementById('v_other').innerHTML = groups.filter(g=>g.list.length).map(g=>{
+    const items = g.list.slice().sort((a,b)=>b.start.localeCompare(a.start));
+    return `<div class="vac-list-title">${escapeHtmlP(g.titlu)}</div><div class="vac-list">` +
+      items.map(l=>`<div class="vac-item"><span>${fmtP(l)}${l.nota?' · '+escapeHtmlP(l.nota):''}</span></div>`).join('') + '</div>';
+  }).join('');
 
   contentEl.style.display = 'block';
   updateHomeGlance();
@@ -1112,7 +1140,8 @@ function renderReclamatii(d){
     const suma = r.suma>0 ? `<span class="suma has-suma">€${r.suma.toFixed(2)}</span>` : `<span class="suma">—</span>`;
     return `<div class="recl-item st-${r.status}">
       <div class="row1"><span>${escapeHtmlP(r.client||'—')}</span>${suma}</div>
-      <div class="row2">${r.data||'fără dată'}${r.belegNr?' · #'+escapeHtmlP(r.belegNr):''}</div>
+      <div class="row2">${r.data||'fără dată'}${r.marca?' · <span class="marca-chip">'+escapeHtmlP(r.marca)+'</span>':''}</div>
+      ${r.status==='rezolvata' && r.rezolvatLa ? '<div class="row2 rez-la">✓ Rezolvată pe '+fmtDateTimeRo(r.rezolvatLa)+'</div>' : ''}
     </div>`;
   }
   function reclGroup(title, cls, list){
@@ -1162,6 +1191,12 @@ async function loadReclamatiiData(){
     errorEl.style.display = 'block';
     errorEl.textContent = 'Nu am putut încărca reclamațiile (' + (err.message||err.code||err) + ').';
   }
+}
+
+function fmtDateTimeRo(iso){
+  try{
+    return new Date(iso).toLocaleString('ro-RO', { timeZone:'Europe/Berlin', day:'numeric', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  }catch(e){ return iso; }
 }
 
 function escapeHtmlP(s){
