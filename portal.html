@@ -150,6 +150,37 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
 .tab-btn.active{color:var(--primary); border-color:var(--primary); background:var(--primary-soft);}
 .tab-btn.active .ic{transform:scale(1.08);}
 
+/* ---------- Animație de pornire (splash) ---------- */
+.splash{
+  position:fixed; inset:0; z-index:5000; display:flex; align-items:center; justify-content:center;
+  background:radial-gradient(circle at 50% 45%, #2A4E7F 0%, #1E3A5F 55%, #14283F 100%);
+  transition:opacity .55s ease, transform .55s cubic-bezier(.5,0,.2,1), visibility 0s linear .55s;
+}
+.splash.leaving{opacity:0; transform:scale(2.6); visibility:hidden; pointer-events:none;}
+.splash.gone{display:none;}
+.splash-inner{display:flex; flex-direction:column; align-items:center; gap:14px;}
+.splash-mark{
+  font-family:'Space Grotesk','Inter',sans-serif; font-weight:700; font-size:68px; letter-spacing:.06em; color:#fff;
+  padding:12px 26px 12px 32px; border:3px solid rgba(255,255,255,.9); border-radius:22px;
+  animation:splashPop .7s cubic-bezier(.2,1.3,.4,1) both;
+}
+.splash-bar{height:4px; width:0; background:#D98E04; border-radius:4px; animation:splashBar .6s .5s ease-out forwards;}
+.splash-sub{
+  font-family:'Space Grotesk','Inter',sans-serif; font-size:12px; letter-spacing:.42em; color:rgba(255,255,255,.75);
+  padding-left:.42em; opacity:0; animation:splashFade .5s .8s ease-out forwards;
+}
+@keyframes splashPop{from{opacity:0; transform:scale(.55);} to{opacity:1; transform:scale(1);}}
+@keyframes splashBar{from{width:0;} to{width:132px;}}
+@keyframes splashFade{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+/* aplicația "intră" cu un zoom ușor după splash */
+.phone-frame.zoom-in{animation:appZoomIn .6s cubic-bezier(.2,.8,.2,1) both;}
+@keyframes appZoomIn{from{opacity:0; transform:scale(.9);} to{opacity:1; transform:scale(1);}}
+@media (prefers-reduced-motion:reduce){
+  .splash, .splash *{animation:none !important; transition:none !important;}
+  .splash-bar{width:132px;} .splash-sub{opacity:1;}
+  .phone-frame.zoom-in{animation:none;}
+}
+
 /* ---------- Banner instalare aplicație ---------- */
 .install-banner{
   display:flex; align-items:center; justify-content:space-between; gap:10px;
@@ -214,6 +245,21 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
   font-size:13px; display:flex; justify-content:space-between; align-items:center;
 }
 .vac-item .days{font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--text-muted);}
+/* ---------- Concediu: control segmentat + chipuri compacte ---------- */
+.seg{display:flex; gap:4px; background:var(--surface-alt); border-radius:12px; padding:4px; margin-bottom:12px;}
+.seg-btn{
+  flex:1; border:none; background:none; border-radius:9px; padding:9px 4px; cursor:pointer;
+  font-family:'Space Grotesk','Inter',sans-serif; font-size:10.5px; font-weight:700; text-transform:uppercase;
+  letter-spacing:.06em; color:var(--text-muted); transition:.12s;
+}
+.seg-btn.active{background:var(--surface); color:var(--primary); box-shadow:0 1px 4px rgba(27,36,48,.12);}
+.seg-badge{display:inline-block; min-width:16px; padding:0 5px; border-radius:100px; background:var(--amber); color:#fff; font-size:10px; line-height:16px; margin-left:3px;}
+.seg-panel{display:none;}
+.seg-panel.active{display:block; animation:fadeIn .15s ease-out;}
+.chip-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+.vchip{background:var(--surface-alt); border-radius:11px; padding:9px 11px; font-size:13px; font-weight:600; line-height:1.25;}
+.vchip small{display:block; font-size:10.5px; font-weight:500; color:var(--text-muted); margin-top:1px;}
+.chip-grid .vac-empty{grid-column:1/-1;}
 .vac-empty{color:var(--text-muted); font-size:12.5px; padding:6px 0;}
 
 /* ---------- Următorul concediu, zi cu zi ---------- */
@@ -315,6 +361,15 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
 .appr-actions button{flex:1; padding:9px; border-radius:8px; border:none; font-weight:600; font-size:12.5px; cursor:pointer;}
 .appr-approve{background:var(--green); color:#fff;}
 .appr-reject{background:var(--red); color:#fff;}
+.appr-cancel{background:var(--surface); color:var(--text); border:1px solid var(--border) !important;}
+.appr-actions button:disabled{opacity:.55; cursor:default;}
+.appr-reject-box input{width:100%; margin-top:10px; padding:9px 10px; border:1px solid var(--border); border-radius:8px; font-size:13px; font-family:inherit;}
+.appr-msg{font-size:12px; margin-top:8px; color:var(--text-muted); min-height:0;}
+.appr-msg:empty{display:none;}
+.appr-msg.ok{color:var(--green); font-weight:600;}
+.appr-msg.err{color:var(--red); font-weight:600;}
+.appr-card.busy{opacity:.7;}
+.appr-card.done{opacity:.55;}
 
 /* ---------- Reclamații pe categorii ---------- */
 .recl-group{margin-bottom:16px;}
@@ -371,6 +426,15 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
 </style>
 </head>
 <body>
+
+<!-- Animație de pornire cu sigla MTC; se închide cu zoom când portalul e gata -->
+<div id="splash" class="splash" aria-hidden="true">
+  <div class="splash-inner">
+    <div class="splash-mark">MTC</div>
+    <div class="splash-bar"></div>
+    <div class="splash-sub">TRANSPORT GMBH</div>
+  </div>
+</div>
 
 <div class="phone-frame">
 
@@ -503,17 +567,6 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
               <div class="vac-box"><div class="vac-num" id="v_total">—</div><div class="vac-lbl" id="v_totalLbl">zile anul acesta</div></div>
             </div>
             <div class="vac-extra" id="v_extra"></div>
-
-            <div class="vac-list-title">Următorul concediu</div>
-            <div id="v_next"></div>
-
-            <div class="vac-list-title">Și după acela</div>
-            <div id="v_upcoming" class="vac-list"></div>
-
-            <div class="vac-list-title">Concedii trecute (anul acesta)</div>
-            <div id="v_past" class="vac-list"></div>
-
-            <div id="v_other"></div>
           </div>
           <div id="vacationError" class="placeholder-box" style="display:none;"></div>
         </div>
@@ -521,8 +574,28 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
         <div class="section-divider desktop-hide"></div>
 
         <div class="section">
-          <h3>Cererile mele</h3>
-          <div id="myRequestsList" class="vac-list"></div>
+          <div class="seg" id="vacSeg">
+            <button class="seg-btn active" data-seg="conc" onclick="setVacSeg('conc')">Concedii</button>
+            <button class="seg-btn" data-seg="alte" onclick="setVacSeg('alte')">Medical &amp; altele</button>
+            <button class="seg-btn" data-seg="cer" onclick="setVacSeg('cer')">Cereri <span class="seg-badge" id="segCerBadge" style="display:none;">0</span></button>
+          </div>
+
+          <div class="seg-panel active" id="seg-conc">
+            <div class="vac-list-title" style="margin-top:4px;">Următorul concediu</div>
+            <div id="v_next"><div class="vac-empty">Se încarcă...</div></div>
+            <div class="vac-list-title">Programate după acela</div>
+            <div id="v_upcoming" class="chip-grid"></div>
+            <div class="vac-list-title">Luate până acum</div>
+            <div id="v_past" class="chip-grid"></div>
+          </div>
+
+          <div class="seg-panel" id="seg-alte">
+            <div id="v_other"><div class="vac-empty">Nicio altă absență înregistrată.</div></div>
+          </div>
+
+          <div class="seg-panel" id="seg-cer">
+            <div id="myRequestsList" class="vac-list"></div>
+          </div>
         </div>
         </div>
       </section>
@@ -654,7 +727,27 @@ const RECLAMATII_CONFIG = {
 const reclamatiiApp = firebase.initializeApp(RECLAMATII_CONFIG, 'reclamatii');
 const reclamatiiFunctions = firebase.functions(reclamatiiApp);
 
+const SPLASH_MIN_MS = 1500;
+const splashT0 = Date.now();
+let splashClosed = false;
+function closeSplash(){
+  if(splashClosed) return;
+  splashClosed = true;
+  const el = document.getElementById('splash');
+  if(!el) return;
+  const wait = Math.max(0, SPLASH_MIN_MS - (Date.now() - splashT0));
+  setTimeout(()=>{
+    const frame = document.querySelector('.phone-frame');
+    if(frame) frame.classList.add('zoom-in');
+    el.classList.add('leaving');
+    setTimeout(()=>{ el.classList.add('gone'); }, 700);
+  }, wait);
+}
+// plasă de siguranță: splash-ul nu rămâne niciodată blocat
+setTimeout(closeSplash, 12000);
+
 function show(id){
+  if(id !== 'loadingState') closeSplash();
   const preIds = ['loadingState','loginState','errorState'];
   const showingPre = preIds.includes(id);
   document.getElementById('preAppWrap').style.display = showingPre ? 'flex' : 'none';
@@ -1141,6 +1234,30 @@ function renderNextLeave(l){
   </div>`;
 }
 
+function fmtDayRo(k, withYear){
+  const [y,m,d] = k.split('-').map(Number);
+  return d + ' ' + MONTHS_RO[m-1] + (withYear ? ' ' + y : '');
+}
+function fmtPeriodShort(start, end){
+  const thisYear = String(new Date().getFullYear());
+  const sameYear = start.slice(0,4) === end.slice(0,4);
+  const showYear = start.slice(0,4) !== thisYear || end.slice(0,4) !== thisYear;
+  if(start === end) return { main: fmtDayRo(start,false), year: start.slice(0,4) !== thisYear ? start.slice(0,4) : '' };
+  return {
+    main: fmtDayRo(start, !sameYear) + ' → ' + fmtDayRo(end, false),
+    year: (sameYear && showYear) ? start.slice(0,4) : (!sameYear ? end.slice(0,4) : '')
+  };
+}
+function vChip(l, extra){
+  const f = fmtPeriodShort(l.start, l.end);
+  const sub = [f.year, extra||l.nota].filter(Boolean).join(' · ');
+  return `<div class="vchip">${f.main}${sub ? '<small>'+escapeHtmlP(sub)+'</small>' : ''}</div>`;
+}
+function setVacSeg(name){
+  document.querySelectorAll('#vacSeg .seg-btn').forEach(b=>b.classList.toggle('active', b.dataset.seg===name));
+  document.querySelectorAll('.seg-panel').forEach(p=>p.classList.toggle('active', p.id==='seg-'+name));
+}
+
 function renderVacation(d){
   const loadingEl = document.getElementById('vacationLoading');
   const contentEl = document.getElementById('vacationContent');
@@ -1176,13 +1293,13 @@ function renderVacation(d){
   const restUpcoming = d.upcoming.slice(1);
   const upcomingEl = document.getElementById('v_upcoming');
   upcomingEl.innerHTML = restUpcoming.length
-    ? restUpcoming.map(l=>`<div class="vac-item"><span>${l.start} → ${l.end}</span></div>`).join('')
+    ? restUpcoming.map(vChip).join('')
     : '<div class="vac-empty">Niciun alt concediu planificat.</div>';
 
   const pastEl = document.getElementById('v_past');
   pastEl.innerHTML = d.past.length
-    ? d.past.map(l=>`<div class="vac-item"><span>${l.start} → ${l.end}</span></div>`).join('')
-    : '<div class="vac-empty">Niciun concediu luat anul acesta.</div>';
+    ? d.past.map(vChip).join('')
+    : '<div class="vac-empty">Niciun concediu luat încă.</div>';
 
   // Alte absențe: concediu medical (Krank), fără plată, evenimente speciale…
   const OTHER_LABELS = { krankLeaves:'Concediu medical', unpaidLeaves:'Concediu fără plată' };
@@ -1193,15 +1310,11 @@ function renderVacation(d){
     titlu: OTHER_LABELS[g.tip] || (g.tip.replace(/([A-Z])/g,' $1').replace(/^./,c=>c.toUpperCase())),
     list: g.perioade
   })));
-  const fmtP = l => {
-    const f = x => { const [yy,mm,dd]=x.split('-').map(Number); return dd+' '+MONTHS_RO[mm-1]+' '+yy; };
-    return l.start===l.end ? f(l.start) : f(l.start)+' → '+f(l.end);
-  };
   document.getElementById('v_other').innerHTML = groups.filter(g=>g.list.length).map(g=>{
     const items = g.list.slice().sort((a,b)=>b.start.localeCompare(a.start));
-    return `<div class="vac-list-title">${escapeHtmlP(g.titlu)}</div><div class="vac-list">` +
-      items.map(l=>`<div class="vac-item"><span>${fmtP(l)}${l.nota?' · '+escapeHtmlP(l.nota):''}</span></div>`).join('') + '</div>';
-  }).join('');
+    return `<div class="vac-list-title" style="margin-top:4px;">${escapeHtmlP(g.titlu)} · ${items.length}</div><div class="chip-grid" style="margin-bottom:10px;">` +
+      items.map(l=>vChip(l)).join('') + '</div>';
+  }).join('') || '<div class="vac-empty">Nicio altă absență înregistrată.</div>';
 
   contentEl.style.display = 'block';
   updateHomeGlance();
@@ -1274,7 +1387,7 @@ function renderReclamatii(d){
     const suma = r.suma>0 ? `<span class="suma has-suma">€${r.suma.toFixed(2)}</span>` : `<span class="suma">—</span>`;
     return `<div class="recl-item st-${r.status}">
       <div class="row1"><span>${escapeHtmlP(r.client||'—')}</span>${suma}</div>
-      <div class="row2">${r.data||'fără dată'}${r.marca?' · <span class="marca-chip">'+escapeHtmlP(r.marca)+'</span>':''}</div>
+      <div class="row2">${r.data ? fmtDotDate(r.data) : 'fără dată'}${r.marca?' · <span class="marca-chip">'+escapeHtmlP(r.marca)+'</span>':''}</div>
       ${r.status==='rezolvata' && r.rezolvatLa ? '<div class="row2 rez-la">✓ Rezolvată pe '+fmtDateTimeRo(r.rezolvatLa)+'</div>' : ''}
     </div>`;
   }
@@ -1327,6 +1440,10 @@ async function loadReclamatiiData(){
   }
 }
 
+function fmtDotDate(k){
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(k||'');
+  return m ? m[3]+'.'+m[2]+'.'+m[1] : (k||'');
+}
 function fmtDateTimeRo(iso){
   try{
     return new Date(iso).toLocaleString('ro-RO', { timeZone:'Europe/Berlin', day:'numeric', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' });
@@ -1378,9 +1495,12 @@ async function submitRequest(){
 function renderMyRequests(lista){
   const listEl = document.getElementById('myRequestsList');
   lastMyRequests = lista;
+  const pend = lista.filter(r=>r.status==='in_asteptare').length;
+  const badge = document.getElementById('segCerBadge');
+  if(badge){ badge.textContent = pend; badge.style.display = pend ? 'inline-block' : 'none'; }
   listEl.innerHTML = lista.length
     ? lista.map(r=>`<div class="req-item">
-        <span>${r.start} → ${r.end}${r.motiv?' · '+escapeHtmlP(r.motiv):''}</span>
+        <span>${fmtPeriodShort(r.start,r.end).main}${fmtPeriodShort(r.start,r.end).year?' '+fmtPeriodShort(r.start,r.end).year:''}${r.motiv?' · '+escapeHtmlP(r.motiv):''}</span>
         <span class="req-status ${r.status}">${REQ_STATUS_LABEL[r.status]||r.status}</span>
       </div>`).join('')
     : '<div class="vac-empty">Nicio cerere trimisă încă.</div>';
@@ -1420,15 +1540,19 @@ async function loadApprovalQueue(){
     const listEl = document.getElementById('approvalList');
     listEl.innerHTML = lista.length
       ? lista.map(r=>`
-        <div class="appr-card">
+        <div class="appr-card" id="appr_${r.id}">
           <div class="who">${escapeHtmlP(r.numeAngajat||'—')}</div>
           <div class="when">${r.start} → ${r.end}</div>
           ${r.motiv ? `<div class="motiv">"${escapeHtmlP(r.motiv)}"</div>` : ''}
           ${r.suprapuneri && r.suprapuneri.length ? `<div class="appr-warn">⚠ Se suprapune cu ${r.suprapuneri.map(s=>escapeHtmlP(s.nume)).join(', ')}</div>` : ''}
-          <div class="appr-actions">
-            <button class="appr-approve" onclick="decideRequest('${r.id}','aprobat')">Aprobă</button>
-            <button class="appr-reject" onclick="decideRequest('${r.id}','respins')">Respinge</button>
+          <div class="appr-reject-box" id="rej_${r.id}" style="display:none;">
+            <input type="text" id="rejmotiv_${r.id}" maxlength="300" placeholder="Motivul respingerii (opțional)">
           </div>
+          <div class="appr-actions" id="act_${r.id}">
+            <button class="appr-approve" onclick="decideRequest('${r.id}','aprobat')">Aprobă</button>
+            <button class="appr-reject" onclick="openReject('${r.id}')">Respinge</button>
+          </div>
+          <div class="appr-msg" id="msg_${r.id}"></div>
         </div>`).join('')
       : '<div class="vac-empty">Nicio cerere de aprobat momentan.</div>';
   }catch(err){
@@ -1437,19 +1561,46 @@ async function loadApprovalQueue(){
   }
 }
 
+function openReject(id){
+  const box = document.getElementById('rej_'+id);
+  const act = document.getElementById('act_'+id);
+  box.style.display = 'block';
+  act.innerHTML = `<button class="appr-cancel" onclick="cancelReject('${id}')">Anulează</button>
+                   <button class="appr-reject" onclick="decideRequest('${id}','respins')">Confirmă respingerea</button>`;
+  const inp = document.getElementById('rejmotiv_'+id);
+  if(inp) inp.focus();
+}
+function cancelReject(id){
+  document.getElementById('rej_'+id).style.display = 'none';
+  document.getElementById('act_'+id).innerHTML = `<button class="appr-approve" onclick="decideRequest('${id}','aprobat')">Aprobă</button>
+    <button class="appr-reject" onclick="openReject('${id}')">Respinge</button>`;
+}
 async function decideRequest(requestId, decision){
-  let motivRespingere = '';
-  if(decision === 'respins'){
-    motivRespingere = prompt('Motivul respingerii (opțional):') || '';
-  }
+  const card = document.getElementById('appr_'+requestId);
+  const act = document.getElementById('act_'+requestId);
+  const msg = document.getElementById('msg_'+requestId);
+  const motivEl = document.getElementById('rejmotiv_'+requestId);
+  const motivRespingere = (decision === 'respins' && motivEl) ? motivEl.value.trim() : '';
+  // feedback imediat: butoanele se blochează și apare "Se salvează…"
+  act.querySelectorAll('button').forEach(b=>b.disabled = true);
+  card.classList.add('busy');
+  msg.className = 'appr-msg';
+  msg.textContent = decision === 'aprobat' ? 'Se aprobă… (poate dura câteva secunde)' : 'Se respinge…';
   try{
     const idToken = await auth.currentUser.getIdToken();
     const decide = concediiFunctions.httpsCallable('decideLeaveRequest');
     await decide({ idToken, requestId, decision, motivRespingere });
-    loadApprovalQueue();
+    msg.className = 'appr-msg ok';
+    msg.textContent = decision === 'aprobat' ? '✓ Cerere aprobată' : '✓ Cerere respinsă';
+    card.classList.remove('busy');
+    card.classList.add('done');
+    setTimeout(loadApprovalQueue, 1200);
   }catch(err){
     console.error(err);
-    alert('Eroare la decizie: ' + (err.message||err));
+    card.classList.remove('busy');
+    act.querySelectorAll('button').forEach(b=>b.disabled = false);
+    msg.className = 'appr-msg err';
+    msg.textContent = 'Nu s-a putut salva: ' + (err.message || err.code || err) + (err.code ? ' ['+err.code+']' : '');
   }
 }
 

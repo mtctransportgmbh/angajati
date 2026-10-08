@@ -2161,16 +2161,20 @@ async function loadAdminApprovalQueue(){
     const lista = result.data.lista || [];
     listEl.innerHTML = lista.length
       ? lista.map(r=>`
-        <div class="appr-card">
+        <div class="appr-card" id="aappr_${r.id}">
           <div class="coord">${escapeHtml(r.coordonator||'')}</div>
           <div class="who">${escapeHtml(r.numeAngajat||'—')}</div>
           <div class="when">${r.start} → ${r.end}</div>
           ${r.motiv ? `<div class="motiv">"${escapeHtml(r.motiv)}"</div>` : ''}
           ${r.suprapuneri && r.suprapuneri.length ? `<div class="appr-warn">⚠ Se suprapune cu ${r.suprapuneri.map(s=>escapeHtml(s.nume)).join(', ')}</div>` : ''}
-          <div class="appr-actions">
-            <button class="appr-approve" onclick="adminDecideRequest('${r.id}','aprobat')">Aprobă</button>
-            <button class="appr-reject" onclick="adminDecideRequest('${r.id}','respins')">Respinge</button>
+          <div class="appr-reject-box" id="arej_${r.id}" style="display:none; margin-top:10px;">
+            <input type="text" id="arejmotiv_${r.id}" maxlength="300" placeholder="Motivul respingerii (opțional)" style="width:100%; padding:9px 10px; border:1px solid var(--border); border-radius:8px; font-size:13px; font-family:inherit;">
           </div>
+          <div class="appr-actions" id="aact_${r.id}">
+            <button class="appr-approve" onclick="adminDecideRequest('${r.id}','aprobat')">Aprobă</button>
+            <button class="appr-reject" onclick="adminOpenReject('${r.id}')">Respinge</button>
+          </div>
+          <div id="amsg_${r.id}" style="font-size:12px; margin-top:8px;"></div>
         </div>`).join('')
       : '<div style="color:var(--text-muted); font-size:13px;">Nicio cerere de aprobat momentan.</div>';
   }catch(err){
@@ -2179,19 +2183,40 @@ async function loadAdminApprovalQueue(){
   }
 }
 
+function adminOpenReject(id){
+  document.getElementById('arej_'+id).style.display = 'block';
+  document.getElementById('aact_'+id).innerHTML = `<button class="appr-approve" style="background:var(--surface); color:var(--text); border:1px solid var(--border);" onclick="adminCancelReject('${id}')">Anulează</button>
+    <button class="appr-reject" onclick="adminDecideRequest('${id}','respins')">Confirmă respingerea</button>`;
+  const inp = document.getElementById('arejmotiv_'+id); if(inp) inp.focus();
+}
+function adminCancelReject(id){
+  document.getElementById('arej_'+id).style.display = 'none';
+  document.getElementById('aact_'+id).innerHTML = `<button class="appr-approve" onclick="adminDecideRequest('${id}','aprobat')">Aprobă</button>
+    <button class="appr-reject" onclick="adminOpenReject('${id}')">Respinge</button>`;
+}
 async function adminDecideRequest(requestId, decision){
-  let motivRespingere = '';
-  if(decision === 'respins'){
-    motivRespingere = prompt('Motivul respingerii (opțional):') || '';
-  }
+  const card = document.getElementById('aappr_'+requestId);
+  const act = document.getElementById('aact_'+requestId);
+  const msg = document.getElementById('amsg_'+requestId);
+  const motivEl = document.getElementById('arejmotiv_'+requestId);
+  const motivRespingere = (decision === 'respins' && motivEl) ? motivEl.value.trim() : '';
+  act.querySelectorAll('button').forEach(b=>b.disabled = true);
+  card.style.opacity = '.7';
+  msg.style.color = 'var(--text-muted)';
+  msg.textContent = decision === 'aprobat' ? 'Se aprobă… (poate dura câteva secunde)' : 'Se respinge…';
   try{
     const idToken = await auth.currentUser.getIdToken();
     const decide = concediiFunctions.httpsCallable('decideLeaveRequest');
     await decide({ idToken, requestId, decision, motivRespingere });
-    loadAdminApprovalQueue();
+    msg.style.color = 'var(--green)';
+    msg.textContent = decision === 'aprobat' ? '✓ Cerere aprobată' : '✓ Cerere respinsă';
+    setTimeout(loadAdminApprovalQueue, 1200);
   }catch(err){
     console.error(err);
-    alert('Eroare la decizie: ' + (err.message||err));
+    card.style.opacity = '1';
+    act.querySelectorAll('button').forEach(b=>b.disabled = false);
+    msg.style.color = 'var(--red)';
+    msg.textContent = 'Nu s-a putut salva: ' + (err.message || err.code || err) + (err.code ? ' ['+err.code+']' : '');
   }
 }
 
