@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Portalul meu · MTC Transport</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1E3A5F">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="MTC">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -142,6 +149,17 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
 .tab-btn .lbl{font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.07em;}
 .tab-btn.active{color:var(--primary); border-color:var(--primary); background:var(--primary-soft);}
 .tab-btn.active .ic{transform:scale(1.08);}
+
+/* ---------- Banner instalare aplicație ---------- */
+.install-banner{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  background:var(--primary-soft); border:1.5px solid var(--primary); border-radius:14px;
+  padding:12px 14px; margin:0 0 14px; font-size:12.5px;
+}
+.install-banner .ib-text{display:flex; flex-direction:column; gap:3px; color:var(--text);}
+.install-banner .ib-text span{color:var(--text-muted); line-height:1.35;}
+.ib-actions{display:flex; align-items:center; gap:6px; flex:0 0 auto;}
+.ib-close{border:none; background:none; color:var(--text-muted); font-size:15px; cursor:pointer; padding:4px;}
 
 /* ---------- Home: quick-glance tiles ---------- */
 .glance-row{display:flex; gap:10px; margin-bottom:20px;}
@@ -422,6 +440,16 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
       <!-- ---------- TAB: ACASĂ ---------- -->
       <section id="tab-acasa" class="tab-panel active">
         <div id="dataFreshness" style="display:none; font-size:12px; color:var(--text-muted); margin:0 0 10px;"></div>
+        <div id="installBanner" class="install-banner" style="display:none;">
+          <div class="ib-text">
+            <b>📲 Pune aplicația pe telefon</b>
+            <span id="installHint">Se deschide direct de pe ecranul principal, ca orice aplicație.</span>
+          </div>
+          <div class="ib-actions">
+            <button class="btn btn-primary btn-small" id="installBtn" onclick="doInstall()">Instalează</button>
+            <button class="ib-close" onclick="dismissInstall()" aria-label="Închide">✕</button>
+          </div>
+        </div>
         <div class="glance-row">
           <div class="glance-tile" onclick="switchTab('concediu')">
             <div class="glance-num" id="g_vacRamase">—</div>
@@ -595,7 +623,10 @@ const functionsRef = firebase.functions();
 // localStorage/IndexedDB (comun tuturor tab-urilor) — altfel, dacă doi
 // angajați se loghează pe rând pe același calculator, în tab-uri diferite,
 // a doua logare o suprascrie silențios pe prima.
-const authReady = auth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
+// Excepție: când portalul e instalat ca aplicație pe telefon (e doar al
+// angajatului), sesiunea se păstrează, ca să nu mai tasteze PIN-ul de fiecare dată.
+const IS_STANDALONE = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+const authReady = auth.setPersistence(IS_STANDALONE ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION)
   .catch(err=>console.error('setPersistence:', err));
 
 // Conexiune separată către Concedii (alt proiect Firebase) — doar pentru
@@ -670,9 +701,11 @@ function openRequestOverlay(){
   document.getElementById('calDow').innerHTML = ['L','M','M','J','V','S','D'].map(x=>'<div class="cal-dow">'+x+'</div>').join('');
   renderCalendar();
   loadCalendar();
+  startCalendarLive();
 }
 function closeRequestOverlay(){
   document.getElementById('requestOverlay').classList.remove('show');
+  stopCalendarLive();
 }
 
 async function loadCalendar(){
@@ -694,6 +727,61 @@ async function loadCalendar(){
     statusEl.textContent = cached
       ? 'Nu am putut actualiza ocuparea — culorile pot fi depășite.'
       : 'Nu am putut încărca ocuparea colegilor (' + (err.message||err.code||err) + '). Poți totuși alege perioada.';
+  }
+}
+
+/* --- Actualizare "live": cât timp calendarul e deschis, ocuparea se
+   reîmprospătează singură la ~8 secunde (și imediat când te întorci în
+   aplicație). Dacă între timp o perioadă devine mai aglomerată, apare o
+   avertizare, iar culorile se schimbă pe loc, fără refresh. --- */
+const CAL_LIVE_MS = 8000;
+let calLiveTimer = null, calLiveBusy = false;
+function startCalendarLive(){
+  stopCalendarLive();
+  calLiveTimer = setInterval(calendarTick, CAL_LIVE_MS);
+  document.addEventListener('visibilitychange', calendarTick);
+}
+function stopCalendarLive(){
+  if(calLiveTimer){ clearInterval(calLiveTimer); calLiveTimer = null; }
+  document.removeEventListener('visibilitychange', calendarTick);
+}
+function calSelectionMax(counts, libere){
+  if(!calStart) return 0;
+  const end = calEnd || calStart;
+  let m = 0;
+  for(let d=new Date(calStart+'T00:00:00'), e=new Date(end+'T00:00:00'); d<=e; d.setDate(d.getDate()+1)){
+    const k = calKey(d.getFullYear(), d.getMonth(), d.getDate());
+    if(!libere.has(k)) m = Math.max(m, counts[k]||0);
+  }
+  return m;
+}
+async function calendarTick(){
+  if(calLiveBusy || document.hidden) return;
+  if(!document.getElementById('requestOverlay').classList.contains('show')) return;
+  calLiveBusy = true;
+  try{
+    const idToken = await auth.currentUser.getIdToken();
+    const r = await concediiFunctions.httpsCallable('getLeaveCalendar')({ idToken });
+    const next = { counts: r.data.counts, libere: new Set(r.data.libere), mine: r.data.mine||[] };
+    const changed = !calData || JSON.stringify(calData.counts) !== JSON.stringify(next.counts);
+    const prevMax = calData ? calSelectionMax(calData.counts, calData.libere) : 0;
+    calData = next;
+    cacheSet(auth.currentUser.uid, 'calendar', r.data);
+    if(changed){
+      renderCalendar();
+      const nowMax = calSelectionMax(next.counts, next.libere);
+      const statusEl = document.getElementById('calStatus');
+      if(calStart && calLevel(nowMax) !== calLevel(prevMax) && nowMax > prevMax){
+        statusEl.innerHTML = '<b style="color:var(--red)">⚠ Chiar acum s-a schimbat: perioada aleasă e mai aglomerată.</b>';
+      } else {
+        statusEl.textContent = 'Ocuparea s-a actualizat.';
+      }
+      setTimeout(()=>{ const el = document.getElementById('calStatus'); if(el) el.textContent = ''; }, 6000);
+    }
+  }catch(err){
+    console.error('calendar live:', err);
+  }finally{
+    calLiveBusy = false;
   }
 }
 
@@ -815,9 +903,55 @@ async function init(){
     return;
   }
 
+  // aplicație instalată: dacă sesiunea e încă validă, intră direct
+  if(IS_STANDALONE){
+    await authReady;
+    const user = await new Promise(res=>{ const u = auth.onAuthStateChanged(x=>{ u(); res(x); }); });
+    if(user){
+      try{ currentMustChangePin = false; await loadProfile(); return; }
+      catch(err){ console.error(err); }
+    }
+  }
+
   // fără cod în URL — arată login manual
   show('loginState');
 }
+
+/* ================= INSTALARE CA APLICAȚIE (PWA) ================= */
+let deferredInstall = null;
+const INSTALL_DISMISS_KEY = 'mtc_install_dismissed';
+function installDismissed(){
+  try{ const t = parseInt(localStorage.getItem(INSTALL_DISMISS_KEY)||'0',10); return Date.now()-t < 14*24*3600*1000; }catch(e){ return false; }
+}
+function dismissInstall(){
+  try{ localStorage.setItem(INSTALL_DISMISS_KEY, String(Date.now())); }catch(e){}
+  document.getElementById('installBanner').style.display = 'none';
+}
+function showInstallBanner(mode){
+  if(IS_STANDALONE || installDismissed()) return;
+  const b = document.getElementById('installBanner');
+  if(!b) return;
+  if(mode === 'ios'){
+    document.getElementById('installHint').innerHTML = 'Apasă <b>Partajare</b> (pătratul cu săgeată în jos de jos) → <b>Adaugă pe ecranul principal</b>.';
+    document.getElementById('installBtn').style.display = 'none';
+  }
+  b.style.display = 'flex';
+}
+async function doInstall(){
+  if(!deferredInstall) return;
+  deferredInstall.prompt();
+  try{ await deferredInstall.userChoice; }catch(e){}
+  deferredInstall = null;
+  document.getElementById('installBanner').style.display = 'none';
+}
+window.addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); deferredInstall = e; showInstallBanner('android'); });
+window.addEventListener('appinstalled', ()=>{ document.getElementById('installBanner').style.display = 'none'; });
+(function(){
+  const ua = navigator.userAgent || '';
+  const isIos = /iPhone|iPad|iPod/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua); // doar Safari poate instala pe iPhone
+  if(isIos) showInstallBanner('ios');
+  if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
+})();
 
 async function loginManual(){
   const numarPersonal = document.getElementById('f_numarPersonal').value.trim();
