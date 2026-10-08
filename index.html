@@ -850,6 +850,12 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
             <option value="admin">Admin</option>
           </select>
         </div>
+        <div class="field" style="grid-column:1/-1;">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:600;">
+            <input type="checkbox" id="f_esteAdmin" style="width:auto;"> Administrator general (unic)
+          </label>
+          <div class="hint" style="margin:4px 0 0;">Din portal, această persoană vede și aprobă cererile tuturor coordonatorilor, vede toate mesajele și poate răspunde. Poate exista un singur administrator: dacă bifezi aici, bifa se mută automat de la cel care o avea.</div>
+        </div>
         <div class="field"><label>Dacă acest angajat E coordonator — pentru cine aprobă</label>
           <select id="f_rolAprobator">
             <option value="">— nu e coordonator —</option>
@@ -1828,6 +1834,7 @@ function openModal(id){
   document.getElementById('f_status').value='Activ';
   document.getElementById('f_coordonator').value='';
   document.getElementById('f_rolAprobator').value='';
+  document.getElementById('f_esteAdmin').checked=false;
   document.getElementById('f_areTahograf').checked=false;
   document.getElementById('f_steuerklasse').value='';
   document.getElementById('f_stareCivila').value='';
@@ -1866,6 +1873,7 @@ function openModal(id){
       document.getElementById('f_dataIncetare').value = e.dataIncetare||'';
       document.getElementById('f_coordonator').value = e.coordonator||'';
       document.getElementById('f_rolAprobator').value = e.rolAprobator||'';
+      document.getElementById('f_esteAdmin').checked = e.esteAdmin === true;
       document.getElementById('f_numarPermis').value = e.numarPermis||'';
       document.getElementById('f_dataEliberarePermis').value = e.dataEliberarePermis||'';
       document.getElementById('f_dataExpirarePermis').value = e.dataExpirarePermis||'';
@@ -1952,6 +1960,7 @@ async function saveEmployee(){
     dataIncetare: document.getElementById('f_dataIncetare').value,
     coordonator: document.getElementById('f_coordonator').value,
     rolAprobator: document.getElementById('f_rolAprobator').value,
+    esteAdmin: document.getElementById('f_esteAdmin').checked,
     categoriiPermis: getSelectedCats(),
     expirariCategorii: getExpirariCategorii('f'),
     numarPermis: document.getElementById('f_numarPermis').value.trim(),
@@ -1981,18 +1990,25 @@ async function saveEmployee(){
   };
 
   try{
+    let savedId = editingId;
     if(editingId){
       await db.collection('angajati').doc(editingId).update(data);
     } else {
       data.employeeId = await nextEmployeeId();
       data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-      await db.collection('angajati').add(data);
+      const newRef = await db.collection('angajati').add(data);
+      savedId = newRef.id;
       if(approvingProposalId){
         await db.collection('angajati_propuneri').doc(approvingProposalId).update({
           status: 'aprobat',
           decisAt: firebase.firestore.FieldValue.serverTimestamp()
         });
       }
+    }
+    // administrator unic: dacă acesta e bifat, îl scoatem de la oricine altcineva îl avea
+    if(data.esteAdmin){
+      const altii = employees.filter(x=>x.id !== savedId && x.esteAdmin === true);
+      await Promise.all(altii.map(x=>db.collection('angajati').doc(x.id).update({ esteAdmin: false })));
     }
     closeModal();
   }catch(err){
@@ -2184,6 +2200,59 @@ async function loadAdminApprovalQueue(){
   }catch(err){
     console.error(err);
     listEl.innerHTML = '<div style="color:var(--red); font-size:13px;">Eroare la încărcare: ' + (err.message||err) + '</div>';
+  }
+}
+
+async function loadAdminMessages(){
+  const el = document.getElementById('adminMsgList');
+  try{
+    const idToken = await auth.currentUser.getIdToken();
+    const r = await concediiFunctions.httpsCallable('getPendingMessages')({ idToken });
+    const lista = r.data.lista || [];
+    let istoric = '';
+    try{
+      const all = await concediiFunctions.httpsCallable('getAllMessages')({ idToken });
+      const rasp = (all.data.lista || []).filter(m=>m.status !== 'deschis').slice(0, 60);
+      istoric = rasp.length ? '<h4 style="margin:22px 0 8px; font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted);">Istoric — răspunse / citite</h4>' + rasp.map(m=>`
+        <div class="appr-card" style="opacity:.9;">
+          <div class="coord">${escapeHtml(m.coordonator||'')} · ${new Date(m.createdAt).toLocaleDateString('ro-RO')}</div>
+          <div class="who">${escapeHtml(m.numeAngajat||'—')}</div>
+          <div class="motiv" style="font-style:normal;">${escapeHtml(m.text)}</div>
+          <div style="margin-top:8px; font-size:12.5px; color:var(--green); font-weight:600;">${m.raspuns ? 'Răspuns'+(m.raspunsDe?' ('+escapeHtml(m.raspunsDe)+')':'')+': '+escapeHtml(m.raspuns) : '✓ Citit'+(m.raspunsDe?' ('+escapeHtml(m.raspunsDe)+')':'')}</div>
+        </div>`).join('') : '';
+    }catch(e){ console.error(e); }
+    el.innerHTML = (lista.length ? lista.map(m=>`
+      <div class="appr-card" id="amc_${m.id}">
+        <div class="coord">${escapeHtml(m.coordonator||'')}</div>
+        <div class="who">${escapeHtml(m.numeAngajat||'—')}</div>
+        <div class="motiv" style="font-style:normal;">${escapeHtml(m.text)}</div>
+        <textarea id="amr_${m.id}" rows="2" maxlength="600" placeholder="Răspuns (opțional pentru „Marchează citit")" style="width:100%; margin-top:10px; padding:9px 10px; border:1px solid var(--border); border-radius:8px; font-size:13px; font-family:inherit;"></textarea>
+        <div class="appr-actions" id="ama_${m.id}">
+          <button style="background:var(--surface); color:var(--text); border:1px solid var(--border);" onclick="adminAnswerMsg('${m.id}', true)">Marchează citit</button>
+          <button class="appr-approve" onclick="adminAnswerMsg('${m.id}', false)">Trimite răspuns</button>
+        </div>
+        <div id="amm_${m.id}" style="font-size:12px; margin-top:8px;"></div>
+      </div>`).join('') : '<div style="color:var(--text-muted); font-size:13px;">Niciun mesaj în așteptare.</div>') + istoric;
+  }catch(err){
+    console.error(err);
+    el.innerHTML = '<div style="color:var(--red); font-size:13px;">Eroare la încărcare: ' + (err.message||err) + '</div>';
+  }
+}
+async function adminAnswerMsg(id, doarCitit){
+  const msg = document.getElementById('amm_'+id);
+  const raspuns = (document.getElementById('amr_'+id).value || '').trim();
+  if(!doarCitit && !raspuns){ msg.style.color='var(--red)'; msg.textContent='Scrie răspunsul sau alege „Marchează citit".'; return; }
+  document.querySelectorAll('#ama_'+id+' button').forEach(b=>b.disabled = true);
+  msg.style.color='var(--text-muted)'; msg.textContent='Se salvează…';
+  try{
+    const idToken = await auth.currentUser.getIdToken();
+    await concediiFunctions.httpsCallable('answerMessage')({ idToken, id, raspuns, doarCitit });
+    msg.style.color='var(--green)'; msg.textContent = doarCitit ? '✓ Marcat citit' : '✓ Răspuns trimis';
+    setTimeout(loadAdminMessages, 1000);
+  }catch(err){
+    console.error(err);
+    document.querySelectorAll('#ama_'+id+' button').forEach(b=>b.disabled = false);
+    msg.style.color='var(--red)'; msg.textContent = 'Nu s-a putut salva: ' + (err.message||err.code||err);
   }
 }
 
