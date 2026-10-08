@@ -522,6 +522,10 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
       <h3 style="margin:0 0 4px;">Cereri de concediu — toate (admin vede tot, indiferent de coordonator)</h3>
       <div id="adminApprovalList" style="margin-top:14px;"></div>
     </div>
+    <div class="dist-panel" style="margin-top:16px;">
+      <h3 style="margin:0 0 4px;">Mesaje de la angajați către coordonatori (fără răspuns)</h3>
+      <div id="adminMsgList" style="margin-top:14px;"></div>
+    </div>
   </main>
 
   <main id="view-propuneri" style="display:none;">
@@ -2147,7 +2151,7 @@ function switchView(name){
   document.getElementById('tabBtn-aprobari').classList.toggle('active', name==='aprobari');
   document.getElementById('tabBtn-propuneri').classList.toggle('active', name==='propuneri');
   if(name==='distante'){ renderFixedPoints(); renderDistanceTable(); }
-  if(name==='aprobari'){ loadAdminApprovalQueue(); }
+  if(name==='aprobari'){ loadAdminApprovalQueue(); loadAdminMessages(); }
   if(name==='propuneri'){ renderPropuneri(); }
 }
 
