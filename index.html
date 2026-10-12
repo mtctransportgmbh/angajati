@@ -367,6 +367,9 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
   header.top{padding:14px 16px;}
   .form-grid, .form-grid.cols-3{grid-template-columns:1fr;}
 }
+.loc-grid{display:flex; gap:14px; flex-wrap:wrap; margin-top:4px;}
+.loc-opt{display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:600;}
+.loc-opt input{width:auto;}
 </style>
 </head>
 <body>
@@ -593,10 +596,8 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
           <label>Rol (poți bifa mai multe)</label>
           <div class="cat-grid" id="coordRolGrid"></div>
         </div>
-        <div class="field"><label>Locație</label>
-          <select id="coord_depot">
-            <option>Ruhstorf</option><option>Eiselfing</option><option>Polling</option><option>Altul</option>
-          </select>
+        <div class="field"><label>Locații (poți bifa mai multe)</label>
+          <div class="loc-grid"><label class="loc-opt"><input type="checkbox" class="locCo" value="Ruhstorf"> Ruhstorf</label><label class="loc-opt"><input type="checkbox" class="locCo" value="Eiselfing"> Eiselfing</label><label class="loc-opt"><input type="checkbox" class="locCo" value="Polling"> Polling</label><label class="loc-opt"><input type="checkbox" class="locCo" value="Altul"> Altul</label></div>
         </div>
         <div class="field"><label>Data nașterii</label><input type="date" id="coord_dataNasterii"></div>
         <div class="field"><label>Telefon</label><input type="text" id="coord_telefon" placeholder="+49 ..."></div>
@@ -809,10 +810,8 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
           <label>Rol (poți bifa mai multe — ex. Șofer + Dispecer)</label>
           <div class="cat-grid" id="rolGrid"></div>
         </div>
-        <div class="field"><label>Locație</label>
-          <select id="f_depot">
-            <option>Ruhstorf</option><option>Eiselfing</option><option>Polling</option><option>Altul</option>
-          </select>
+        <div class="field"><label>Locații (poți bifa mai multe)</label>
+          <div class="loc-grid"><label class="loc-opt"><input type="checkbox" class="locEmp" value="Ruhstorf"> Ruhstorf</label><label class="loc-opt"><input type="checkbox" class="locEmp" value="Eiselfing"> Eiselfing</label><label class="loc-opt"><input type="checkbox" class="locEmp" value="Polling"> Polling</label><label class="loc-opt"><input type="checkbox" class="locEmp" value="Altul"> Altul</label></div>
         </div>
         <div class="field"><label>Data nașterii</label><input type="date" id="f_dataNasterii"></div>
         <div class="field"><label>Telefon</label><input type="text" id="f_telefon" placeholder="+49 ..."></div>
@@ -1527,7 +1526,7 @@ function renderBoard(){
 
   let list = employees.filter(e=>{
     if(!showArhivat && e.status==='Arhivat') return false;
-    if(fDepot && e.depot!==fDepot) return false;
+    if(fDepot && !employeeLocs(e).includes(fDepot)) return false;
     if(fRol && !(e.roluri && e.roluri.length ? e.roluri.includes(fRol) : e.rol===fRol)) return false;
     if(q){
       const hay = [e.numeComplet,e.telefon,e.email,e.employeeId].filter(Boolean).join(' ').toLowerCase();
@@ -1565,7 +1564,7 @@ function renderBoard(){
           </div>
         </div>
       </td>
-      <td>${rolesText(e)} <span style="color:var(--text-muted);">· ${escapeHtml(e.depot||'—')}</span></td>
+      <td>${rolesText(e)} <span style="color:var(--text-muted);">· ${escapeHtml(employeeLocs(e).join(', ')||'—')}</span></td>
       <td>${expiryChip(e.dataExpirarePermis)}</td>
       <td>${accessChip(e)}</td>
       <td>${vacationCell(e)}</td>
@@ -1626,7 +1625,7 @@ function buildViewHtml(p, isCoord){
   if(p.employeeId!==undefined) general += viewRow('Cod angajat', p.employeeId);
   if(!isCoord && p.numarPersonal!==undefined) general += viewRow('Număr personal (login)', p.numarPersonal);
   general += viewRow('Rol', roluri);
-  general += viewRow('Locație', p.depot);
+  general += viewRow('Locații', employeeLocs(p).join(', '));
   general += viewRow('Data nașterii', p.dataNasterii);
   general += viewRow('Telefon', p.telefon);
   general += viewRow('Email', p.email);
@@ -1830,7 +1829,7 @@ function openModal(id){
    'contactUrgentaNume','contactUrgentaTelefon','contactUrgentaRelatie',
    'notite'].forEach(f=>document.getElementById('f_'+f).value='');
   document.getElementById('f_tara').value='Germania';
-  document.getElementById('f_depot').value='Ruhstorf';
+  setLocs('locEmp',['Ruhstorf']);
   document.getElementById('f_status').value='Activ';
   document.getElementById('f_coordonator').value='';
   document.getElementById('f_rolAprobator').value='';
@@ -1860,7 +1859,7 @@ function openModal(id){
       document.getElementById('f_prenume').value = e.prenume || displayPrenume(e);
       document.getElementById('f_numarPersonal').value = e.numarPersonal||'';
       setRoluri(e.roluri && e.roluri.length ? e.roluri : (e.rol ? [e.rol] : []));
-      document.getElementById('f_depot').value = e.depot||'Ruhstorf';
+      setLocs('locEmp', employeeLocs(e));
       document.getElementById('f_dataNasterii').value = e.dataNasterii||'';
       document.getElementById('f_telefon').value = e.telefon||'';
       document.getElementById('f_email').value = e.email||'';
@@ -1947,7 +1946,8 @@ async function saveEmployee(){
     // "rol" rămâne un string (rolurile unite prin virgulă) pentru orice cod
     // vechi/alte ecrane care mai citesc acest câmp ca text simplu.
     rol: rolurileSelectate.join(', '),
-    depot: document.getElementById('f_depot').value,
+    depot: (getLocs('locEmp')[0] || 'Ruhstorf'),
+    locatii: (getLocs('locEmp').length ? getLocs('locEmp') : ['Ruhstorf']),
     dataNasterii: document.getElementById('f_dataNasterii').value,
     telefon: document.getElementById('f_telefon').value.trim(),
     email: document.getElementById('f_email').value.trim(),
@@ -2320,7 +2320,7 @@ function renderPropuneri(){
       <div class="prop-card">
         <div class="coord">Propus de ${escapeHtml(p.propusDeNume||grupTxt)} (${escapeHtml(grupTxt)})</div>
         <div class="who">${escapeHtml(d.numeComplet||'—')}</div>
-        <div class="meta">${escapeHtml(d.depot||'—')} · ${escapeHtml(d.telefon||'—')} · ${escapeHtml(d.email||'—')}</div>
+        <div class="meta">${escapeHtml(employeeLocs(d).join(', ')||'—')} · ${escapeHtml(d.telefon||'—')} · ${escapeHtml(d.email||'—')}</div>
         <div class="roluri-tag">Rol: ${escapeHtml(roluriTxt)}</div>
         <div class="appr-actions">
           <button class="appr-approve" onclick="aprobaPropunere('${p.id}')">Aprobă (deschide fișa)</button>
@@ -2340,7 +2340,7 @@ function aprobaPropunere(propId){
   document.getElementById('f_prenume').value = d.prenume || '';
   document.getElementById('f_numeFamilie').value = d.numeFamilie || '';
   setRoluri(d.roluri || []);
-  document.getElementById('f_depot').value = d.depot || 'Ruhstorf';
+  setLocs('locEmp', employeeLocs(d));
   document.getElementById('f_dataNasterii').value = d.dataNasterii || '';
   document.getElementById('f_telefon').value = d.telefon || '';
   document.getElementById('f_email').value = d.email || '';
@@ -2706,7 +2706,7 @@ function renderCoordTeamList(){
         return `
         <div class="appr-card" onclick="openViewModal('${m.id}', true)" style="cursor:pointer;">
           <div class="who">${escapeHtml(nume)}</div>
-          <div class="when">${escapeHtml(m.depot||'\u2014')} \u00b7 ${escapeHtml(m.telefon||'\u2014')} \u00b7 ${escapeHtml(m.email||'\u2014')}</div>
+          <div class="when">${escapeHtml(employeeLocs(m).join(', ')||'\u2014')} \u00b7 ${escapeHtml(m.telefon||'\u2014')} \u00b7 ${escapeHtml(m.email||'\u2014')}</div>
           <div class="motiv">Rol: ${escapeHtml(roluri)}</div>
           <div class="appr-actions" onclick="event.stopPropagation()">
             <button style="background:var(--primary); color:#fff;" onclick="openCoordModal('${m.id}')">Editeaz\u0103</button>
@@ -2747,7 +2747,7 @@ function openCoordModal(memberId){
    'coord_identnummer','coord_numarCopii','coord_contactUrgentaNume','coord_contactUrgentaTelefon',
    'coord_contactUrgentaRelatie'].forEach(id=>{ document.getElementById(id).value=''; });
   document.getElementById('coord_tara').value = 'Germania';
-  document.getElementById('coord_depot').value = 'Ruhstorf';
+  setLocs('locCo',['Ruhstorf']);
   document.getElementById('coord_status').value = 'Activ';
   document.getElementById('coord_coordonator').value = coordMyGroup || 'admin';
   document.getElementById('coord_areCardTahograf').checked = false;
@@ -2771,7 +2771,7 @@ function openCoordModal(memberId){
       document.getElementById('coord_prenume').value = m.prenume||'';
       document.getElementById('coord_numeFamilie').value = m.numeFamilie||'';
       setCheckedIn('coordRolGrid', m.roluri||[]);
-      document.getElementById('coord_depot').value = m.depot||'Ruhstorf';
+      setLocs('locCo', employeeLocs(m));
       document.getElementById('coord_dataNasterii').value = m.dataNasterii||'';
       document.getElementById('coord_telefon').value = m.telefon||'';
       document.getElementById('coord_email').value = m.email||'';
@@ -2844,7 +2844,8 @@ async function saveCoordMember(){
   const payload = {
     prenume, numeFamilie,
     roluri: getCheckedIn('coordRolGrid'),
-    depot: document.getElementById('coord_depot').value,
+    depot: (getLocs('locCo')[0] || 'Ruhstorf'),
+    locatii: (getLocs('locCo').length ? getLocs('locCo') : ['Ruhstorf']),
     dataNasterii: document.getElementById('coord_dataNasterii').value,
     telefon: document.getElementById('coord_telefon').value.trim(),
     email: document.getElementById('coord_email').value.trim(),
@@ -2902,6 +2903,14 @@ async function saveCoordMember(){
     btn.textContent = originalLabel;
   }
 }
+
+/* Locații: un angajat poate lucra pe mai multe (câmpul "locatii"); "depot" rămâne prima, pentru compatibilitate. */
+function employeeLocs(e){
+  if(e && Array.isArray(e.locatii) && e.locatii.length) return e.locatii;
+  return (e && e.depot) ? [e.depot] : [];
+}
+function setLocs(cls, arr){ document.querySelectorAll('.'+cls).forEach(c=>c.checked = (arr||[]).includes(c.value)); }
+function getLocs(cls){ return [...document.querySelectorAll('.'+cls)].filter(c=>c.checked).map(c=>c.value); }
 </script>
 </body>
 </html>
