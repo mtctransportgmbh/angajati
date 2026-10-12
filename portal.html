@@ -16,6 +16,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
 <style>
 :root{
@@ -158,6 +159,8 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
 .tab-btn.active .ic{transform:scale(1.08);}
 
 /* ---------- Mesaj către coordonator ---------- */
+.msg-coord{font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); font-weight:700; margin-bottom:3px;}
+.msg-hist-title{font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted); margin:18px 0 8px; font-weight:700;}
 .msg-hint{font-size:12px; color:var(--text-muted); line-height:1.4; margin:-2px 0 10px;}
 #msgText, .msg-reply{
   width:100%; border:1.5px solid var(--border); border-radius:10px; padding:11px 12px;
@@ -211,29 +214,12 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
 @keyframes splashPop{from{opacity:0; transform:scale(.55);} to{opacity:1; transform:scale(1);}}
 @keyframes splashBar{from{width:0;} to{width:100%;}}
 @keyframes splashFade{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
-/* camionul care trece pe sub siglă — mai repede decât restul animației */
-.splash-road{position:absolute; left:0; right:0; bottom:17%; height:3px; background:rgba(255,255,255,.18); overflow:hidden; border-radius:3px;}
-.road-line{position:absolute; top:0; left:0; width:200%; height:3px;
-  background:repeating-linear-gradient(90deg, rgba(255,255,255,.55) 0 22px, transparent 22px 52px);
-  animation:roadMove .7s linear infinite;}
-.splash-truck{position:absolute; bottom:calc(17% - 4px); left:0; width:240px; transform:translateX(-260px); opacity:0;
-  animation:truckDrive 1.6s 1.1s cubic-bezier(.35,.1,.5,1) forwards;}
-.splash-truck svg{display:block; animation:truckBounce .24s ease-in-out infinite;}
-.wheel{transform-box:fill-box; transform-origin:center; animation:wheelSpin .32s linear infinite;}
-@keyframes truckDrive{
-  0%{transform:translateX(-260px); opacity:1;}
-  100%{transform:translateX(calc(100vw + 20px)); opacity:1;}
-}
-@keyframes roadMove{from{transform:translateX(0);} to{transform:translateX(-52px);}}
-@keyframes wheelSpin{to{transform:rotate(360deg);}}
-@keyframes truckBounce{0%,100%{transform:translateY(0);} 50%{transform:translateY(-1.6px);}}
 /* aplicația "intră" cu un zoom ușor după splash */
 .phone-frame.zoom-in{animation:appZoomIn .95s cubic-bezier(.2,.8,.2,1) both;}
 @keyframes appZoomIn{from{opacity:0; transform:scale(.9);} to{opacity:1; transform:scale(1);}}
 @media (prefers-reduced-motion:reduce){
   .splash, .splash *{animation:none !important; transition:none !important;}
   .sm-bar{width:100%;} .sm-sub{opacity:1;}
-  .splash-truck,.splash-road{display:none;}
   .phone-frame.zoom-in{animation:none;}
 }
 
@@ -494,6 +480,67 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
   #approvalList{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
   #approvalList .appr-card{margin-bottom:0;}
 }
+/* ---- Notificări ---- */
+.bell-btn{position:relative; margin-right:8px;}
+.bell-badge{position:absolute; top:-5px; right:-5px; min-width:18px; height:18px; padding:0 5px; border-radius:9px;
+  background:var(--red); color:#fff; font-size:10.5px; font-weight:800; display:none; align-items:center; justify-content:center; border:2px solid var(--surface);}
+.bell-btn.has-unread{color:var(--primary); border-color:var(--primary);}
+.bell-btn.ring .bell-ic{display:inline-block; animation:bellRing .9s ease 1;}
+@keyframes bellRing{0%,100%{transform:rotate(0)}15%{transform:rotate(16deg)}30%{transform:rotate(-14deg)}45%{transform:rotate(10deg)}60%{transform:rotate(-8deg)}75%{transform:rotate(4deg)}}
+.notif-overlay{position:fixed; inset:0; z-index:2500; display:none; background:rgba(20,28,40,.45);}
+.notif-overlay.show{display:block;}
+.notif-sheet{position:absolute; left:0; right:0; bottom:0; max-height:82%; background:var(--surface); border-radius:20px 20px 0 0;
+  display:flex; flex-direction:column; box-shadow:0 -8px 30px rgba(0,0,0,.2); animation:sheetUp .25s ease;}
+@media(min-width:800px){.notif-sheet{left:auto; right:24px; bottom:auto; top:64px; width:400px; max-height:70vh; border-radius:16px;}}
+@keyframes sheetUp{from{transform:translateY(40px); opacity:0}to{transform:none; opacity:1}}
+.notif-head{display:flex; align-items:center; justify-content:space-between; padding:16px 18px 10px; font-weight:800; font-size:16px;}
+.notif-list{overflow-y:auto; padding:0 12px 10px; flex:1;}
+.notif-item{display:flex; gap:12px; padding:12px 10px; border-radius:12px; margin-bottom:6px; border:1.5px solid var(--border); cursor:pointer; background:var(--surface);}
+.notif-item.unread{background:var(--primary-soft); border-color:#C9D6E6;}
+.notif-ic{flex:0 0 auto; width:36px; height:36px; border-radius:10px; background:var(--surface-alt); display:flex; align-items:center; justify-content:center; font-size:18px;}
+.notif-t{font-weight:700; font-size:13.5px; line-height:1.3;}
+.notif-x{font-size:12.5px; color:var(--text-muted); margin-top:2px; line-height:1.35; word-break:break-word;}
+.notif-w{font-size:11px; color:var(--text-muted); margin-top:4px;}
+.notif-empty{text-align:center; color:var(--text-muted); padding:30px 10px; font-size:13.5px;}
+.notif-push{margin:0 12px 12px; padding:12px; border-radius:12px; background:var(--amber-soft); font-size:12.5px; line-height:1.4; display:none;}
+.notif-push.ok{background:var(--green-soft);}
+.notif-push button{margin-top:8px;}
+.toast-n{position:fixed; left:12px; right:12px; top:max(12px, env(safe-area-inset-top)); z-index:6000; max-width:440px; margin:0 auto;
+  background:var(--primary); color:#fff; border-radius:14px; padding:12px 14px; display:flex; gap:10px; align-items:flex-start;
+  box-shadow:0 10px 30px rgba(0,0,0,.28); transform:translateY(-140%); transition:transform .35s cubic-bezier(.2,.9,.3,1.2); cursor:pointer;}
+.toast-n.show{transform:none;}
+.toast-n .tt{font-weight:800; font-size:13.5px;}
+.toast-n .tx{font-size:12.5px; opacity:.9; margin-top:2px;}
+.coord-line{display:flex; align-items:center; gap:10px; margin:0 0 12px; padding:10px 14px; border:1.5px solid var(--border); border-radius:12px; background:var(--surface); font-size:13.5px;}
+.coord-line b{color:var(--primary);}
+/* ---- Anunțuri ---- */
+.ann-card{border:1.5px solid var(--amber); background:var(--amber-soft); border-radius:14px; padding:12px 14px; margin:0 0 12px; cursor:pointer;}
+.ann-card.done{border-color:var(--border); background:var(--surface); cursor:pointer;}
+.ann-card .at{font-weight:800; font-size:13.5px;}
+.ann-card .ax{font-size:12.5px; color:var(--text-muted); margin-top:3px; line-height:1.35;}
+.ann-reader{position:fixed; inset:0; z-index:4000; background:var(--bg); display:none; flex-direction:column;}
+.ann-reader.show{display:flex;}
+.ann-top{padding:14px 16px; border-bottom:1.5px solid var(--border); background:var(--surface); display:flex; justify-content:space-between; align-items:center; font-weight:800;}
+.ann-body{flex:1; overflow-y:auto; padding:18px 16px; font-size:15px; line-height:1.55; white-space:pre-wrap; word-break:break-word;}
+.ann-foot{padding:12px 16px calc(12px + env(safe-area-inset-bottom)); border-top:1.5px solid var(--border); background:var(--surface);}
+.ann-prog{height:6px; border-radius:3px; background:var(--surface-alt); overflow:hidden; margin-bottom:10px;}
+.ann-prog > div{height:100%; width:0; background:var(--green); transition:width .3s;}
+.ann-hint{font-size:12px; color:var(--text-muted); margin-bottom:8px; min-height:16px;}
+.ann-q{margin-bottom:10px;}
+.ann-q b{display:block; font-size:13.5px; margin-bottom:6px;}
+.ann-opt{display:block; width:100%; text-align:left; padding:10px 12px; margin-bottom:6px; border:1.5px solid var(--border); border-radius:10px; background:var(--surface); font-size:13.5px; cursor:pointer;}
+.ann-opt.sel{border-color:var(--primary); background:var(--primary-soft); font-weight:700;}
+.ann-stat{border:1.5px solid var(--border); border-radius:12px; padding:10px 12px; margin-bottom:10px; font-size:13px;}
+.ann-stat .row{display:flex; justify-content:space-between; gap:8px; padding:5px 0; border-top:1px solid var(--border); font-size:12.5px;}
+.ann-chip{display:inline-block; padding:5px 10px; border:1.5px solid var(--border); border-radius:100px; font-size:12px; margin:0 6px 6px 0; cursor:pointer; background:var(--surface);}
+.ann-chip.on{border-color:var(--primary); background:var(--primary-soft); font-weight:700;}
+.anon-row{display:flex; align-items:center; gap:8px; font-size:12.5px; margin:8px 0; color:var(--text-muted);}
+.anon-row input{width:auto;}
+/* ---- Protocoale ---- */
+.sig-pad{border:2px dashed var(--border); border-radius:12px; background:#fff; width:100%; height:150px; touch-action:none; display:block;}
+.sig-row{display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--text-muted); margin:6px 0;}
+.prot-confirm{display:flex; gap:8px; align-items:flex-start; font-size:13px; margin:8px 0;}
+.prot-confirm input{width:auto; margin-top:3px;}
 </style>
 </head>
 <body>
@@ -516,25 +563,6 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
       <span class="sm-bar"></span>
       <span class="sm-sub">TRANSPORT GMBH</span>
     </div>
-  </div>
-  <div class="splash-road"><span class="road-line"></span></div>
-  <div class="splash-truck">
-    <svg viewBox="0 0 240 80" width="240" height="80" aria-hidden="true">
-      <!-- remorcă -->
-      <rect x="2" y="8" width="150" height="46" rx="5" fill="#FFFFFF"/>
-      <rect x="2" y="40" width="150" height="6" fill="#D98E04"/>
-      <text x="77" y="33" text-anchor="middle" font-family="Space Grotesk, Inter, sans-serif" font-weight="700" font-size="19" letter-spacing="2" fill="#1E3A5F">MTC</text>
-      <!-- cabină -->
-      <path d="M156 20 h34 q8 0 13 8 l11 15 q3 4 3 9 v5 h-61 z" fill="#E7EDF4"/>
-      <path d="M176 25 h13 q4 0 7 5 l7 10 h-27 z" fill="#1E3A5F"/>
-      <rect x="156" y="54" width="61" height="5" fill="#D98E04"/>
-      <rect x="214" y="46" width="5" height="6" rx="1.5" fill="#FFD66B"/>
-      <!-- roți -->
-      <g class="wheel"><circle cx="34" cy="62" r="11" fill="#14283F" stroke="#fff" stroke-width="2.5"/><path d="M34 54v16M26 62h16" stroke="#fff" stroke-width="2"/></g>
-      <g class="wheel"><circle cx="62" cy="62" r="11" fill="#14283F" stroke="#fff" stroke-width="2.5"/><path d="M62 54v16M54 62h16" stroke="#fff" stroke-width="2"/></g>
-      <g class="wheel"><circle cx="172" cy="62" r="11" fill="#14283F" stroke="#fff" stroke-width="2.5"/><path d="M172 54v16M164 62h16" stroke="#fff" stroke-width="2"/></g>
-      <g class="wheel"><circle cx="200" cy="62" r="11" fill="#14283F" stroke="#fff" stroke-width="2.5"/><path d="M200 54v16M192 62h16" stroke="#fff" stroke-width="2"/></g>
-    </svg>
   </div>
 </div>
 
@@ -589,6 +617,9 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
       <button class="tab-btn sidebar-btn" data-tab="aprobari" id="tabBtnAprobariSidebar" style="display:none;" onclick="switchTab('aprobari')">
         <span class="ic">✅</span><span class="lbl">Aprobări</span>
       </button>
+      <button class="tab-btn sidebar-btn" data-tab="echipa" id="tabBtnEchipaSidebar" style="display:none;" onclick="switchTab('echipa')">
+        <span class="ic">👥</span><span class="lbl">Echipă</span>
+      </button>
     </nav>
 
     <div class="ph-main">
@@ -600,7 +631,10 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
           <div class="ph-sub">MTC Transport</div>
         </div>
       </div>
-      <button class="ph-icon-btn" onclick="logout()" title="Ieși din cont">⎋</button>
+      <div style="display:flex; align-items:center;">
+        <button class="ph-icon-btn bell-btn" id="bellBtn" onclick="openNotifs()" title="Notificări"><span class="bell-ic">🔔</span><span class="bell-badge" id="bellBadge">0</span></button>
+        <button class="ph-icon-btn" onclick="logout()" title="Ieși din cont">⎋</button>
+      </div>
     </header>
 
     <div class="ph-content" id="phContent">
@@ -618,6 +652,9 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
             <button class="ib-close" onclick="dismissInstall()" aria-label="Închide">✕</button>
           </div>
         </div>
+        <div id="annBox"></div>
+        <div id="protBox"></div>
+        <div class="coord-line" id="coordLine"><span>👤</span><span id="coordLineTxt">Coordonatorul tău: —</span></div>
         <div class="glance-row">
           <div class="glance-tile" onclick="switchTab('concediu')">
             <div class="glance-num" id="g_vacRamase">—</div>
@@ -645,6 +682,7 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
           <div id="myMsgForm" style="display:none;">
             <textarea id="msgText" rows="4" maxlength="600" placeholder="Scrie aici mesajul pentru coordonator…"></textarea>
             <div class="msg-count"><span id="msgCount">0</span>/600</div>
+            <label class="anon-row"><input type="checkbox" id="msgAnon"> 🔒 Trimite anonim (colegii nu află; coordonatorul vede numele, dar știe că mesajul e confidențial)</label>
             <button class="btn btn-primary" id="msgSendBtn" onclick="sendMyMessage()">Trimite mesajul</button>
           </div>
           <div id="myMsgNote" class="msg-note"></div>
@@ -782,11 +820,65 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
           <h3>Cereri de aprobat</h3>
           <div id="approvalList"></div>
         </div>
-        <div class="section">
-          <h3>Mesaje de la echipă <span class="seg-badge" id="coordMsgBadge" style="display:none;">0</span></h3>
+      </section>
+
+      <!-- ---------- TAB: ECHIPĂ (hub coordonatori) ---------- -->
+      <section id="tab-echipa" class="tab-panel">
+        <div class="section" style="margin-top:0;">
+          <h3>Echipa mea</h3>
+          <div class="hub-card" onclick="switchTab('mesaje')"><span class="hub-ic">✉️</span><div><div class="hub-t">Mesaje de la echipă <span class="seg-badge" id="hubMsgBadge" style="display:none;">0</span></div><div class="hub-x">Mesaje private primite, răspunsuri</div></div><span class="hub-go">›</span></div>
+          <div class="hub-card" onclick="switchTab('anunturi')"><span class="hub-ic">📢</span><div><div class="hub-t">Anunțuri</div><div class="hub-x">Trimite un anunț și vezi cine l-a citit</div></div><span class="hub-go">›</span></div>
+          <div class="hub-card" onclick="switchTab('protocoale')"><span class="hub-ic">📝</span><div><div class="hub-t">Protocoale</div><div class="hub-x">Postează un protocol și adună semnături</div></div><span class="hub-go">›</span></div>
+        </div>
+      </section>
+
+      <section id="tab-mesaje" class="tab-panel">
+        <div class="sub-head"><button class="ph-icon-btn" onclick="switchTab('echipa')" aria-label="Înapoi">←</button><span>✉️ Mesaje de la echipă</span></div>
+        <div class="section" style="margin-top:0;">
+          <h3><span id="coordMsgTitle">Mesaje de la echipă</span> <span class="seg-badge" id="coordMsgBadge" style="display:none;">0</span></h3>
           <div id="coordMsgList"></div>
         </div>
       </section>
+
+      <section id="tab-anunturi" class="tab-panel">
+        <div class="sub-head"><button class="ph-icon-btn" onclick="switchTab('echipa')" aria-label="Înapoi">←</button><span>📢 Anunțuri</span></div>
+        <div class="section" style="margin-top:0;">
+          <h3>📢 Anunț către echipă</h3>
+          <div class="msg-hint">Toți din echipă primesc notificare pe telefon. „Am citit” se activează doar după ce au deschis și citit anunțul cu adevărat.</div>
+          <textarea id="annText" rows="4" maxlength="2000" placeholder="Scrie anunțul…"></textarea>
+          <div style="margin:8px 0;" id="annTargets"></div>
+          <label class="anon-row"><input type="checkbox" id="annQToggle" onchange="document.getElementById('annQBox').style.display=this.checked?'block':'none'"> Adaugă întrebare de control (dovadă că au citit)</label>
+          <div id="annQBox" style="display:none;">
+            <input type="text" id="annQ" maxlength="200" placeholder="Întrebarea (ex: Ce verificăm la semnături?)">
+            <input type="text" class="annOpt" maxlength="120" placeholder="Varianta 1" style="margin-top:6px;">
+            <input type="text" class="annOpt" maxlength="120" placeholder="Varianta 2" style="margin-top:6px;">
+            <input type="text" class="annOpt" maxlength="120" placeholder="Varianta 3 (opțional)" style="margin-top:6px;">
+            <label class="anon-row">Varianta corectă:
+              <select id="annCorect"><option value="0">1</option><option value="1">2</option><option value="2">3</option></select></label>
+          </div>
+          <button class="btn btn-primary" id="annSendBtn" onclick="sendAnnouncement()">Trimite anunțul</button>
+          <div id="annErr" style="color:var(--red); font-size:12px; min-height:14px; margin-top:6px;"></div>
+          <h3 style="margin-top:18px;">Cine a citit</h3>
+          <div id="annStatus"><div class="vac-empty">Se încarcă…</div></div>
+        </div>
+      </section>
+
+      <section id="tab-protocoale" class="tab-panel">
+        <div class="sub-head"><button class="ph-icon-btn" onclick="switchTab('echipa')" aria-label="Înapoi">←</button><span>📝 Protocoale</span></div>
+        <div class="section" style="margin-top:0;">
+          <h3>📝 Protocol de semnat</h3>
+          <div class="msg-hint">Postezi un protocol (ședință, regulă importantă). Fiecare îl citește în portal și îl semnează digital, cu semnătură desenată și PIN personal.</div>
+          <input type="text" id="protTitlu" maxlength="140" placeholder="Titlul protocolului">
+          <textarea id="protText" rows="6" maxlength="12000" placeholder="Textul protocolului…" style="margin-top:6px;"></textarea>
+          <div class="anon-row">Termen de semnare (opțional): <input type="date" id="protTermen" style="width:auto;"></div>
+          <div style="margin:8px 0;" id="protTargets"></div>
+          <button class="btn btn-primary" id="protSendBtn" onclick="createProtocol()">Postează protocolul</button>
+          <div id="protErr" style="color:var(--red); font-size:12px; min-height:14px; margin-top:6px;"></div>
+          <h3 style="margin-top:18px;">Cine a semnat</h3>
+          <div id="protStatus"><div class="vac-empty">Se încarcă…</div></div>
+        </div>
+      </section>
+
 
     </div>
 
@@ -802,6 +894,9 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
       </button>
       <button class="tab-btn" data-tab="aprobari" id="tabBtnAprobari" style="display:none;" onclick="switchTab('aprobari')">
         <span class="ic">✅</span><span class="lbl">Aprobări</span>
+      </button>
+      <button class="tab-btn" data-tab="echipa" id="tabBtnEchipa" style="display:none;" onclick="switchTab('echipa')">
+        <span class="ic">👥</span><span class="lbl">Echipă</span>
       </button>
     </nav>
     </div>
@@ -887,7 +982,8 @@ function showError(msg){
 /* ================= TAB NAVIGATION ================= */
 function switchTab(name){
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active', p.id === 'tab-'+name));
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab === name));
+  const navName = ['mesaje','anunturi','protocoale'].includes(name) ? 'echipa' : name;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab === navName));
   document.getElementById('fabNewRequest').classList.toggle('show', name === 'concediu');
   closeRequestOverlay();
   refreshAllData(false);
@@ -1241,6 +1337,404 @@ async function init(){
   show('loginState');
 }
 
+
+/* ================= ANUNȚURI (de la coordonator) ================= */
+let annList = [], annOpen = null, annTimer = null, annActive = 0, annLastTick = 0, annScrolled = false, annSel = null, annSending = false;
+
+function annFmt(iso){ return fmtMsgDate(iso); }
+async function loadAnnouncements(){
+  if(!auth.currentUser) return;
+  try{
+    const idToken = await auth.currentUser.getIdToken();
+    const r = await concediiFunctions.httpsCallable('getMyAnnouncements')({ idToken });
+    annList = r.data.lista || [];
+    renderAnnBox();
+  }catch(e){ console.error('anunțuri', e); }
+}
+function renderAnnBox(){
+  const box = document.getElementById('annBox');
+  if(!box) return;
+  const nec = annList.filter(a=>!a.citit);
+  const shown = nec.length ? nec : annList.slice(0,1);
+  box.innerHTML = shown.map(a=>`
+    <div class="ann-card ${a.citit?'done':''}" onclick="openAnn('${a.id}')">
+      <div class="at">${a.citit?'✅':'📢'} ${a.citit?'Ultimul anunț (citit)':'Anunț important — de citit'} · ${escapeHtmlP(a.autorNume)}</div>
+      <div class="ax">${escapeHtmlP(a.text.slice(0,120))}${a.text.length>120?'…':''}</div>
+      <div class="ax" style="margin-top:6px;font-weight:700;color:${a.citit?'var(--green)':'var(--amber)'}">${a.citit?'Confirmat '+annFmt(a.confirmAt):'Apasă pentru a citi și confirma'}</div>
+    </div>`).join('');
+}
+async function openAnn(id){
+  const a = annList.find(x=>x.id===id); if(!a) return;
+  annOpen = a; annActive = 0; annScrolled = false; annSel = null; annLastTick = Date.now();
+  document.getElementById('annReaderTitle').textContent = '📢 ' + a.autorNume;
+  const body = document.getElementById('annBody');
+  body.textContent = a.text; body.scrollTop = 0;
+  document.getElementById('annReader').classList.add('show');
+  renderAnnFoot();
+  try{
+    const idToken = await auth.currentUser.getIdToken();
+    await concediiFunctions.httpsCallable('openAnnouncement')({ idToken, id });
+  }catch(e){ console.error(e); }
+  clearInterval(annTimer);
+  annTimer = setInterval(annTick, 500);
+  setTimeout(annCheckScroll, 300);
+}
+function annCheckScroll(){
+  const b = document.getElementById('annBody');
+  if(b.scrollHeight - b.scrollTop - b.clientHeight < 12) annScrolled = true;
+  annTick(true);
+}
+function annTick(noTime){
+  if(!annOpen) return;
+  const now = Date.now();
+  if(noTime !== true && !document.hidden) annActive += Math.min(now - annLastTick, 1000);
+  annLastTick = now;
+  if(annOpen.citit){ return; }
+  const need = annOpen.minMs;
+  const pct = Math.min(100, Math.round(annActive / need * 100));
+  document.getElementById('annProg').style.width = pct + '%';
+  const timpOk = annActive >= need, qOk = !annOpen.intrebare || annSel !== null;
+  const hint = document.getElementById('annHint');
+  const btn = document.getElementById('annConfirmBtn');
+  if(!timpOk) hint.textContent = '⏳ Citește anunțul… (' + Math.ceil((need-annActive)/1000) + ' s)';
+  else if(!annScrolled) hint.textContent = '⬇️ Derulează până la capăt.';
+  else if(!qOk) hint.textContent = 'Răspunde la întrebare.';
+  else hint.textContent = '✔ Poți confirma.';
+  btn.disabled = !(timpOk && annScrolled && qOk);
+}
+function renderAnnFoot(){
+  const a = annOpen, f = document.getElementById('annFoot');
+  if(a.citit){
+    f.innerHTML = '<div class="ann-hint" style="color:var(--green);font-weight:700;">✅ Ai confirmat că ai citit · '+annFmt(a.confirmAt)+'</div><button class="btn btn-secondary" onclick="closeAnn()">Închide</button>';
+    return;
+  }
+  const q = a.intrebare ? `<div class="ann-q"><b>${escapeHtmlP(a.intrebare.q)}</b>${a.intrebare.optiuni.map((o,i)=>`<button class="ann-opt" id="annOpt${i}" onclick="annPick(${i})">${escapeHtmlP(o)}</button>`).join('')}</div>` : '';
+  f.innerHTML = `<div class="ann-prog"><div id="annProg"></div></div><div class="ann-hint" id="annHint"></div>${q}<div id="annErr2" style="color:var(--red);font-size:12px;min-height:14px;"></div><button class="btn btn-primary" id="annConfirmBtn" disabled onclick="confirmAnn()">Am citit</button>`;
+}
+function annPick(i){
+  annSel = i;
+  document.querySelectorAll('.ann-opt').forEach((b,k)=>b.classList.toggle('sel', k===i));
+  annTick(true);
+}
+async function confirmAnn(){
+  const btn = document.getElementById('annConfirmBtn'), err = document.getElementById('annErr2');
+  btn.disabled = true; err.textContent = '';
+  try{
+    const idToken = await auth.currentUser.getIdToken();
+    const r = await concediiFunctions.httpsCallable('confirmAnnouncement')({ idToken, id: annOpen.id, activMs: annActive, derulat: annScrolled, raspuns: annSel });
+    const d = r.data || {};
+    if(d.ok){
+      annOpen.citit = true; annOpen.confirmAt = new Date().toISOString();
+      const l = annList.find(x=>x.id===annOpen.id); if(l){ l.citit = true; l.confirmAt = annOpen.confirmAt; }
+      renderAnnFoot(); renderAnnBox();
+    } else if(d.motiv === 'gresit'){
+      err.textContent = 'Răspuns greșit. Mai citește anunțul și încearcă din nou.';
+      annSel = null; document.querySelectorAll('.ann-opt').forEach(b=>b.classList.remove('sel')); annTick(true);
+    } else {
+      err.textContent = 'Mai citește puțin anunțul înainte de a confirma.';
+      annActive = 0; annTick(true);
+    }
+  }catch(e){ console.error(e); err.textContent = 'Nu am putut trimite confirmarea. Încearcă din nou.'; btn.disabled = false; }
+}
+function closeAnn(){
+  clearInterval(annTimer); annOpen = null;
+  document.getElementById('annReader').classList.remove('show');
+}
+
+/* ---- coordonator: trimite și urmărește ---- */
+let annTargetsAll = [], annTargetsSel = null;
+async function loadAnnTargets(){
+  try{
+    const idToken = await auth.currentUser.getIdToken();
+    const r = await concediiFunctions.httpsCallable('getAnnouncementTargets')({ idToken });
+    annTargetsAll = r.data.lista || [];
+    if(annTargetsSel === null) annTargetsSel = new Set(annTargetsAll.map(x=>x.id));
+    renderAnnTargets();
+  }catch(e){ console.error(e); }
+}
+function renderAnnTargets(){
+  const el = document.getElementById('annTargets'); if(!el) return;
+  el.innerHTML = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">Destinatari ('+annTargetsSel.size+'/'+annTargetsAll.length+') <a style="color:var(--primary);cursor:pointer" onclick="annToggleAll()">toți / nimeni</a></div>' +
+    annTargetsAll.map(x=>`<span class="ann-chip ${annTargetsSel.has(x.id)?'on':''}" onclick="annToggle('${x.id}')">${escapeHtmlP(x.nume)}</span>`).join('');
+}
+function annToggle(id){ annTargetsSel.has(id) ? annTargetsSel.delete(id) : annTargetsSel.add(id); renderAnnTargets(); }
+function annToggleAll(){ annTargetsSel = annTargetsSel.size ? new Set() : new Set(annTargetsAll.map(x=>x.id)); renderAnnTargets(); }
+async function sendAnnouncement(){
+  if(annSending) return;
+  const err = document.getElementById('annErr'); err.textContent = '';
+  const text = document.getElementById('annText').value.trim();
+  if(text.length < 5){ err.textContent = 'Scrie anunțul.'; return; }
+  if(!annTargetsSel.size){ err.textContent = 'Alege cel puțin un destinatar.'; return; }
+  let intrebare = null;
+  if(document.getElementById('annQToggle').checked){
+    const q = document.getElementById('annQ').value.trim();
+    const opt = [...document.querySelectorAll('.annOpt')].map(i=>i.value.trim());
+    const corect = parseInt(document.getElementById('annCorect').value,10);
+    const optiuni = opt.filter(Boolean);
+    if(!q || optiuni.length < 2 || !opt[corect]){ err.textContent = 'Întrebarea: scrie întrebarea, minim 2 variante și alege o variantă corectă completată.'; return; }
+    intrebare = { q, optiuni, corect: opt.slice(0, corect).filter(Boolean).length };
+  }
+  const btn = document.getElementById('annSendBtn');
+  annSending = true; btn.disabled = true; btn.textContent = 'Se trimite…';
+  try{
+    const idToken = await auth.currentUser.getIdToken();
+    const ids = annTargetsSel.size === annTargetsAll.length ? [] : [...annTargetsSel];
+    const r = await concediiFunctions.httpsCallable('sendAnnouncement')({ idToken, text, ids, intrebare });
+    document.getElementById('annText').value = '';
+    document.getElementById('annQToggle').checked = false; document.getElementById('annQBox').style.display = 'none';
+    err.style.color = 'var(--green)'; err.textContent = '✓ Trimis la ' + r.data.destinatari + ' persoane.';
+    setTimeout(()=>{ err.style.color = 'var(--red)'; err.textContent=''; }, 4000);
+    loadAnnStatus();
+  }catch(e){ console.error(e); err.textContent = e.message || 'Nu am putut trimite.'; }
+  annSending = false; btn.disabled = false; btn.textContent = 'Trimite anunțul';
+}
+async function loadAnnStatus(){
+  const el = document.getElementById('annStatus'); if(!el) return;
+  try{
+    const idToken = await auth.currentUser.getIdToken();
+    const r = await concediiFunctions.httpsCallable('getAnnouncementStatus')({ idToken });
+    const l = r.data.lista || [];
+    el.innerHTML = l.length ? l.map(a=>`
+      <div class="ann-stat">
+        <div class="mb-meta" style="margin-bottom:4px;">${annFmt(a.createdAt)} · ${escapeHtmlP(a.autorNume)}${a.areIntrebare?' · cu întrebare':''}</div>
+        <div>${escapeHtmlP(a.text.slice(0,140))}${a.text.length>140?'…':''}</div>
+        <div style="margin:8px 0;font-weight:800;color:${a.citit===a.total?'var(--green)':'var(--amber)'}">${a.citit} din ${a.total} au citit</div>
+        ${a.dest.map(d=>`<div class="row"><span>${escapeHtmlP(d.nume)}</span><span style="text-align:right">${
+          d.confirmAt ? '✅ '+annFmt(d.confirmAt)+' · '+Math.round(d.durataMs/1000)+' s'+(d.corect===true?' · răspuns corect':'')
+          : d.deschisAt ? '👁 deschis '+annFmt(d.deschisAt)+(d.incercari?' · '+d.incercari+' greșeli':'')+' · neconfirmat'
+          : '⏳ nedeschis'}</span></div>`).join('')}
+        ${a.citit<a.total?`<button class="btn btn-secondary btn-small" style="margin-top:8px" onclick="remindAnn('${a.id}',this)">🔔 Reamintește celor care n-au citit</button>`:''}
+      </div>`).join('') : '<div class="vac-empty">Niciun anunț trimis încă.</div>';
+  }catch(e){ console.error(e); el.innerHTML = '<div class="vac-empty">Nu am putut încărca.</div>'; }
+}
+async function remindAnn(id, btn){
+  btn.disabled = true;
+  try{
+    const idToken = await auth.currentUser.getIdToken();
+    const r = await concediiFunctions.httpsCallable('remindAnnouncement')({ idToken, id });
+    btn.textContent = '✓ Reamintire trimisă la ' + r.data.trimise;
+  }catch(e){ console.error(e); btn.disabled = false; btn.textContent = 'Eroare — încearcă din nou'; }
+}
+
+
+/* ================= PROTOCOALE (citit + semnătură digitală) ================= */
+let protList = [], protOpen = null, protTimer = null, protActive = 0, protLastTick = 0, protScrolled = false;
+let sigDrawn = false, sigCtx = null, protSigning = false;
+
+async function loadProtocols(){
+  if(!auth.currentUser) return;
+  try{
+    const r = await functionsRef.httpsCallable('getMyProtocols')({});
+    protList = r.data.lista || [];
+    renderProtBox();
+  }catch(e){ console.error('protocoale', e); }
+}
+function protTermenRo(t){ return t ? t.split('-').reverse().join('.') : ''; }
+function renderProtBox(){
+  const box = document.getElementById('protBox'); if(!box) return;
+  const nes = protList.filter(p=>!p.semnat);
+  box.innerHTML = nes.map(p=>`
+    <div class="ann-card" onclick="openProt('${p.id}')">
+      <div class="at">📝 Protocol de semnat · ${escapeHtmlP(p.titlu)}</div>
+      <div class="ax">De la ${escapeHtmlP(p.autorNume)}${p.termen?' · termen '+protTermenRo(p.termen):''}</div>
+      <div class="ax" style="margin-top:6px;font-weight:700;color:var(--amber)">Apasă pentru a citi și semna</div>
+    </div>`).join('') + (nes.length ? '' : protList.slice(0,1).map(p=>`
+    <div class="ann-card done" onclick="openProt('${p.id}')">
+      <div class="at">✅ Protocol semnat · ${escapeHtmlP(p.titlu)}</div>
+      <div class="ax">Semnat ${fmtMsgDate(p.semnatAt)}</div>
+    </div>`).join(''));
+}
+async function openProt(id){
+  const p = protList.find(x=>x.id===id); if(!p) return;
+  protOpen = p; protActive = 0; protScrolled = false; protLastTick = Date.now(); sigDrawn = false;
+  document.getElementById('protReaderTitle').textContent = '📝 ' + p.titlu;
+  const body = document.getElementById('protBody');
+  body.textContent = p.text; body.scrollTop = 0;
+  document.getElementById('protReader').classList.add('show');
+  renderProtFoot();
+  try{ await functionsRef.httpsCallable('openProtocol')({ id }); }catch(e){ console.error(e); }
+  clearInterval(protTimer); protTimer = setInterval(protTick, 500);
+  setTimeout(protCheckScroll, 300);
+}
+function protCheckScroll(){
+  const b = document.getElementById('protBody');
+  if(b.scrollHeight - b.scrollTop - b.clientHeight < 12) protScrolled = true;
+  protTick(true);
+}
+function protReady(){ return protActive >= protOpen.minMs && protScrolled; }
+function protTick(noTime){
+  if(!protOpen || protOpen.semnat) return;
+  const now = Date.now();
+  if(noTime !== true && !document.hidden) protActive += Math.min(now - protLastTick, 1000);
+  protLastTick = now;
+  const need = protOpen.minMs;
+  document.getElementById('protProg').style.width = Math.min(100, Math.round(protActive/need*100)) + '%';
+  const hint = document.getElementById('protHint');
+  const sign = document.getElementById('protSignArea');
+  if(protActive < need) hint.textContent = '⏳ Citește protocolul… (' + Math.ceil((need-protActive)/1000) + ' s)';
+  else if(!protScrolled) hint.textContent = '⬇️ Derulează până la capăt.';
+  else { hint.textContent = '✔ Acum poți semna mai jos.'; if(sign.style.display !== 'block'){ sign.style.display = 'block'; initSigPad(); } }
+}
+function renderProtFoot(){
+  const p = protOpen, f = document.getElementById('protFoot');
+  if(p.semnat){
+    f.innerHTML = '<div class="ann-hint" style="color:var(--green);font-weight:700;">✅ Ai semnat acest protocol · '+fmtMsgDate(p.semnatAt)+'</div><button class="btn btn-secondary" onclick="closeProt()">Închide</button>';
+    return;
+  }
+  f.innerHTML = `<div class="ann-prog"><div id="protProg"></div></div><div class="ann-hint" id="protHint"></div>
+    <div id="protSignArea" style="display:none;">
+      <label class="prot-confirm"><input type="checkbox" id="protCheck" onchange="protBtnState()"> Confirm că am citit și am înțeles acest protocol și sunt de acord să îl respect.</label>
+      <canvas class="sig-pad" id="sigPad"></canvas>
+      <div class="sig-row"><span>✍️ Semnează cu degetul în căsuță</span><a style="color:var(--primary);cursor:pointer" onclick="clearSig()">Șterge</a></div>
+      <input type="password" id="protPin" inputmode="numeric" maxlength="8" placeholder="PIN-ul tău personal (confirmă că ești tu)" oninput="protBtnState()">
+    </div>
+    <div id="protErr2" style="color:var(--red);font-size:12px;min-height:14px;margin:6px 0;"></div>
+    <button class="btn btn-primary" id="protSignBtn" disabled onclick="signProt()">Semnez protocolul</button>`;
+}
+function protBtnState(){
+  const b = document.getElementById('protSignBtn'); if(!b) return;
+  const pin = (document.getElementById('protPin')||{}).value || '';
+  b.disabled = !(protOpen && protReady() && sigDrawn && document.getElementById('protCheck').checked && pin.length >= 4) || protSigning;
+}
+function initSigPad(){
+  const c = document.getElementById('sigPad'); if(!c || c._init) return;
+  c._init = true;
+  const r = c.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  c.width = Math.round(r.width*dpr); c.height = Math.round(r.height*dpr);
+  sigCtx = c.getContext('2d'); sigCtx.scale(dpr, dpr);
+  sigCtx.lineWidth = 2.4; sigCtx.lineCap = 'round'; sigCtx.lineJoin = 'round'; sigCtx.strokeStyle = '#111';
+  let drawing = false, last = null;
+  const pos = e => { const b = c.getBoundingClientRect(); return { x: e.clientX-b.left, y: e.clientY-b.top }; };
+  c.addEventListener('pointerdown', e=>{ e.preventDefault(); drawing = true; last = pos(e); c.setPointerCapture(e.pointerId); sigCtx.beginPath(); sigCtx.arc(last.x,last.y,1.2,0,6.3); sigCtx.fill(); });
+  c.addEventListener('pointermove', e=>{
+    if(!drawing) return; e.preventDefault();
+    const p = pos(e); sigCtx.beginPath(); sigCtx.moveTo(last.x,last.y); sigCtx.lineTo(p.x,p.y); sigCtx.stroke(); last = p;
+    if(!sigDrawn){ sigDrawn = true; protBtnState(); }
+  });
+  const end = ()=>{ drawing = false; };
+  c.addEventListener('pointerup', end); c.addEventListener('pointercancel', end);
+}
+function clearSig(){
+  const c = document.getElementById('sigPad'); if(!c || !sigCtx) return;
+  sigCtx.save(); sigCtx.setTransform(1,0,0,1,0,0); sigCtx.clearRect(0,0,c.width,c.height); sigCtx.restore();
+  sigDrawn = false; protBtnState();
+}
+async function signProt(){
+  if(protSigning) return;
+  const err = document.getElementById('protErr2'), btn = document.getElementById('protSignBtn');
+  err.textContent = ''; protSigning = true; btn.disabled = true; btn.textContent = 'Se semnează…';
+  try{
+    const c = document.getElementById('sigPad');
+    const r = await functionsRef.httpsCallable('signProtocol')({
+      id: protOpen.id, activMs: protActive, derulat: protScrolled, confirm: document.getElementById('protCheck').checked,
+      semnatura: c.toDataURL('image/png'), pin: document.getElementById('protPin').value, ua: navigator.userAgent
+    });
+    const d = r.data || {};
+    if(d.ok){
+      protOpen.semnat = true; protOpen.semnatAt = new Date().toISOString();
+      const l = protList.find(x=>x.id===protOpen.id); if(l){ l.semnat = true; l.semnatAt = protOpen.semnatAt; }
+      renderProtFoot(); renderProtBox();
+    } else if(d.motiv === 'pin') err.textContent = 'PIN greșit.';
+    else if(d.motiv === 'semnatura') err.textContent = 'Semnătura e prea scurtă. Semnează din nou.';
+    else { err.textContent = 'Mai citește puțin protocolul înainte de a semna.'; protActive = 0; }
+  }catch(e){ console.error(e); err.textContent = e.message || 'Nu am putut semna. Încearcă din nou.'; }
+  protSigning = false;
+  const b2 = document.getElementById('protSignBtn'); if(b2){ b2.textContent = 'Semnez protocolul'; protBtnState(); }
+}
+function closeProt(){ clearInterval(protTimer); protOpen = null; document.getElementById('protReader').classList.remove('show'); }
+
+/* ---- coordonator: postează și urmărește ---- */
+let protTargetsAll = [], protTargetsSel = null, protCreating = false;
+async function loadProtTargets(){
+  try{
+    const r = await functionsRef.httpsCallable('getProtocolTargets')({});
+    protTargetsAll = r.data.lista || [];
+    if(protTargetsSel === null) protTargetsSel = new Set(protTargetsAll.map(x=>x.id));
+    renderProtTargets();
+  }catch(e){ console.error(e); }
+}
+function renderProtTargets(){
+  const el = document.getElementById('protTargets'); if(!el) return;
+  el.innerHTML = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">Destinatari ('+protTargetsSel.size+'/'+protTargetsAll.length+') <a style="color:var(--primary);cursor:pointer" onclick="protToggleAll()">toți / nimeni</a></div>' +
+    protTargetsAll.map(x=>`<span class="ann-chip ${protTargetsSel.has(x.id)?'on':''}" onclick="protToggle('${x.id}')">${escapeHtmlP(x.nume)}</span>`).join('');
+}
+function protToggle(id){ protTargetsSel.has(id) ? protTargetsSel.delete(id) : protTargetsSel.add(id); renderProtTargets(); }
+function protToggleAll(){ protTargetsSel = protTargetsSel.size ? new Set() : new Set(protTargetsAll.map(x=>x.id)); renderProtTargets(); }
+async function createProtocol(){
+  if(protCreating) return;
+  const err = document.getElementById('protErr'); err.style.color = 'var(--red)'; err.textContent = '';
+  const titlu = document.getElementById('protTitlu').value.trim(), text = document.getElementById('protText').value.trim();
+  if(titlu.length < 3 || text.length < 20){ err.textContent = 'Scrie titlul și textul protocolului (minim câteva rânduri).'; return; }
+  if(!protTargetsSel.size){ err.textContent = 'Alege cel puțin un destinatar.'; return; }
+  const btn = document.getElementById('protSendBtn');
+  protCreating = true; btn.disabled = true; btn.textContent = 'Se postează…';
+  try{
+    const ids = protTargetsSel.size === protTargetsAll.length ? [] : [...protTargetsSel];
+    const r = await functionsRef.httpsCallable('createProtocol')({ titlu, text, ids, termen: document.getElementById('protTermen').value });
+    document.getElementById('protTitlu').value = ''; document.getElementById('protText').value = ''; document.getElementById('protTermen').value = '';
+    err.style.color = 'var(--green)'; err.textContent = '✓ Postat — '+r.data.destinatari+' persoane au primit notificare.';
+    setTimeout(()=>{ err.textContent=''; }, 5000);
+    loadProtStatus();
+  }catch(e){ console.error(e); err.textContent = e.message || 'Nu am putut posta.'; }
+  protCreating = false; btn.disabled = false; btn.textContent = 'Postează protocolul';
+}
+async function loadProtStatus(){
+  const el = document.getElementById('protStatus'); if(!el) return;
+  try{
+    const r = await functionsRef.httpsCallable('getProtocolStatus')({});
+    const l = r.data.lista || [];
+    el.innerHTML = l.length ? l.map(a=>`
+      <div class="ann-stat">
+        <div class="mb-meta" style="margin-bottom:4px;">${fmtMsgDate(a.createdAt)} · ${escapeHtmlP(a.autorNume)}${a.termen?' · termen '+protTermenRo(a.termen):''}</div>
+        <div style="font-weight:700">${escapeHtmlP(a.titlu)}</div>
+        <div style="margin:8px 0;font-weight:800;color:${a.semnate===a.total?'var(--green)':'var(--amber)'}">${a.semnate} din ${a.total} au semnat</div>
+        ${a.dest.map(d=>`<div class="row"><span>${escapeHtmlP(d.nume)}</span><span style="text-align:right">${
+          d.semnatAt ? '✍️ semnat '+fmtMsgDate(d.semnatAt)+' · '+Math.round(d.durataMs/1000)+' s citit'
+          : d.deschisAt ? '👁 deschis '+fmtMsgDate(d.deschisAt)+' · nesemnat' : '⏳ nedeschis'}</span></div>`).join('')}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+          <button class="btn btn-secondary btn-small" onclick="printProtReport('${a.id}')">🖨️ Raport cu semnături</button>
+          ${a.semnate<a.total?`<button class="btn btn-secondary btn-small" onclick="remindProt('${a.id}',this)">🔔 Reamintește</button>`:''}
+        </div>
+      </div>`).join('') : '<div class="vac-empty">Niciun protocol postat încă.</div>';
+  }catch(e){ console.error(e); el.innerHTML = '<div class="vac-empty">Nu am putut încărca.</div>'; }
+}
+async function remindProt(id, btn){
+  btn.disabled = true;
+  try{ const r = await functionsRef.httpsCallable('remindProtocol')({ id }); btn.textContent = '✓ Trimis la '+r.data.trimise; }
+  catch(e){ console.error(e); btn.disabled = false; btn.textContent = 'Eroare'; }
+}
+async function printProtReport(id){
+  const w = window.open('', '_blank');
+  if(!w){ alert('Permite ferestrele pop-up pentru a deschide raportul.'); return; }
+  w.document.write('<p style="font-family:sans-serif">Se pregătește raportul…</p>');
+  try{
+    const r = (await functionsRef.httpsCallable('getProtocolReport')({ id })).data;
+    const e = escapeHtmlP, dt = i => i ? new Date(i).toLocaleString('ro-RO',{timeZone:'Europe/Berlin'}) : '';
+    w.document.open();
+    w.document.write(`<!doctype html><html lang="ro"><head><meta charset="utf-8"><title>${e(r.titlu)}</title>
+      <style>body{font-family:Arial,sans-serif;max-width:800px;margin:24px auto;padding:0 16px;color:#111}
+      h1{font-size:22px}.t{white-space:pre-wrap;line-height:1.5;border:1px solid #ccc;padding:14px;border-radius:6px}
+      table{width:100%;border-collapse:collapse;margin-top:14px}td,th{border:1px solid #ccc;padding:8px;font-size:13px;vertical-align:middle;text-align:left}
+      img{height:60px}.m{color:#555;font-size:12px}@media print{button{display:none}}.sub-head{display:flex; align-items:center; gap:10px; font-weight:800; font-size:16px; margin:0 0 12px;}
+.hub-card{display:flex; align-items:center; gap:14px; padding:14px; border:1.5px solid var(--border); border-radius:14px; background:var(--surface); margin-bottom:10px; cursor:pointer;}
+.hub-card:active{background:var(--primary-soft);}
+.hub-ic{font-size:26px; width:44px; height:44px; border-radius:12px; background:var(--surface-alt); display:flex; align-items:center; justify-content:center; flex:0 0 auto;}
+.hub-t{font-weight:800; font-size:14.5px;} .hub-x{font-size:12.5px; color:var(--text-muted); margin-top:2px;}
+.hub-go{margin-left:auto; font-size:22px; color:var(--text-muted);}
+</style></head><body>
+      <button onclick="print()">🖨️ Tipărește / Salvează PDF</button>
+      <h1>${e(r.titlu)}</h1>
+      <div class="m">Postat de ${e(r.autorNume)} · ${dt(r.createdAt)}<br>Amprentă document (SHA-256): ${e(r.hash)}</div>
+      <p class="t">${e(r.text)}</p>
+      <h2>Semnături (${r.semnaturi.length})</h2>
+      <table><tr><th>Nume</th><th>Semnătură</th><th>Data și ora</th><th>Citit</th></tr>
+      ${r.semnaturi.map(s=>`<tr><td>${e(s.nume)}</td><td><img src="${s.semnatura}"></td><td>${dt(s.semnatAt)}</td><td>${Math.round((s.activMs||0)/1000)} s</td></tr>`).join('')}</table>
+      ${r.nesemnat.length ? `<h2>Nesemnat încă (${r.nesemnat.length})</h2><p>${r.nesemnat.map(e).join(', ')}</p>` : ''}
+      </body></html>`);
+    w.document.close();
+  }catch(err){ console.error(err); w.document.body.innerHTML = '<p style="font-family:sans-serif">Nu am putut încărca raportul.</p>'; }
+}
+
 /* ================= MESAJ CĂTRE COORDONATOR ================= */
 function fmtMsgDate(iso){
   try{ return new Date(iso).toLocaleString('ro-RO', { timeZone:'Europe/Berlin', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }); }
@@ -1251,7 +1745,7 @@ function renderMyMessages(d){
   last.innerHTML = (d.lista||[]).slice(0,1).map(m=>{
     const dat = fmtMsgDate(m.createdAt);
     if(m.status === 'deschis'){
-      return `<div class="msg-bubble"><div class="mb-meta">Mesajul tău · ${dat}</div>${escapeHtmlP(m.text)}<div class="mb-wait">⏳ Așteaptă răspunsul coordonatorului</div></div>`;
+      return `<div class="msg-bubble"><div class="mb-meta">Mesajul tău${m.anonim?' 🔒 anonim':''} · ${dat}</div>${escapeHtmlP(m.text)}<div class="mb-wait">⏳ Așteaptă răspunsul coordonatorului</div></div>`;
     }
     const rasp = m.raspuns
       ? `<div class="mb-reply">Răspuns · ${fmtMsgDate(m.raspunsAt)}<br>${escapeHtmlP(m.raspuns)}</div>`
@@ -1282,8 +1776,9 @@ async function sendMyMessage(){
   sendingMsg = true; btn.disabled = true; btn.textContent = 'Se trimite…';
   try{
     const idToken = await auth.currentUser.getIdToken();
-    await concediiFunctions.httpsCallable('sendCoordMessage')({ idToken, text: txt });
+    await concediiFunctions.httpsCallable('sendCoordMessage')({ idToken, text: txt, anonim: document.getElementById('msgAnon').checked });
     document.getElementById('msgText').value = '';
+    document.getElementById('msgAnon').checked = false;
     document.getElementById('msgCount').textContent = '0';
     await loadMyMessages();
   }catch(err){
@@ -1305,9 +1800,10 @@ async function loadCoordMessages(silent){
     const lista = r.data.lista || [];
     const badge = document.getElementById('coordMsgBadge');
     badge.textContent = lista.length; badge.style.display = lista.length ? 'inline-block' : 'none';
+    const hb = document.getElementById('hubMsgBadge'); if(hb){ hb.textContent = lista.length; hb.style.display = lista.length ? 'inline-block' : 'none'; }
     document.getElementById('coordMsgList').innerHTML = lista.length ? lista.map(m=>`
       <div class="msg-bubble" id="cm_${m.id}">
-        <div class="mb-meta">${escapeHtmlP(m.numeAngajat||'—')} · ${fmtMsgDate(m.createdAt)}</div>
+        <div class="mb-meta">${escapeHtmlP(m.numeAngajat||'—')}${m.anonim?' · 🔒 ANONIM — nu spune altora cine a scris':''} · ${fmtMsgDate(m.createdAt)}</div>
         ${escapeHtmlP(m.text)}
         <textarea class="msg-reply" id="cmr_${m.id}" rows="2" maxlength="600" placeholder="Răspunsul tău (o singură dată)…" style="margin-top:10px;"></textarea>
         <div class="appr-actions" id="cma_${m.id}">
@@ -1316,11 +1812,31 @@ async function loadCoordMessages(silent){
         </div>
         <div class="appr-msg" id="cmm_${m.id}"></div>
       </div>`).join('') : '<div class="vac-empty">Niciun mesaj nou de la echipă.</div>';
+    if(roleFlags.isAdmin) loadAdminHistory(lista.length);
   }catch(err){
     console.error(err);
     if(silent) return;
     document.getElementById('coordMsgList').innerHTML = '<div class="vac-empty">Nu am putut încărca mesajele.</div>';
   }
+}
+// administratorul vede și mesajele deja răspunse (istoric, toți coordonatorii)
+async function loadAdminHistory(){
+  try{
+    const idToken = await auth.currentUser.getIdToken();
+    const r = await concediiFunctions.httpsCallable('getAllMessages')({ idToken });
+    const rasp = (r.data.lista || []).filter(m=>m.status !== 'deschis').slice(0, 40);
+    let box = document.getElementById('coordMsgHist');
+    if(!box){
+      box = document.createElement('div'); box.id = 'coordMsgHist';
+      document.getElementById('coordMsgList').after(box);
+    }
+    box.innerHTML = rasp.length ? '<div class="msg-hist-title">Istoric — răspunse / citite</div>' + rasp.map(m=>`
+      <div class="msg-bubble answered">
+        <div class="mb-meta">${escapeHtmlP(m.numeAngajat||'—')}${m.anonim?' 🔒 anonim':''} · ${escapeHtmlP(m.coordonator||'')} · ${fmtMsgDate(m.createdAt)}</div>
+        ${escapeHtmlP(m.text)}
+        <div class="mb-reply">${m.raspuns ? 'Răspuns'+(m.raspunsDe?' ('+escapeHtmlP(m.raspunsDe)+')':'')+' · '+fmtMsgDate(m.raspunsAt)+'<br>'+escapeHtmlP(m.raspuns) : '✓ Citit'+(m.raspunsDe?' ('+escapeHtmlP(m.raspunsDe)+')':'')+' · '+fmtMsgDate(m.raspunsAt)}</div>
+      </div>`).join('') : '';
+  }catch(err){ console.error(err); }
 }
 async function answerMsg(id, doarCitit){
   const act = document.getElementById('cma_'+id);
@@ -1356,6 +1872,9 @@ function refreshAllData(force){
   loadVacationData(true);
   loadMyRequests(true);
   loadMyMessages();
+  loadAnnouncements();
+  loadProtocols();
+  if(roleFlags.isCoordonator){ loadAnnStatus(); loadProtStatus(); }
   if(roleFlags.isCoordonator) loadCoordMessages(true);
   if(roleFlags.poateVedeaReclamatii) loadReclamatiiData(true);
   if(roleFlags.isCoordonator) loadApprovalQueue(true);
@@ -1457,7 +1976,7 @@ function initialsFromName(nume){
    înlocuiesc. Se șterge complet când apeși "Ieși din cont". Nu se salvează
    nimic despre alți angajați (coada de aprobare a coordonatorului nu intră
    aici) și nimic mai vechi de 7 zile nu se mai afișează. */
-let roleFlags = { isCoordonator:false, poateVedeaReclamatii:false };
+let roleFlags = { isCoordonator:false, poateVedeaReclamatii:false, isAdmin:false };
 const CACHE_PREFIX = 'mtc_portal_cache_v1:';
 const CACHE_MAX_AGE_MS = 7*24*3600*1000;
 function cacheGet(uid, name){
@@ -1513,9 +2032,14 @@ async function loadProfile(){
     document.getElementById('ph_avatar').textContent = initialsFromName(e.numeComplet);
     if(currentMustChangePin) togglePinChangeCard(true);
 
-    const isCoordonator = !!e.rolAprobator;
+    const ck = (e.coordonator || '').toString();
+    document.getElementById('coordLineTxt').innerHTML = ck ? 'Coordonatorul tău este: <b>'+escapeHtmlP(COORD_LABELS[ck] || ck.charAt(0).toUpperCase()+ck.slice(1))+'</b>' : 'Nu ai un coordonator atribuit încă';
+    const isAdmin = e.esteAdmin === true;           // administratorul unic (setat din panoul admin)
+    const isCoordonator = !!e.rolAprobator || isAdmin;
     document.getElementById('tabBtnAprobari').style.display = isCoordonator ? 'flex' : 'none';
     document.getElementById('tabBtnAprobariSidebar').style.display = isCoordonator ? 'flex' : 'none';
+    document.getElementById('tabBtnEchipa').style.display = isCoordonator ? 'flex' : 'none';
+    document.getElementById('tabBtnEchipaSidebar').style.display = isCoordonator ? 'flex' : 'none';
 
     // Reclamațiile sunt relevante doar pentru șoferii de pachete — restul
     // angajaților (dispeceri, administrativ, mecanici, alți șoferi) nu au
@@ -1524,12 +2048,13 @@ async function loadProfile(){
     const poateVedeaReclamatii = (e.roluri||[]).includes('Șofer pachete');
     document.getElementById('tabBtnReclamatii').style.display = poateVedeaReclamatii ? 'flex' : 'none';
     document.getElementById('tabBtnReclamatiiSidebar').style.display = poateVedeaReclamatii ? 'flex' : 'none';
-    roleFlags = { isCoordonator, poateVedeaReclamatii };
+    roleFlags = { isCoordonator, poateVedeaReclamatii, isAdmin };
+    const h = document.getElementById('coordMsgTitle'); if(h) h.textContent = isAdmin ? 'Mesaje de la toți coordonatorii' : 'Mesaje de la echipă';
     return { isCoordonator, poateVedeaReclamatii };
   }
   function startRoleDependentLoads(flags){
     if(flags.poateVedeaReclamatii && !started.recl){ started.recl = true; loadReclamatiiData(); }
-    if(flags.isCoordonator && !started.appr){ started.appr = true; loadApprovalQueue(); loadCoordMessages(); }
+    if(flags.isCoordonator && !started.appr){ started.appr = true; loadApprovalQueue(); loadCoordMessages(); loadAnnTargets(); loadAnnStatus(); loadProtTargets(); loadProtStatus(); }
   }
 
   // 1) Avem profilul de la ultima vizită? Arată aplicația IMEDIAT, fără să
@@ -1546,6 +2071,9 @@ async function loadProfile(){
   loadVacationData();
   loadMyRequests();
   loadMyMessages();
+  startNotifications();
+  loadAnnouncements();
+  loadProtocols();
 
   // 3) Profilul proaspăt (rolurile pot fi schimbate între timp).
   const doc = await db.collection('angajati').doc(uid).get();
@@ -1554,13 +2082,14 @@ async function loadProfile(){
     return;
   }
   const e = doc.data();
-  cacheSet(uid, 'profile', { numeComplet: e.numeComplet || '', roluri: e.roluri || [], rolAprobator: e.rolAprobator || '' });
+  cacheSet(uid, 'profile', { numeComplet: e.numeComplet || '', roluri: e.roluri || [], rolAprobator: e.rolAprobator || '', esteAdmin: e.esteAdmin === true, coordonator: e.coordonator || '' });
   const flags = applyProfile(e);
   if(!cachedProfile){
     switchTab('acasa');
     show('appState');
   }
   startRoleDependentLoads(flags);
+  openTabFromHash();
 }
 
 /* ================= HOME: quick-glance summary ================= */
@@ -1950,6 +2479,7 @@ async function loadApprovalQueue(silent){
     listEl.innerHTML = lista.length
       ? lista.map(r=>`
         <div class="appr-card" id="appr_${r.id}">
+          ${roleFlags.isAdmin && r.coordonator ? '<div class="msg-coord">Coordonator: '+escapeHtmlP(r.coordonator)+'</div>' : ''}
           <div class="who">${escapeHtmlP(r.numeAngajat||'—')}</div>
           <div class="when">${r.start} → ${r.end}</div>
           ${r.motiv ? `<div class="motiv">"${escapeHtmlP(r.motiv)}"</div>` : ''}
@@ -2044,7 +2574,161 @@ async function setNewPin(){
   }
 }
 
+
+/* ================= NOTIFICĂRI (clopoțel + push) ================= */
+const COORD_LABELS = { raluca:'Raluca', madalina:'Mădălina', corina:'Corina', tania:'Tania', admin:'Admin' };
+const NOTIF_ICONS = { protocol:'📝', anunt:'📢', concediu:'🌴', medical:'🩺', faraplata:'💸', special:'⭐', sold:'📊', aprobat:'✅', respins:'❌', aprobare:'📝',
+  mesaj:'✉️', raspuns:'💬', reclamatie:'📦', rezolvata:'✅', suma:'💶', info:'🔔' };
+let notifState = { lista:[], unread:0, loaded:false, seen:{} };
+let toastTimer = null, toastTab = 'acasa', notifPoll = null;
+
+function ageRo(iso){
+  if(!iso) return '';
+  const m = Math.round((Date.now()-new Date(iso).getTime())/60000);
+  if(m < 1) return 'acum';
+  if(m < 60) return 'acum '+m+' min';
+  const h = Math.round(m/60);
+  if(h < 24) return 'acum '+h+' h';
+  const d = new Date(iso);
+  return String(d.getDate()).padStart(2,'0')+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+d.getFullYear();
+}
+function setBadge(n){
+  const b = document.getElementById('bellBadge'), btn = document.getElementById('bellBtn');
+  if(!b) return;
+  b.textContent = n > 99 ? '99+' : n;
+  b.style.display = n > 0 ? 'flex' : 'none';
+  btn.classList.toggle('has-unread', n > 0);
+  try{ if(navigator.setAppBadge){ n > 0 ? navigator.setAppBadge(n) : navigator.clearAppBadge(); } }catch(e){}
+}
+function showToast(n){
+  document.getElementById('toastIc').textContent = NOTIF_ICONS[n.tip] || '🔔';
+  document.getElementById('toastT').textContent = n.titlu;
+  document.getElementById('toastX').textContent = n.text;
+  toastTab = n.tab || 'acasa';
+  const t = document.getElementById('toastN');
+  t.classList.add('show');
+  const btn = document.getElementById('bellBtn'); btn.classList.remove('ring'); void btn.offsetWidth; btn.classList.add('ring');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 5500);
+}
+function toastClick(){
+  document.getElementById('toastN').classList.remove('show');
+  openTabSafe(toastTab);
+}
+function openTabSafe(tab){
+  const btn = document.querySelector('.tab-btn[data-tab="'+tab+'"]');
+  if(btn && btn.style.display === 'none') tab = 'acasa';
+  switchTab(tab);
+}
+async function loadNotifications(){
+  if(!auth.currentUser) return;
+  try{
+    const r = await functionsRef.httpsCallable('getMyNotifications')({});
+    const d = r.data || { lista:[], unread:0 };
+    const fresh = d.lista.filter(n => !n.citit && !notifState.seen[n.id]);
+    d.lista.forEach(n => { notifState.seen[n.id] = true; });
+    notifState.lista = d.lista; notifState.unread = d.unread;
+    setBadge(d.unread);
+    if(notifState.loaded && fresh.length) showToast(fresh[0]);
+    notifState.loaded = true;
+    if(document.getElementById('notifOverlay').classList.contains('show')) renderNotifs();
+  }catch(e){ console.error('notificări', e); }
+}
+function renderNotifs(){
+  const el = document.getElementById('notifList');
+  if(!notifState.lista.length){ el.innerHTML = '<div class="notif-empty">Nicio notificare încă.<br>Aici apare tot ce se schimbă la contul tău.</div>'; return; }
+  el.innerHTML = notifState.lista.map(n =>
+    '<div class="notif-item'+(n.citit?'':' unread')+'" onclick="notifClick(\''+n.tab+'\')">'+
+    '<div class="notif-ic">'+(NOTIF_ICONS[n.tip]||'🔔')+'</div><div style="min-width:0;flex:1">'+
+    '<div class="notif-t">'+escapeHtmlP(n.titlu)+'</div><div class="notif-x">'+escapeHtmlP(n.text)+'</div>'+
+    '<div class="notif-w">'+ageRo(n.createdAt)+'</div></div></div>').join('');
+}
+function notifClick(tab){ closeNotifs(); openTabSafe(tab); if(tab==='acasa'){ const n=annList.find(a=>!a.citit); const pr=protList.find(a=>!a.semnat); if(n) openAnn(n.id); else if(pr) openProt(pr.id); } }
+async function openNotifs(){
+  document.getElementById('notifOverlay').classList.add('show');
+  renderNotifs(); renderPushBox();
+  await loadNotifications();
+  if(notifState.unread > 0){
+    try{ await functionsRef.httpsCallable('markNotificationsRead')({}); }catch(e){}
+    setTimeout(()=>{ setBadge(0); notifState.unread = 0; }, 1200);
+  }
+}
+function closeNotifs(){
+  document.getElementById('notifOverlay').classList.remove('show');
+  notifState.lista.forEach(n => n.citit = true);
+}
+
+/* ---- push în fundal ---- */
+let pushMessaging = null, swReg = null;
+function pushSupported(){
+  return ('Notification' in window) && ('serviceWorker' in navigator) && ('PushManager' in window) && !!window.PUSH_VAPID_KEY && firebase.messaging.isSupported();
+}
+async function getSw(){
+  if(swReg) return swReg;
+  swReg = await navigator.serviceWorker.register('sw.js');
+  await navigator.serviceWorker.ready;
+  return swReg;
+}
+async function enablePush(){
+  const box = document.getElementById('notifPush');
+  try{
+    const perm = await Notification.requestPermission();
+    if(perm !== 'granted'){ box.innerHTML = 'Ai refuzat notificările. Le poți permite din setările telefonului → MTC.'; return; }
+    await registerPushToken();
+    renderPushBox();
+  }catch(e){ console.error(e); box.textContent = 'Nu am putut activa notificările pe acest telefon.'; }
+}
+async function registerPushToken(){
+  if(!pushSupported() || Notification.permission !== 'granted' || !auth.currentUser) return;
+  const reg = await getSw();
+  pushMessaging = pushMessaging || firebase.messaging();
+  const token = await pushMessaging.getToken({ vapidKey: window.PUSH_VAPID_KEY, serviceWorkerRegistration: reg });
+  if(!token) return;
+  let saved = ''; try{ saved = localStorage.getItem('mtc_push_token') || ''; }catch(e){}
+  if(saved !== token + '|' + auth.currentUser.uid){
+    await functionsRef.httpsCallable('registerPushToken')({ token, ua: navigator.userAgent.slice(0,140) });
+    try{ localStorage.setItem('mtc_push_token', token + '|' + auth.currentUser.uid); }catch(e){}
+  }
+  pushMessaging.onMessage(()=>loadNotifications()); // aplicația deschisă: apare toast-ul
+}
+function renderPushBox(){
+  const box = document.getElementById('notifPush');
+  if(!box) return;
+  box.className = 'notif-push';
+  if(!pushSupported()){
+    if(isIosDevice() && !IS_STANDALONE){
+      box.style.display = 'block';
+      box.innerHTML = '📲 Ca să primești notificări și când aplicația e închisă, pune mai întâi aplicația pe ecranul principal (Distribuie → Adaugă pe ecranul principal) și deschide-o de acolo.';
+    } else box.style.display = 'none';
+    return;
+  }
+  box.style.display = 'block';
+  if(Notification.permission === 'granted'){
+    box.className = 'notif-push ok';
+    box.innerHTML = '✅ Notificările pe telefon sunt active — le primești și când aplicația e închisă.';
+  } else if(Notification.permission === 'denied'){
+    box.innerHTML = 'Notificările sunt blocate. Permite-le din setările telefonului pentru MTC.';
+  } else {
+    box.innerHTML = '🔔 Vrei să primești notificări pe telefon, chiar și când aplicația e închisă?<br><button class="btn btn-primary btn-small" onclick="enablePush()">Activează notificările</button>';
+  }
+}
+function startNotifications(){
+  loadNotifications();
+  clearInterval(notifPoll);
+  notifPoll = setInterval(()=>{ if(!document.hidden) loadNotifications(); }, 20000);
+  registerPushToken().catch(()=>{});
+}
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && auth.currentUser) loadNotifications(); });
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.addEventListener('message', ev => { if(ev.data && ev.data.type === 'open-tab') openTabSafe(ev.data.tab); });
+}
+function openTabFromHash(){
+  const m = /tab=([a-z]+)/.exec(location.hash || '');
+  if(m){ openTabSafe(m[1]); history.replaceState(null, '', location.pathname + location.search); }
+}
+
 function logout(){
+  try{ const t=(localStorage.getItem('mtc_push_token')||'').split('|')[0]; if(t) functionsRef.httpsCallable('unregisterPushToken')({token:t}).catch(()=>{}); localStorage.removeItem('mtc_push_token'); }catch(e){}
   cacheClearAll();
   auth.signOut().then(()=>{ window.location.href = window.location.pathname; });
 }
@@ -2070,5 +2754,24 @@ document.addEventListener('touchmove', e=>{ if(e.touches && e.touches.length > 1
 
 init();
 </script>
+
+<div class="ann-reader" id="annReader">
+  <div class="ann-top"><span id="annReaderTitle">📢</span><button class="ph-icon-btn" onclick="closeAnn()" aria-label="Închide">✕</button></div>
+  <div class="ann-body" id="annBody" onscroll="annCheckScroll()"></div>
+  <div class="ann-foot" id="annFoot"></div>
+</div>
+<div class="ann-reader" id="protReader">
+  <div class="ann-top"><span id="protReaderTitle">📝</span><button class="ph-icon-btn" onclick="closeProt()" aria-label="Închide">✕</button></div>
+  <div class="ann-body" id="protBody" onscroll="protCheckScroll()"></div>
+  <div class="ann-foot" id="protFoot" style="max-height:60vh;overflow-y:auto;"></div>
+</div>
+<div class="notif-overlay" id="notifOverlay" onclick="if(event.target===this)closeNotifs()">
+  <div class="notif-sheet">
+    <div class="notif-head"><span>🔔 Notificări</span><button class="ph-icon-btn" onclick="closeNotifs()" aria-label="Închide">✕</button></div>
+    <div class="notif-push" id="notifPush"></div>
+    <div class="notif-list" id="notifList"><div class="notif-empty">Se încarcă…</div></div>
+  </div>
+</div>
+<div class="toast-n" id="toastN" onclick="toastClick()"><div style="font-size:20px" id="toastIc">🔔</div><div><div class="tt" id="toastT"></div><div class="tx" id="toastX"></div></div></div>
 </body>
 </html>
