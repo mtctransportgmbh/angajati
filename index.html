@@ -370,6 +370,13 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
 .loc-grid{display:flex; gap:14px; flex-wrap:wrap; margin-top:4px;}
 .loc-opt{display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:600;}
 .loc-opt input{width:auto;}
+.adm-in,.adm-ta{width:100%; padding:9px 10px; border:1px solid var(--border); border-radius:8px; font-size:13px; font-family:inherit; margin-top:6px; box-sizing:border-box;}
+.adm-chk{display:flex; align-items:center; gap:8px; font-size:13px; margin:10px 0; cursor:pointer;}
+.adm-chk input{width:auto;}
+.adm-chip{display:inline-block; padding:5px 10px; border:1.5px solid var(--border); border-radius:100px; font-size:12px; margin:0 6px 6px 0; cursor:pointer; background:var(--surface);}
+.adm-chip.on{border-color:var(--primary); background:var(--primary-soft); font-weight:700;}
+.adm-stat{border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:12px; font-size:13px;}
+.adm-stat .row{display:flex; justify-content:space-between; gap:8px; padding:5px 0; border-top:1px solid var(--border); font-size:12.5px;}
 </style>
 </head>
 <body>
@@ -426,6 +433,9 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
     <button class="view-tab-btn active" id="tabBtn-angajati" onclick="switchView('angajati')">👥 Angajați</button>
     <button class="view-tab-btn" id="tabBtn-distante" onclick="switchView('distante')">📍 Distanțe</button>
     <button class="view-tab-btn" id="tabBtn-aprobari" onclick="switchView('aprobari')">✅ Aprobări concediu</button>
+    <button class="view-tab-btn" id="tabBtn-mesaje" onclick="switchView('mesaje')">✉️ Mesaje</button>
+    <button class="view-tab-btn" id="tabBtn-anunturi" onclick="switchView('anunturi')">📢 Anunțuri</button>
+    <button class="view-tab-btn" id="tabBtn-protocoale" onclick="switchView('protocoale')">📝 Protocoale</button>
     <button class="view-tab-btn" id="tabBtn-propuneri" onclick="switchView('propuneri')">🆕 Angajați propuși<span class="badge-count" id="propuneriBadge" style="display:none;"></span></button>
   </div>
 
@@ -525,9 +535,52 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
       <h3 style="margin:0 0 4px;">Cereri de concediu — toate (admin vede tot, indiferent de coordonator)</h3>
       <div id="adminApprovalList" style="margin-top:14px;"></div>
     </div>
-    <div class="dist-panel" style="margin-top:16px;">
+  </main>
+
+  <main id="view-mesaje" style="display:none;">
+    <div class="dist-panel">
       <h3 style="margin:0 0 4px;">Mesaje de la angajați către coordonatori (fără răspuns)</h3>
       <div id="adminMsgList" style="margin-top:14px;"></div>
+    </div>
+  </main>
+
+  <main id="view-anunturi" style="display:none;">
+    <div class="dist-panel">
+      <h3 style="margin:0 0 4px;">📢 Anunț către echipă</h3>
+      <div style="color:var(--text-muted); font-size:12.5px; margin-bottom:10px;">Destinatarii primesc notificare pe telefon. „Am citit” se activează doar după ce au deschis și citit anunțul cu adevărat.</div>
+      <textarea id="aAnnText" rows="4" maxlength="2000" placeholder="Scrie anunțul…" class="adm-ta"></textarea>
+      <div id="aAnnTargets" style="margin:10px 0;"></div>
+      <label class="adm-chk"><input type="checkbox" id="aAnnQToggle" onchange="document.getElementById('aAnnQBox').style.display=this.checked?'block':'none'"> Adaugă întrebare de control (dovadă că au citit)</label>
+      <div id="aAnnQBox" style="display:none;">
+        <input type="text" id="aAnnQ" maxlength="200" placeholder="Întrebarea" class="adm-in">
+        <input type="text" class="aAnnOpt adm-in" maxlength="120" placeholder="Varianta 1">
+        <input type="text" class="aAnnOpt adm-in" maxlength="120" placeholder="Varianta 2">
+        <input type="text" class="aAnnOpt adm-in" maxlength="120" placeholder="Varianta 3 (opțional)">
+        <label class="adm-chk">Varianta corectă: <select id="aAnnCorect"><option value="0">1</option><option value="1">2</option><option value="2">3</option></select></label>
+      </div>
+      <button class="btn btn-primary" style="max-width:260px;" id="aAnnSendBtn" onclick="adminSendAnnouncement()">Trimite anunțul</button>
+      <div id="aAnnErr" style="font-size:12px; min-height:14px; margin-top:6px;"></div>
+    </div>
+    <div class="dist-panel" style="margin-top:16px;">
+      <h3 style="margin:0 0 4px;">Cine a citit</h3>
+      <div id="aAnnStatus" style="margin-top:12px;"></div>
+    </div>
+  </main>
+
+  <main id="view-protocoale" style="display:none;">
+    <div class="dist-panel">
+      <h3 style="margin:0 0 4px;">📝 Protocol de semnat</h3>
+      <div style="color:var(--text-muted); font-size:12.5px; margin-bottom:10px;">Fiecare destinatar citește protocolul în portal și îl semnează digital (semnătură desenată + PIN personal).</div>
+      <input type="text" id="aProtTitlu" maxlength="140" placeholder="Titlul protocolului" class="adm-in">
+      <textarea id="aProtText" rows="7" maxlength="12000" placeholder="Textul protocolului…" class="adm-ta"></textarea>
+      <label class="adm-chk">Termen de semnare (opțional): <input type="date" id="aProtTermen" style="width:auto;"></label>
+      <div id="aProtTargets" style="margin:10px 0;"></div>
+      <button class="btn btn-primary" style="max-width:260px;" id="aProtSendBtn" onclick="adminCreateProtocol()">Postează protocolul</button>
+      <div id="aProtErr" style="font-size:12px; min-height:14px; margin-top:6px;"></div>
+    </div>
+    <div class="dist-panel" style="margin-top:16px;">
+      <h3 style="margin:0 0 4px;">Cine a semnat</h3>
+      <div id="aProtStatus" style="margin-top:12px;"></div>
     </div>
   </main>
 
@@ -2162,12 +2215,19 @@ function switchView(name){
   document.getElementById('view-distante').style.display = name==='distante' ? 'block' : 'none';
   document.getElementById('view-aprobari').style.display = name==='aprobari' ? 'block' : 'none';
   document.getElementById('view-propuneri').style.display = name==='propuneri' ? 'block' : 'none';
+  ['mesaje','anunturi','protocoale'].forEach(v=>{
+    document.getElementById('view-'+v).style.display = name===v ? 'block' : 'none';
+    document.getElementById('tabBtn-'+v).classList.toggle('active', name===v);
+  });
   document.getElementById('tabBtn-angajati').classList.toggle('active', name==='angajati');
   document.getElementById('tabBtn-distante').classList.toggle('active', name==='distante');
   document.getElementById('tabBtn-aprobari').classList.toggle('active', name==='aprobari');
   document.getElementById('tabBtn-propuneri').classList.toggle('active', name==='propuneri');
   if(name==='distante'){ renderFixedPoints(); renderDistanceTable(); }
-  if(name==='aprobari'){ loadAdminApprovalQueue(); loadAdminMessages(); }
+  if(name==='aprobari'){ loadAdminApprovalQueue(); }
+  if(name==='mesaje'){ loadAdminMessages(); }
+  if(name==='anunturi'){ adminLoadAnnTargets(); adminLoadAnnStatus(); }
+  if(name==='protocoale'){ adminLoadProtTargets(); adminLoadProtStatus(); }
   if(name==='propuneri'){ renderPropuneri(); }
 }
 
@@ -2911,6 +2971,159 @@ function employeeLocs(e){
 }
 function setLocs(cls, arr){ document.querySelectorAll('.'+cls).forEach(c=>c.checked = (arr||[]).includes(c.value)); }
 function getLocs(cls){ return [...document.querySelectorAll('.'+cls)].filter(c=>c.checked).map(c=>c.value); }
+
+/* ================= ADMIN: ANUNȚURI și PROTOCOALE ================= */
+function aFmt(iso){ try{ return new Date(iso).toLocaleString('ro-RO',{timeZone:'Europe/Berlin',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
+function aTargetsHtml(all, sel, toggleFn, allFn){
+  return '<div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">Destinatari ('+sel.size+'/'+all.length+') <a style="color:var(--primary);cursor:pointer" onclick="'+allFn+'()">toți / nimeni</a></div>' +
+    all.map(x=>`<span class="adm-chip ${sel.has(x.id)?'on':''}" onclick="${toggleFn}('${x.id}')">${escapeHtml(x.nume)}</span>`).join('');
+}
+/* --- anunțuri --- */
+let aAnnAll = [], aAnnSel = null, aAnnBusy = false;
+async function adminLoadAnnTargets(){
+  try{
+    const idToken = await auth.currentUser.getIdToken();
+    const r = await concediiFunctions.httpsCallable('getAnnouncementTargets')({ idToken });
+    aAnnAll = r.data.lista || [];
+    if(aAnnSel === null) aAnnSel = new Set(aAnnAll.map(x=>x.id));
+    aAnnRender();
+  }catch(e){ console.error(e); document.getElementById('aAnnTargets').textContent = 'Nu am putut încărca destinatarii: ' + (e.message||e); }
+}
+function aAnnRender(){ document.getElementById('aAnnTargets').innerHTML = aTargetsHtml(aAnnAll, aAnnSel, 'aAnnToggle', 'aAnnToggleAll'); }
+function aAnnToggle(id){ aAnnSel.has(id) ? aAnnSel.delete(id) : aAnnSel.add(id); aAnnRender(); }
+function aAnnToggleAll(){ aAnnSel = aAnnSel.size ? new Set() : new Set(aAnnAll.map(x=>x.id)); aAnnRender(); }
+async function adminSendAnnouncement(){
+  if(aAnnBusy) return;
+  const err = document.getElementById('aAnnErr'); err.style.color = 'var(--red)'; err.textContent = '';
+  const text = document.getElementById('aAnnText').value.trim();
+  if(text.length < 5){ err.textContent = 'Scrie anunțul.'; return; }
+  if(!aAnnSel.size){ err.textContent = 'Alege cel puțin un destinatar.'; return; }
+  let intrebare = null;
+  if(document.getElementById('aAnnQToggle').checked){
+    const q = document.getElementById('aAnnQ').value.trim();
+    const opt = [...document.querySelectorAll('.aAnnOpt')].map(i=>i.value.trim());
+    const corect = parseInt(document.getElementById('aAnnCorect').value,10);
+    const optiuni = opt.filter(Boolean);
+    if(!q || optiuni.length < 2 || !opt[corect]){ err.textContent = 'Întrebarea: scrie întrebarea, minim 2 variante și alege o variantă corectă completată.'; return; }
+    intrebare = { q, optiuni, corect: opt.slice(0, corect).filter(Boolean).length };
+  }
+  const btn = document.getElementById('aAnnSendBtn');
+  aAnnBusy = true; btn.disabled = true; btn.textContent = 'Se trimite…';
+  try{
+    const idToken = await auth.currentUser.getIdToken();
+    const ids = aAnnSel.size === aAnnAll.length ? [] : [...aAnnSel];
+    const r = await concediiFunctions.httpsCallable('sendAnnouncement')({ idToken, text, ids, intrebare });
+    document.getElementById('aAnnText').value = '';
+    document.getElementById('aAnnQToggle').checked = false; document.getElementById('aAnnQBox').style.display = 'none';
+    err.style.color = 'var(--green)'; err.textContent = '✓ Trimis la ' + r.data.destinatari + ' persoane.';
+    adminLoadAnnStatus();
+  }catch(e){ console.error(e); err.textContent = e.message || 'Nu am putut trimite.'; }
+  aAnnBusy = false; btn.disabled = false; btn.textContent = 'Trimite anunțul';
+}
+async function adminLoadAnnStatus(){
+  const el = document.getElementById('aAnnStatus');
+  try{
+    const idToken = await auth.currentUser.getIdToken();
+    const l = (await concediiFunctions.httpsCallable('getAnnouncementStatus')({ idToken })).data.lista || [];
+    el.innerHTML = l.length ? l.map(a=>`
+      <div class="adm-stat">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">${aFmt(a.createdAt)} · ${escapeHtml(a.autorNume)}${a.areIntrebare?' · cu întrebare':''}</div>
+        <div>${escapeHtml(a.text.slice(0,160))}${a.text.length>160?'…':''}</div>
+        <div style="margin:8px 0;font-weight:800;color:${a.citit===a.total?'var(--green)':'#D98E04'}">${a.citit} din ${a.total} au citit</div>
+        ${a.dest.map(d=>`<div class="row"><span>${escapeHtml(d.nume)}</span><span>${
+          d.confirmAt ? '✅ '+aFmt(d.confirmAt)+' · '+Math.round(d.durataMs/1000)+' s'+(d.corect===true?' · răspuns corect':'')
+          : d.deschisAt ? '👁 deschis '+aFmt(d.deschisAt)+(d.incercari?' · '+d.incercari+' greșeli':'')+' · neconfirmat' : '⏳ nedeschis'}</span></div>`).join('')}
+        ${a.citit<a.total?`<button class="btn btn-secondary" style="margin-top:8px;width:auto;padding:7px 12px;" onclick="adminRemindAnn('${a.id}',this)">🔔 Reamintește celor care n-au citit</button>`:''}
+      </div>`).join('') : '<div style="color:var(--text-muted)">Niciun anunț trimis încă.</div>';
+  }catch(e){ console.error(e); el.textContent = 'Nu am putut încărca: ' + (e.message||e); }
+}
+async function adminRemindAnn(id, btn){
+  btn.disabled = true;
+  try{
+    const idToken = await auth.currentUser.getIdToken();
+    const r = await concediiFunctions.httpsCallable('remindAnnouncement')({ idToken, id });
+    btn.textContent = '✓ Trimis la ' + r.data.trimise;
+  }catch(e){ console.error(e); btn.disabled = false; btn.textContent = 'Eroare — încearcă din nou'; }
+}
+/* --- protocoale --- */
+let aProtAll = [], aProtSel = null, aProtBusy = false;
+async function adminLoadProtTargets(){
+  try{
+    const r = await functionsRef.httpsCallable('getProtocolTargets')({});
+    aProtAll = r.data.lista || [];
+    if(aProtSel === null) aProtSel = new Set(aProtAll.map(x=>x.id));
+    aProtRender();
+  }catch(e){ console.error(e); document.getElementById('aProtTargets').textContent = 'Nu am putut încărca destinatarii: ' + (e.message||e); }
+}
+function aProtRender(){ document.getElementById('aProtTargets').innerHTML = aTargetsHtml(aProtAll, aProtSel, 'aProtToggle', 'aProtToggleAll'); }
+function aProtToggle(id){ aProtSel.has(id) ? aProtSel.delete(id) : aProtSel.add(id); aProtRender(); }
+function aProtToggleAll(){ aProtSel = aProtSel.size ? new Set() : new Set(aProtAll.map(x=>x.id)); aProtRender(); }
+async function adminCreateProtocol(){
+  if(aProtBusy) return;
+  const err = document.getElementById('aProtErr'); err.style.color = 'var(--red)'; err.textContent = '';
+  const titlu = document.getElementById('aProtTitlu').value.trim(), text = document.getElementById('aProtText').value.trim();
+  if(titlu.length < 3 || text.length < 20){ err.textContent = 'Scrie titlul și textul protocolului (minim câteva rânduri).'; return; }
+  if(!aProtSel.size){ err.textContent = 'Alege cel puțin un destinatar.'; return; }
+  const btn = document.getElementById('aProtSendBtn');
+  aProtBusy = true; btn.disabled = true; btn.textContent = 'Se postează…';
+  try{
+    const ids = aProtSel.size === aProtAll.length ? [] : [...aProtSel];
+    const r = await functionsRef.httpsCallable('createProtocol')({ titlu, text, ids, termen: document.getElementById('aProtTermen').value });
+    document.getElementById('aProtTitlu').value = ''; document.getElementById('aProtText').value = ''; document.getElementById('aProtTermen').value = '';
+    err.style.color = 'var(--green)'; err.textContent = '✓ Postat — '+r.data.destinatari+' persoane au primit notificare.';
+    adminLoadProtStatus();
+  }catch(e){ console.error(e); err.textContent = e.message || 'Nu am putut posta.'; }
+  aProtBusy = false; btn.disabled = false; btn.textContent = 'Postează protocolul';
+}
+async function adminLoadProtStatus(){
+  const el = document.getElementById('aProtStatus');
+  try{
+    const l = (await functionsRef.httpsCallable('getProtocolStatus')({})).data.lista || [];
+    el.innerHTML = l.length ? l.map(a=>`
+      <div class="adm-stat">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">${aFmt(a.createdAt)} · ${escapeHtml(a.autorNume)}${a.termen?' · termen '+a.termen.split('-').reverse().join('.'):''}</div>
+        <div style="font-weight:700">${escapeHtml(a.titlu)}</div>
+        <div style="margin:8px 0;font-weight:800;color:${a.semnate===a.total?'var(--green)':'#D98E04'}">${a.semnate} din ${a.total} au semnat</div>
+        ${a.dest.map(d=>`<div class="row"><span>${escapeHtml(d.nume)}</span><span>${
+          d.semnatAt ? '✍️ semnat '+aFmt(d.semnatAt)+' · '+Math.round(d.durataMs/1000)+' s citit'
+          : d.deschisAt ? '👁 deschis '+aFmt(d.deschisAt)+' · nesemnat' : '⏳ nedeschis'}</span></div>`).join('')}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+          <button class="btn btn-secondary" style="width:auto;padding:7px 12px;" onclick="adminPrintProt('${a.id}')">🖨️ Raport cu semnături</button>
+          ${a.semnate<a.total?`<button class="btn btn-secondary" style="width:auto;padding:7px 12px;" onclick="adminRemindProt('${a.id}',this)">🔔 Reamintește</button>`:''}
+        </div>
+      </div>`).join('') : '<div style="color:var(--text-muted)">Niciun protocol postat încă.</div>';
+  }catch(e){ console.error(e); el.textContent = 'Nu am putut încărca: ' + (e.message||e); }
+}
+async function adminRemindProt(id, btn){
+  btn.disabled = true;
+  try{ const r = await functionsRef.httpsCallable('remindProtocol')({ id }); btn.textContent = '✓ Trimis la '+r.data.trimise; }
+  catch(e){ console.error(e); btn.disabled = false; btn.textContent = 'Eroare'; }
+}
+async function adminPrintProt(id){
+  const w = window.open('', '_blank');
+  if(!w){ alert('Permite ferestrele pop-up pentru a deschide raportul.'); return; }
+  w.document.write('<p style="font-family:sans-serif">Se pregătește raportul…</p>');
+  try{
+    const r = (await functionsRef.httpsCallable('getProtocolReport')({ id })).data;
+    const e = escapeHtml, dt = i => i ? new Date(i).toLocaleString('ro-RO',{timeZone:'Europe/Berlin'}) : '';
+    w.document.open();
+    w.document.write(`<!doctype html><html lang="ro"><head><meta charset="utf-8"><title>${e(r.titlu)}</title>
+      <style>body{font-family:Arial,sans-serif;max-width:800px;margin:24px auto;padding:0 16px;color:#111}
+      h1{font-size:22px}.t{white-space:pre-wrap;line-height:1.5;border:1px solid #ccc;padding:14px;border-radius:6px}
+      table{width:100%;border-collapse:collapse;margin-top:14px}td,th{border:1px solid #ccc;padding:8px;font-size:13px;vertical-align:middle;text-align:left}
+      img{height:60px}.m{color:#555;font-size:12px}@media print{button{display:none}}</style></head><body>
+      <button onclick="print()">🖨️ Tipărește / Salvează PDF</button>
+      <h1>${e(r.titlu)}</h1>
+      <div class="m">Postat de ${e(r.autorNume)} · ${dt(r.createdAt)}<br>Amprentă document (SHA-256): ${e(r.hash)}</div>
+      <p class="t">${e(r.text)}</p>
+      <h2>Semnături (${r.semnaturi.length})</h2>
+      <table><tr><th>Nume</th><th>Semnătură</th><th>Data și ora</th><th>Citit</th></tr>
+      ${r.semnaturi.map(s=>`<tr><td>${e(s.nume)}</td><td><img src="${s.semnatura}"></td><td>${dt(s.semnatAt)}</td><td>${Math.round((s.activMs||0)/1000)} s</td></tr>`).join('')}</table>
+      ${r.nesemnat.length ? `<h2>Nesemnat încă (${r.nesemnat.length})</h2><p>${r.nesemnat.map(e).join(', ')}</p>` : ''}
+      </body></html>`);
+    w.document.close();
+  }catch(err){ console.error(err); w.document.body.innerHTML = '<p style="font-family:sans-serif">Nu am putut încărca raportul.</p>'; }
+}
 </script>
 </body>
 </html>
