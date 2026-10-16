@@ -473,6 +473,7 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
         <button class="btn btn-secondary" onclick="openAdminAlertSettingsModal()">✉ Alerte email</button>
         <button class="btn btn-secondary" onclick="printSelectedSheets()">🖨 Fișe acces (selectați)</button>
         <button class="btn btn-secondary" onclick="exportCSV()">⬇ Export CSV</button>
+        <button class="btn btn-secondary" onclick="exportPentruConcedii()" title="Fișier fără date sensibile (fără CNP/permis/adresă), pentru aplicația Concedii">⬇ Export pentru Concedii</button>
         <button class="btn btn-primary" onclick="openModal()">+ Angajat nou</button>
       </div>
     </div>
@@ -1331,6 +1332,7 @@ function initBoard(){
   unsub = db.collection('angajati').onSnapshot(snap=>{
     employees = snap.docs.map(d=>({ id:d.id, ...d.data() }));
     renderBoard();
+    syncToConcedii();
   }, async err=>{
     console.error(err);
     let claimsInfo = 'nu s-a putut citi';
@@ -2590,6 +2592,61 @@ function renderDistanceTable(){
     }).join('');
     return `<tr><td>${escapeHtml(e.numeComplet||'')}</td><td>${escapeHtml(addressLine(e)||'—')}</td>${cells}</tr>`;
   }).join('');
+}
+
+/* ===== SINCRONIZARE AUTOMATĂ -> aplicația Concedii/Salarii =====
+   De fiecare dată când lista de angajați se încarcă sau se schimbă, scrie o copie MINIMĂ
+   (fără CNP, adresă, permis, telefon etc.) în documentul angajati_sync/list din proiectul
+   Concedii (același proiect ca CONCEDII_CONFIG). Aplicația Concedii o citește și adaugă
+   singură persoanele noi. Nu se scrie nimic dacă lista e goală sau neschimbată. */
+let _syncLastHash = '';
+let _syncTimer = null;
+function syncToConcedii(){
+  clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(async ()=>{
+    try{
+      if(!employees || !employees.length) return;
+      const items = employees.map(e=>({
+        id: e.employeeId || e.id,
+        nume: e.numeComplet || ((e.numeFamilie||'')+' '+(e.prenume||'')).trim(),
+        status: e.status || 'Activ',
+        start: e.dataAngajare || '',
+        end: e.dataIncetare || '',
+        depot: e.depot || '',
+        locatii: e.locatii || [],
+        coord: e.coordonator || '',
+        link: (e.linkuri && e.linkuri.concedii) || '',
+        roluri: e.roluri || []
+      })).sort((a,b)=>a.id.localeCompare(b.id));
+      const hash = JSON.stringify(items);
+      if(hash === _syncLastHash) return;
+      await firebase.firestore(concediiApp).collection('angajati_sync').doc('list').set({
+        items, count: items.length, updatedAt: new Date().toISOString()
+      });
+      _syncLastHash = hash;
+    }catch(err){ console.warn('syncToConcedii:', err); }
+  }, 2500);
+}
+
+function exportPentruConcedii(){
+  // Doar câmpurile necesare în Concedii/Salarii — fără date personale sensibile.
+  const out = employees.map(e=>({
+    employeeId: e.employeeId || e.id,
+    numeComplet: e.numeComplet || ((e.numeFamilie||'')+' '+(e.prenume||'')).trim(),
+    status: e.status || 'Activ',
+    dataAngajare: e.dataAngajare || '',
+    dataIncetare: e.dataIncetare || '',
+    depot: e.depot || '',
+    locatii: e.locatii || [],
+    coordonator: e.coordonator || '',
+    roluri: e.roluri || []
+  }));
+  const blob = new Blob([JSON.stringify(out,null,1)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'angajati-pentru-concedii-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function exportCSV(){
