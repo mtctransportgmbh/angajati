@@ -1119,7 +1119,11 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
         <div class="field full"><label>Email-ul tău (unde primești toate alertele)</label><input type="email" id="adminAlert_email" placeholder="ex: birou@mtc-transport.de"></div>
         <div class="field"><label>Restul angajaților (ex: șoferi de pachete) — luni înainte</label><input type="number" min="1" max="24" id="adminAlert_luniGeneral" value="2"></div>
       </div>
-      <p class="hint">Pragul de mai sus se aplică doar angajaților care NU au o categorie de camion (ei au deja pragurile lor separate, setate de coordonator). Trimiterea zilnică efectivă pe email trebuie activată o singură dată de cineva cu acces la Firebase (vezi instrucțiunile primite separat) — panoul ăsta doar salvează la ce prag și pe ce adresă.</p>
+      <div style="margin:4px 0 12px;">
+        <button class="btn btn-secondary" style="width:auto;" onclick="sendDigestTest(this)">📧 Trimite acum un email de test</button>
+        <div id="digestTestResult" style="font-size:12.5px; margin-top:8px; line-height:1.5;"></div>
+      </div>
+      <p class="hint">Emailul zilnic (la 07:00) cuprinde: documentele care expiră și zilele de naștere de azi. Pragul de mai sus se aplică doar angajaților care NU au o categorie de camion (ei au deja pragurile lor separate, setate de coordonator). Trimiterea zilnică efectivă pe email trebuie activată o singură dată de cineva cu acces la Firebase (vezi instrucțiunile primite separat) — panoul ăsta doar salvează la ce prag și pe ce adresă.</p>
     </div>
     <div class="modal-foot">
       <button class="btn btn-secondary" onclick="closeAdminAlertSettingsModal()">Anulează</button>
@@ -1786,6 +1790,22 @@ function openAdminAlertSettingsModal(){
   document.getElementById('adminAlert_email').value = adminAlertSettings.emailAdmin || '';
   document.getElementById('adminAlert_luniGeneral').value = adminAlertSettings.luniGeneral || 2;
   document.getElementById('adminAlertSettingsBackdrop').classList.add('show');
+}
+async function sendDigestTest(btn){
+  const out = document.getElementById('digestTestResult');
+  btn.disabled = true; out.style.color = 'var(--text-muted)'; out.textContent = 'Se trimite…';
+  try{
+    const r = (await functionsRef.httpsCallable('sendDigestNow')({})).data;
+    const ok = (r.trimise||[]).filter(x=>x.ok).length, bad = (r.trimise||[]).filter(x=>!x.ok);
+    let t = 'Email admin setat: ' + (r.emailAdmin || 'NU — completează adresa de mai sus și salvează') + '<br>' +
+            'Documente care expiră: ' + r.expirari + '<br>' +
+            'Zile de naștere azi: ' + ((r.aniversari||[]).length ? r.aniversari.map(a=>escapeHtml(a.nume)+' ('+a.varsta+' ani)').join(', ') : 'niciuna') + '<br>' +
+            'Emailuri trimise: ' + ok;
+    if(bad.length) t += '<br><b style="color:var(--red)">Eșuat:</b> ' + bad.map(b=>escapeHtml(b.tip+' → '+(b.motiv||'eroare'))).join('; ');
+    if(!(r.trimise||[]).length) t += '<br>(Nu era nimic de trimis azi — niciun document aproape de expirare și nicio zi de naștere.)';
+    out.style.color = 'var(--text)'; out.innerHTML = t;
+  }catch(e){ console.error(e); out.style.color = 'var(--red)'; out.textContent = 'Eroare: ' + (e.message||e); }
+  btn.disabled = false;
 }
 function closeAdminAlertSettingsModal(){
   document.getElementById('adminAlertSettingsBackdrop').classList.remove('show');
@@ -3043,10 +3063,23 @@ function getLocs(cls){ return [...document.querySelectorAll('.'+cls)].filter(c=>
 
 /* ================= ADMIN: ANUNȚURI și PROTOCOALE ================= */
 function aFmt(iso){ try{ return new Date(iso).toLocaleString('ro-RO',{timeZone:'Europe/Berlin',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
-function aTargetsHtml(all, sel, toggleFn, allFn){
-  return '<div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">Destinatari ('+sel.size+'/'+all.length+') <a style="color:var(--primary);cursor:pointer" onclick="'+allFn+'()">toți / nimeni</a></div>' +
-    all.map(x=>`<span class="adm-chip ${sel.has(x.id)?'on':''}" onclick="${toggleFn}('${x.id}')">${escapeHtml(x.nume)}</span>`).join('');
+function aState(kind){ return kind==='ann' ? { all: aAnnAll, sel: aAnnSel } : { all: aProtAll, sel: aProtSel }; }
+function aSetSel(kind, set){ if(kind==='ann'){ aAnnSel = set; aAnnRender(); } else { aProtSel = set; aProtRender(); } }
+const A_COORD = { raluca:'Raluca', madalina:'Mădălina', corina:'Corina', tania:'Tania', admin:'Admin' };
+function aTargetsHtml(kind, all, sel){
+  const coords = [...new Set(all.map(x=>x.coordonator).filter(Boolean))];
+  const locs = [...new Set(all.flatMap(x=>x.locatii||[]))];
+  const quick = (coords.length > 1 || locs.length > 1)
+    ? '<div style="margin-bottom:6px;font-size:11.5px;color:var(--text-muted);">Selectează rapid:</div><div style="margin-bottom:8px;">' +
+      coords.map(c=>`<span class="adm-chip" onclick="aPick('${kind}','c','${c}')">👤 Echipa ${escapeHtml(A_COORD[c]||c)}</span>`).join('') +
+      locs.map(l=>`<span class="adm-chip" onclick="aPick('${kind}','l','${l}')">📍 ${escapeHtml(l)}</span>`).join('') + '</div>' : '';
+  const search = all.length > 8 ? '<input type="text" class="adm-in" placeholder="Caută o persoană…" oninput="aFilter(this)" style="margin:0 0 8px;max-width:320px;">' : '';
+  return `<div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">Destinatari (${sel.size}/${all.length}) <a style="color:var(--primary);cursor:pointer" onclick="aAllToggle('${kind}')">toți / nimeni</a></div>` + quick + search +
+    '<div>' + all.map(x=>`<span class="adm-chip a-chip ${sel.has(x.id)?'on':''}" data-n="${escapeHtml((x.nume||'').toLowerCase())}" onclick="${kind==='ann'?'aAnnToggle':'aProtToggle'}('${x.id}')">${escapeHtml(x.nume)}</span>`).join('') + '</div>';
 }
+function aFilter(inp){ const q = inp.value.trim().toLowerCase(); inp.parentElement.querySelectorAll('.a-chip').forEach(c=>{ c.style.display = (!q || c.dataset.n.includes(q)) ? '' : 'none'; }); }
+function aPick(kind, type, key){ const { all } = aState(kind); aSetSel(kind, new Set(all.filter(x => type==='c' ? x.coordonator===key : (x.locatii||[]).includes(key)).map(x=>x.id))); }
+function aAllToggle(kind){ const { all, sel } = aState(kind); aSetSel(kind, sel.size ? new Set() : new Set(all.map(x=>x.id))); }
 /* --- anunțuri --- */
 let aAnnAll = [], aAnnSel = null, aAnnBusy = false;
 async function adminLoadAnnTargets(){
@@ -3058,9 +3091,8 @@ async function adminLoadAnnTargets(){
     aAnnRender();
   }catch(e){ console.error(e); document.getElementById('aAnnTargets').textContent = 'Nu am putut încărca destinatarii: ' + (e.message||e); }
 }
-function aAnnRender(){ document.getElementById('aAnnTargets').innerHTML = aTargetsHtml(aAnnAll, aAnnSel, 'aAnnToggle', 'aAnnToggleAll'); }
+function aAnnRender(){ document.getElementById('aAnnTargets').innerHTML = aTargetsHtml('ann', aAnnAll, aAnnSel); }
 function aAnnToggle(id){ aAnnSel.has(id) ? aAnnSel.delete(id) : aAnnSel.add(id); aAnnRender(); }
-function aAnnToggleAll(){ aAnnSel = aAnnSel.size ? new Set() : new Set(aAnnAll.map(x=>x.id)); aAnnRender(); }
 async function adminSendAnnouncement(){
   if(aAnnBusy) return;
   const err = document.getElementById('aAnnErr'); err.style.color = 'var(--red)'; err.textContent = '';
@@ -3124,9 +3156,8 @@ async function adminLoadProtTargets(){
     aProtRender();
   }catch(e){ console.error(e); document.getElementById('aProtTargets').textContent = 'Nu am putut încărca destinatarii: ' + (e.message||e); }
 }
-function aProtRender(){ document.getElementById('aProtTargets').innerHTML = aTargetsHtml(aProtAll, aProtSel, 'aProtToggle', 'aProtToggleAll'); }
+function aProtRender(){ document.getElementById('aProtTargets').innerHTML = aTargetsHtml('prot', aProtAll, aProtSel); }
 function aProtToggle(id){ aProtSel.has(id) ? aProtSel.delete(id) : aProtSel.add(id); aProtRender(); }
-function aProtToggleAll(){ aProtSel = aProtSel.size ? new Set() : new Set(aProtAll.map(x=>x.id)); aProtRender(); }
 async function adminCreateProtocol(){
   if(aProtBusy) return;
   const err = document.getElementById('aProtErr'); err.style.color = 'var(--red)'; err.textContent = '';
