@@ -1117,6 +1117,10 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
       <p class="hint" style="margin-top:0;">O dată pe zi, sistemul trimite pe email un rezumat al documentelor care expiră în curând: tu primești tot (camion + restul angajaților), iar fiecare coordonator primește doar alertele echipei lui de camion, la pragurile pe care și le-a setat singur.</p>
       <div class="form-grid">
         <div class="field full"><label>Email-ul tău (unde primești toate alertele)</label><input type="email" id="adminAlert_email" placeholder="ex: birou@mtc-transport.de"></div>
+        <div class="field full"><label>Email zile de naștere (opțional, în plus față de al tău)</label><input type="text" id="adminAlert_emailAniv" placeholder="ex: hr@firma.de (mai multe adrese separate prin virgulă)"></div>
+        <div class="field"><label>Email Eiselfing (expirări)</label><input type="text" id="adminAlert_loc_Eiselfing" placeholder="adresă email"></div>
+        <div class="field"><label>Email Ruhstorf (expirări)</label><input type="text" id="adminAlert_loc_Ruhstorf" placeholder="adresă email"></div>
+        <div class="field"><label>Email Polling (expirări)</label><input type="text" id="adminAlert_loc_Polling" placeholder="adresă email"></div>
         <div class="field"><label>Restul angajaților (ex: șoferi de pachete) — luni înainte</label><input type="number" min="1" max="24" id="adminAlert_luniGeneral" value="2"></div>
       </div>
       <div style="margin:4px 0 12px;">
@@ -1773,7 +1777,8 @@ function closeViewModal(){ document.getElementById('viewBackdrop').classList.rem
    email din functions/index.js (dailyExpiryDigest). Șoferii de camion au
    deja pragurile lor separate, setate de fiecare coordonator. Adminul
    scrie direct în meta/alertSettingsAdmin (același tipar ca meta/counter). */
-let adminAlertSettings = { emailAdmin:'', luniGeneral:2 };
+let adminAlertSettings = { emailAdmin:'', luniGeneral:2, emailAniversari:'', emailLocatii:{} };
+const ALERT_LOCS = ['Eiselfing','Ruhstorf','Polling'];
 async function loadAdminAlertSettings(){
   try{
     const snap = await db.collection('meta').doc('alertSettingsAdmin').get();
@@ -1781,6 +1786,8 @@ async function loadAdminAlertSettings(){
       const d = snap.data();
       adminAlertSettings = {
         emailAdmin: d.emailAdmin || '',
+        emailAniversari: d.emailAniversari || '',
+        emailLocatii: d.emailLocatii || {},
         luniGeneral: (Number(d.luniGeneral)>0) ? Number(d.luniGeneral) : 2
       };
     }
@@ -1789,6 +1796,8 @@ async function loadAdminAlertSettings(){
 function openAdminAlertSettingsModal(){
   document.getElementById('adminAlert_email').value = adminAlertSettings.emailAdmin || '';
   document.getElementById('adminAlert_luniGeneral').value = adminAlertSettings.luniGeneral || 2;
+  document.getElementById('adminAlert_emailAniv').value = adminAlertSettings.emailAniversari || '';
+  ALERT_LOCS.forEach(l=>{ document.getElementById('adminAlert_loc_'+l).value = (adminAlertSettings.emailLocatii||{})[l] || ''; });
   document.getElementById('adminAlertSettingsBackdrop').classList.add('show');
 }
 async function sendDigestTest(btn){
@@ -1815,11 +1824,14 @@ async function saveAdminAlertSettingsModal(){
   let luniGeneral = parseInt(document.getElementById('adminAlert_luniGeneral').value, 10);
   if(!(luniGeneral>0 && luniGeneral<=24)) luniGeneral = 2;
   try{
+    const emailAniversari = document.getElementById('adminAlert_emailAniv').value.trim();
+    const emailLocatii = {};
+    ALERT_LOCS.forEach(l=>{ emailLocatii[l] = document.getElementById('adminAlert_loc_'+l).value.trim(); });
     await db.collection('meta').doc('alertSettingsAdmin').set({
-      emailAdmin, luniGeneral,
+      emailAdmin, luniGeneral, emailAniversari, emailLocatii,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge:true });
-    adminAlertSettings = { emailAdmin, luniGeneral };
+    adminAlertSettings = { emailAdmin, luniGeneral, emailAniversari, emailLocatii };
     closeAdminAlertSettingsModal();
   }catch(err){
     console.error(err);
