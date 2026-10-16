@@ -2599,6 +2599,18 @@ function renderDistanceTable(){
    (fără CNP, adresă, permis, telefon etc.) în documentul angajati_sync/list din proiectul
    Concedii (același proiect ca CONCEDII_CONFIG). Aplicația Concedii o citește și adaugă
    singură persoanele noi. Nu se scrie nimic dacă lista e goală sau neschimbată. */
+// Proiectul în care rulează aplicația Concedii (USE_TEST=false în Concedii => producție calendar-f2589).
+// Dacă pui Concedii înapoi pe test, schimbă aici cu concedii-test.
+const CONCEDII_SYNC_CONFIG = {
+  apiKey: "AIzaSyBb0IFuofRG4vRlcnd9eMBuA8MyK_z0PRc",
+  authDomain: "calendar-f2589.firebaseapp.com",
+  projectId: "calendar-f2589",
+  storageBucket: "calendar-f2589.firebasestorage.app",
+  messagingSenderId: "124144206277",
+  appId: "1:124144206277:web:dc813e88dd100a0443cbac"
+};
+let _syncApp = null;
+function getSyncApp(){ if(!_syncApp) _syncApp = firebase.initializeApp(CONCEDII_SYNC_CONFIG, 'concediiSync'); return _syncApp; }
 let _syncLastHash = '';
 let _syncTimer = null;
 function syncToConcedii(){
@@ -2620,7 +2632,7 @@ function syncToConcedii(){
       })).sort((a,b)=>a.id.localeCompare(b.id));
       const hash = JSON.stringify(items);
       if(hash === _syncLastHash) return;
-      await firebase.firestore(concediiApp).collection('angajati_sync').doc('list').set({
+      await firebase.firestore(getSyncApp()).collection('angajati_sync').doc('list').set({
         items, count: items.length, updatedAt: new Date().toISOString()
       });
       _syncLastHash = hash;
