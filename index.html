@@ -403,7 +403,7 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
     <p>Loghează-te cu numărul personal și PIN-ul tău — același cont ca la portalul de telefon.</p>
     <div style="text-align:left;">
       <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:4px;">Cod de logare</label>
-      <input type="text" id="coordNumarPersonal" inputmode="numeric" autocomplete="off"
+      <input type="text" id="coordNumarPersonal" autocomplete="off" placeholder="MTC-XXXX-X"
         style="width:100%; padding:11px; font-size:15px; border:1.5px solid var(--border); border-radius:8px; margin-bottom:10px;">
       <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:4px;">PIN</label>
       <input type="password" id="coordPin" inputmode="numeric" maxlength="8" autocomplete="off"
@@ -3113,7 +3113,7 @@ async function adminSendAnnouncement(){
   const err = document.getElementById('aAnnErr'); err.style.color = 'var(--red)'; err.textContent = '';
   const text = document.getElementById('aAnnText').value.trim();
   if(text.length < 5){ err.textContent = 'Scrie anunțul.'; return; }
-  if(!aAnnSel.size){ err.textContent = 'Alege cel puțin un destinatar.'; return; }
+  if(!aAnnSel || !aAnnSel.size){ err.textContent = 'Lista de destinatari nu s-a încărcat (verifică funcțiile din concedii-test) sau nu ai ales pe nimeni.'; return; }
   let intrebare = null;
   if(document.getElementById('aAnnQToggle').checked){
     const q = document.getElementById('aAnnQ').value.trim();
@@ -3178,7 +3178,7 @@ async function adminCreateProtocol(){
   const err = document.getElementById('aProtErr'); err.style.color = 'var(--red)'; err.textContent = '';
   const titlu = document.getElementById('aProtTitlu').value.trim(), text = document.getElementById('aProtText').value.trim();
   if(titlu.length < 3 || text.length < 20){ err.textContent = 'Scrie titlul și textul protocolului (minim câteva rânduri).'; return; }
-  if(!aProtSel.size){ err.textContent = 'Alege cel puțin un destinatar.'; return; }
+  if(!aProtSel || !aProtSel.size){ err.textContent = 'Lista de destinatari nu s-a încărcat sau nu ai ales pe nimeni.'; return; }
   const btn = document.getElementById('aProtSendBtn');
   aProtBusy = true; btn.disabled = true; btn.textContent = 'Se postează…';
   try{

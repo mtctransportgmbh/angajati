@@ -579,7 +579,7 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
     <div id="loadingState">Se conectează...</div>
 
     <div id="loginState">
-      <div class="field"><label>Cod de logare (ex: MTC-0001-158)</label><input type="text" id="f_numarPersonal" autocomplete="off" autocapitalize="characters" placeholder="MTC-0001-158"></div>
+      <div class="field"><label>Cod de logare (MTC-XXXX-X)</label><input type="text" id="f_numarPersonal" autocomplete="off" autocapitalize="characters" inputmode="numeric" value="MTC-" oninput="fmtLoginCode(this,event)" onfocus="fmtLoginCode(this)"></div>
       <div class="field"><label>PIN</label><input type="password" id="f_pin" inputmode="numeric" autocomplete="off" maxlength="8"></div>
       <button class="btn btn-primary" onclick="loginManual()">Intră în cont</button>
       <div class="or-sep"><span>sau</span></div>
@@ -682,7 +682,6 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
           <div id="myMsgForm" style="display:none;">
             <textarea id="msgText" rows="4" maxlength="600" placeholder="Scrie aici mesajul pentru coordonator…"></textarea>
             <div class="msg-count"><span id="msgCount">0</span>/600</div>
-            <label class="anon-row"><input type="checkbox" id="msgAnon"> 🔒 Trimite anonim (colegii nu află; coordonatorul vede numele, dar știe că mesajul e confidențial)</label>
             <button class="btn btn-primary" id="msgSendBtn" onclick="sendMyMessage()">Trimite mesajul</button>
           </div>
           <div id="myMsgNote" class="msg-note"></div>
@@ -1793,9 +1792,8 @@ async function sendMyMessage(){
   sendingMsg = true; btn.disabled = true; btn.textContent = 'Se trimite…';
   try{
     const idToken = await auth.currentUser.getIdToken();
-    await concediiFunctions.httpsCallable('sendCoordMessage')({ idToken, text: txt, anonim: document.getElementById('msgAnon').checked });
+    await concediiFunctions.httpsCallable('sendCoordMessage')({ idToken, text: txt });
     document.getElementById('msgText').value = '';
-    document.getElementById('msgAnon').checked = false;
     document.getElementById('msgCount').textContent = '0';
     await loadMyMessages();
   }catch(err){
@@ -1960,6 +1958,16 @@ window.addEventListener('appinstalled', ()=>{ document.getElementById('installBa
   if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
 })();
 
+/* Cod de logare: "MTC-" precompletat, apoi 4 cifre, "-" automat, apoi numărul personal. */
+function fmtLoginCode(el, ev){
+  let raw = String(el.value||'').toUpperCase().replace(/^MTC-?/,'');
+  let d = raw.replace(/[^0-9]/g,'');
+  let out = 'MTC-' + d.slice(0,4);
+  const deleting = ev && ev.inputType && ev.inputType.indexOf('delete')===0;
+  if(d.length>4) out += '-' + d.slice(4);
+  else if(d.length===4 && !deleting) out += '-';
+  el.value = out;
+}
 async function loginManual(){
   const numarPersonal = document.getElementById('f_numarPersonal').value.trim();
   const pin = document.getElementById('f_pin').value.trim();
