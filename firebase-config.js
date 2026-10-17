@@ -13,3 +13,8 @@ window.FIREBASE_CONFIG = {
 
 // Adresa unde stă portal.html pe GitHub Pages.
 window.PORTAL_URL_BASE = "https://mtctransportgmbh.github.io/angajati/portal.html";
+
+// Cheia pentru notificări push (Firebase Console → Project settings → Cloud Messaging →
+// Web Push certificates → „Generate key pair”). Lipește aici cheia publică (începe cu „B…”).
+// Până o completezi, clopoțelul din aplicație funcționează, dar fără notificări pe telefon în fundal.
+window.PUSH_VAPID_KEY = "BGvwV9eBNd9XWKZ3Xw-nTsV0i5BFisTH2Cm90hV2BIGA5TIAAW54_0RLg4wQn7pSXlZws-9FoEzpIHzi3IwDcb4";

@@ -846,15 +846,6 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
           <div class="msg-hint">Toți din echipă primesc notificare pe telefon. „Am citit” se activează doar după ce au deschis și citit anunțul cu adevărat.</div>
           <textarea id="annText" rows="4" maxlength="2000" placeholder="Scrie anunțul…"></textarea>
           <div style="margin:8px 0;" id="annTargets"></div>
-          <label class="anon-row"><input type="checkbox" id="annQToggle" onchange="document.getElementById('annQBox').style.display=this.checked?'block':'none'"> Adaugă întrebare de control (dovadă că au citit)</label>
-          <div id="annQBox" style="display:none;">
-            <input type="text" id="annQ" maxlength="200" placeholder="Întrebarea (ex: Ce verificăm la semnături?)">
-            <input type="text" class="annOpt" maxlength="120" placeholder="Varianta 1" style="margin-top:6px;">
-            <input type="text" class="annOpt" maxlength="120" placeholder="Varianta 2" style="margin-top:6px;">
-            <input type="text" class="annOpt" maxlength="120" placeholder="Varianta 3 (opțional)" style="margin-top:6px;">
-            <label class="anon-row">Varianta corectă:
-              <select id="annCorect"><option value="0">1</option><option value="1">2</option><option value="2">3</option></select></label>
-          </div>
           <button class="btn btn-primary" id="annSendBtn" onclick="sendAnnouncement()">Trimite anunțul</button>
           <div id="annErr" style="color:var(--red); font-size:12px; min-height:14px; margin-top:6px;"></div>
           <h3 style="margin-top:18px;">Cine a citit</h3>
@@ -1400,6 +1391,7 @@ function annTick(noTime){
   else if(!qOk) hint.textContent = 'Răspunde la întrebare.';
   else hint.textContent = '✔ Poți confirma.';
   btn.disabled = !(timpOk && annScrolled && qOk);
+  btn.style.display = (timpOk && annScrolled && qOk) ? '' : 'none';
 }
 function renderAnnFoot(){
   const a = annOpen, f = document.getElementById('annFoot');
@@ -1408,7 +1400,7 @@ function renderAnnFoot(){
     return;
   }
   const q = a.intrebare ? `<div class="ann-q"><b>${escapeHtmlP(a.intrebare.q)}</b>${a.intrebare.optiuni.map((o,i)=>`<button class="ann-opt" id="annOpt${i}" onclick="annPick(${i})">${escapeHtmlP(o)}</button>`).join('')}</div>` : '';
-  f.innerHTML = `<div class="ann-prog"><div id="annProg"></div></div><div class="ann-hint" id="annHint"></div>${q}<div id="annErr2" style="color:var(--red);font-size:12px;min-height:14px;"></div><button class="btn btn-primary" id="annConfirmBtn" disabled onclick="confirmAnn()">Am citit</button>`;
+  f.innerHTML = `<div class="ann-prog"><div id="annProg"></div></div><div class="ann-hint" id="annHint"></div>${q}<div id="annErr2" style="color:var(--red);font-size:12px;min-height:14px;"></div><button class="btn btn-primary" id="annConfirmBtn" disabled style="display:none;" onclick="confirmAnn()">Am citit</button>`;
 }
 function annPick(i){
   annSel = i;
@@ -1486,23 +1478,13 @@ async function sendAnnouncement(){
   const text = document.getElementById('annText').value.trim();
   if(text.length < 5){ err.textContent = 'Scrie anunțul.'; return; }
   if(!annTargetsSel.size){ err.textContent = 'Alege cel puțin un destinatar.'; return; }
-  let intrebare = null;
-  if(document.getElementById('annQToggle').checked){
-    const q = document.getElementById('annQ').value.trim();
-    const opt = [...document.querySelectorAll('.annOpt')].map(i=>i.value.trim());
-    const corect = parseInt(document.getElementById('annCorect').value,10);
-    const optiuni = opt.filter(Boolean);
-    if(!q || optiuni.length < 2 || !opt[corect]){ err.textContent = 'Întrebarea: scrie întrebarea, minim 2 variante și alege o variantă corectă completată.'; return; }
-    intrebare = { q, optiuni, corect: opt.slice(0, corect).filter(Boolean).length };
-  }
   const btn = document.getElementById('annSendBtn');
   annSending = true; btn.disabled = true; btn.textContent = 'Se trimite…';
   try{
     const idToken = await auth.currentUser.getIdToken();
     const ids = annTargetsSel.size === annTargetsAll.length ? [] : [...annTargetsSel];
-    const r = await concediiFunctions.httpsCallable('sendAnnouncement')({ idToken, text, ids, intrebare });
+    const r = await concediiFunctions.httpsCallable('sendAnnouncement')({ idToken, text, ids });
     document.getElementById('annText').value = '';
-    document.getElementById('annQToggle').checked = false; document.getElementById('annQBox').style.display = 'none';
     err.style.color = 'var(--green)'; err.textContent = '✓ Trimis la ' + r.data.destinatari + ' persoane.';
     setTimeout(()=>{ err.style.color = 'var(--red)'; err.textContent=''; }, 4000);
     loadAnnStatus();
@@ -2737,7 +2719,47 @@ function renderPushBox(){
     box.innerHTML = '🔔 Vrei să primești notificări pe telefon, chiar și când aplicația e închisă?<br><button class="btn btn-primary btn-small" onclick="enablePush()">Activează notificările</button>';
   }
 }
+/* Notificările pe telefon sunt OBLIGATORII: cât timp nu sunt active, un ecran peste aplicație
+   blochează folosirea ei. Nu blocăm dacă telefonul/browserul nu poate primi push deloc
+   (altfel omul ar rămâne închis afară), iar pe iPhone cerem întâi instalarea pe ecranul principal. */
+function pushGateNeeded(){
+  if(!window.PUSH_VAPID_KEY) return null;                       // cheie neconfigurată → nu blocăm
+  if(isIosDevice() && !IS_STANDALONE) return 'ios-install';
+  if(!pushSupported()) return null;                              // browser fără push → nu blocăm
+  if(Notification.permission === 'granted') return null;
+  return Notification.permission === 'denied' ? 'denied' : 'ask';
+}
+function renderPushGate(){
+  let g = document.getElementById('pushGate');
+  const mode = auth.currentUser ? pushGateNeeded() : null;
+  if(!mode){ if(g) g.remove(); return; }
+  if(!g){
+    g = document.createElement('div'); g.id = 'pushGate';
+    g.style.cssText = 'position:fixed;inset:0;z-index:100000;background:#1f3a5f;color:#fff;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;';
+    document.body.appendChild(g);
+  }
+  const btn = 'margin-top:18px;padding:14px 22px;border:0;border-radius:10px;background:#fff;color:#1f3a5f;font-weight:700;font-size:16px;width:100%;max-width:320px;';
+  let body;
+  if(mode === 'ios-install'){
+    body = '<div style="font-size:44px">📲</div><h2 style="margin:10px 0">Instalează aplicația</h2><p style="line-height:1.5;max-width:340px;margin:0 auto">Ca să primești notificările de la coordonator, pune aplicația pe ecranul principal: apasă <b>Distribuie</b> → <b>Adaugă pe ecranul principal</b>, apoi deschide aplicația de pe ecranul principal.</p>';
+  } else if(mode === 'denied'){
+    body = '<div style="font-size:44px">🔕</div><h2 style="margin:10px 0">Notificările sunt blocate</h2><p style="line-height:1.5;max-width:340px;margin:0 auto">Aplicația nu poate fi folosită fără notificări. Permite-le din setările telefonului (Setări → Notificări → MTC / browser → Permite), apoi apasă butonul.</p><button style="'+btn+'" onclick="location.reload()">Am permis — verifică</button>';
+  } else {
+    body = '<div style="font-size:44px">🔔</div><h2 style="margin:10px 0">Activează notificările</h2><p style="line-height:1.5;max-width:340px;margin:0 auto">Pentru a folosi aplicația trebuie să primești notificările (mesaje, anunțuri, protocoale, concedii), chiar și când aplicația e închisă.</p><button style="'+btn+'" onclick="gateEnablePush()">Activează notificările</button>';
+  }
+  g.innerHTML = '<div>'+body+'</div>';
+}
+async function gateEnablePush(){
+  try{
+    const perm = await Notification.requestPermission();
+    if(perm === 'granted'){ try{ await registerPushToken(); }catch(e){ console.error(e); } }
+  }catch(e){ console.error(e); }
+  renderPushBox(); renderPushGate();
+}
+function maybeAskPush(){ renderPushGate(); }
 function startNotifications(){
+  maybeAskPush();
+  setInterval(renderPushGate, 5000);
   loadNotifications();
   clearInterval(notifPoll);
   notifPoll = setInterval(()=>{ if(!document.hidden) loadNotifications(); }, 20000);
