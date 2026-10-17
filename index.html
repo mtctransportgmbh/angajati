@@ -551,14 +551,6 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
       <div style="color:var(--text-muted); font-size:12.5px; margin-bottom:10px;">Destinatarii primesc notificare pe telefon. „Am citit” se activează doar după ce au deschis și citit anunțul cu adevărat.</div>
       <textarea id="aAnnText" rows="4" maxlength="2000" placeholder="Scrie anunțul…" class="adm-ta"></textarea>
       <div id="aAnnTargets" style="margin:10px 0;"></div>
-      <label class="adm-chk"><input type="checkbox" id="aAnnQToggle" onchange="document.getElementById('aAnnQBox').style.display=this.checked?'block':'none'"> Adaugă întrebare de control (dovadă că au citit)</label>
-      <div id="aAnnQBox" style="display:none;">
-        <input type="text" id="aAnnQ" maxlength="200" placeholder="Întrebarea" class="adm-in">
-        <input type="text" class="aAnnOpt adm-in" maxlength="120" placeholder="Varianta 1">
-        <input type="text" class="aAnnOpt adm-in" maxlength="120" placeholder="Varianta 2">
-        <input type="text" class="aAnnOpt adm-in" maxlength="120" placeholder="Varianta 3 (opțional)">
-        <label class="adm-chk">Varianta corectă: <select id="aAnnCorect"><option value="0">1</option><option value="1">2</option><option value="2">3</option></select></label>
-      </div>
       <button class="btn btn-primary" style="max-width:260px;" id="aAnnSendBtn" onclick="adminSendAnnouncement()">Trimite anunțul</button>
       <div id="aAnnErr" style="font-size:12px; min-height:14px; margin-top:6px;"></div>
     </div>
@@ -3114,23 +3106,13 @@ async function adminSendAnnouncement(){
   const text = document.getElementById('aAnnText').value.trim();
   if(text.length < 5){ err.textContent = 'Scrie anunțul.'; return; }
   if(!aAnnSel || !aAnnSel.size){ err.textContent = 'Lista de destinatari nu s-a încărcat (verifică funcțiile din concedii-test) sau nu ai ales pe nimeni.'; return; }
-  let intrebare = null;
-  if(document.getElementById('aAnnQToggle').checked){
-    const q = document.getElementById('aAnnQ').value.trim();
-    const opt = [...document.querySelectorAll('.aAnnOpt')].map(i=>i.value.trim());
-    const corect = parseInt(document.getElementById('aAnnCorect').value,10);
-    const optiuni = opt.filter(Boolean);
-    if(!q || optiuni.length < 2 || !opt[corect]){ err.textContent = 'Întrebarea: scrie întrebarea, minim 2 variante și alege o variantă corectă completată.'; return; }
-    intrebare = { q, optiuni, corect: opt.slice(0, corect).filter(Boolean).length };
-  }
   const btn = document.getElementById('aAnnSendBtn');
   aAnnBusy = true; btn.disabled = true; btn.textContent = 'Se trimite…';
   try{
     const idToken = await auth.currentUser.getIdToken();
     const ids = aAnnSel.size === aAnnAll.length ? [] : [...aAnnSel];
-    const r = await concediiFunctions.httpsCallable('sendAnnouncement')({ idToken, text, ids, intrebare });
+    const r = await concediiFunctions.httpsCallable('sendAnnouncement')({ idToken, text, ids });
     document.getElementById('aAnnText').value = '';
-    document.getElementById('aAnnQToggle').checked = false; document.getElementById('aAnnQBox').style.display = 'none';
     err.style.color = 'var(--green)'; err.textContent = '✓ Trimis la ' + r.data.destinatari + ' persoane.';
     adminLoadAnnStatus();
   }catch(e){ console.error(e); err.textContent = e.message || 'Nu am putut trimite.'; }
