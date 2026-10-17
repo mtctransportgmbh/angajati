@@ -579,7 +579,7 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
     <div id="loadingState">Se conectează...</div>
 
     <div id="loginState">
-      <div class="field"><label>Număr personal</label><input type="text" id="f_numarPersonal" inputmode="numeric" autocomplete="off"></div>
+      <div class="field"><label>Cod de logare (ex: MTC-0001-158)</label><input type="text" id="f_numarPersonal" autocomplete="off" autocapitalize="characters" placeholder="MTC-0001-158"></div>
       <div class="field"><label>PIN</label><input type="password" id="f_pin" inputmode="numeric" autocomplete="off" maxlength="8"></div>
       <button class="btn btn-primary" onclick="loginManual()">Intră în cont</button>
       <div class="or-sep"><span>sau</span></div>
@@ -1441,6 +1441,33 @@ function closeAnn(){
   document.getElementById('annReader').classList.remove('show');
 }
 
+
+/* ---- alegere destinatari: căutare + selecție rapidă pe coordonator / locație (utilă adminului) ---- */
+const COORD_NAMES = { raluca:'Raluca', madalina:'Mădălina', corina:'Corina', tania:'Tania', admin:'Admin' };
+function tgtState(kind){ return kind==='ann' ? { all: annTargetsAll, sel: annTargetsSel } : { all: protTargetsAll, sel: protTargetsSel }; }
+function tgtSetSel(kind, set){ if(kind==='ann'){ annTargetsSel = set; renderAnnTargets(); } else { protTargetsSel = set; renderProtTargets(); } }
+function tgtHtml(kind, all, sel){
+  const coords = [...new Set(all.map(x=>x.coordonator).filter(Boolean))];
+  const locs = [...new Set(all.flatMap(x=>x.locatii||[]))];
+  const quick = (coords.length > 1 || locs.length > 1)
+    ? '<div style="margin-bottom:8px;font-size:11.5px;color:var(--text-muted);">Selectează rapid:</div><div style="margin-bottom:6px;">' +
+      coords.map(c=>`<span class="ann-chip" onclick="tgtPick('${kind}','c','${c}')">👤 Echipa ${escapeHtmlP(COORD_NAMES[c]||c)}</span>`).join('') +
+      locs.map(l=>`<span class="ann-chip" onclick="tgtPick('${kind}','l','${l}')">📍 ${escapeHtmlP(l)}</span>`).join('') + '</div>'
+    : '';
+  const search = all.length > 8 ? `<input type="text" placeholder="Caută o persoană…" oninput="tgtFilter(this)" style="margin-bottom:8px;">` : '';
+  return `<div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">Destinatari (${sel.size}/${all.length}) <a style="color:var(--primary);cursor:pointer" onclick="tgtAll('${kind}')">toți / nimeni</a></div>` + quick + search +
+    '<div>' + all.map(x=>`<span class="ann-chip tgt-chip ${sel.has(x.id)?'on':''}" data-n="${escapeHtmlP((x.nume||'').toLowerCase())}" onclick="${kind==='ann'?'annToggle':'protToggle'}('${x.id}')">${escapeHtmlP(x.nume)}</span>`).join('') + '</div>';
+}
+function tgtFilter(inp){
+  const q = inp.value.trim().toLowerCase();
+  inp.parentElement.querySelectorAll('.tgt-chip').forEach(c=>{ c.style.display = (!q || c.dataset.n.includes(q)) ? '' : 'none'; });
+}
+function tgtPick(kind, type, key){
+  const { all } = tgtState(kind);
+  tgtSetSel(kind, new Set(all.filter(x => type==='c' ? x.coordonator===key : (x.locatii||[]).includes(key)).map(x=>x.id)));
+}
+function tgtAll(kind){ const { all, sel } = tgtState(kind); tgtSetSel(kind, sel.size ? new Set() : new Set(all.map(x=>x.id))); }
+
 /* ---- coordonator: trimite și urmărește ---- */
 let annTargetsAll = [], annTargetsSel = null;
 async function loadAnnTargets(){
@@ -1452,13 +1479,8 @@ async function loadAnnTargets(){
     renderAnnTargets();
   }catch(e){ console.error(e); }
 }
-function renderAnnTargets(){
-  const el = document.getElementById('annTargets'); if(!el) return;
-  el.innerHTML = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">Destinatari ('+annTargetsSel.size+'/'+annTargetsAll.length+') <a style="color:var(--primary);cursor:pointer" onclick="annToggleAll()">toți / nimeni</a></div>' +
-    annTargetsAll.map(x=>`<span class="ann-chip ${annTargetsSel.has(x.id)?'on':''}" onclick="annToggle('${x.id}')">${escapeHtmlP(x.nume)}</span>`).join('');
-}
+function renderAnnTargets(){ const el = document.getElementById('annTargets'); if(el) el.innerHTML = tgtHtml('ann', annTargetsAll, annTargetsSel); }
 function annToggle(id){ annTargetsSel.has(id) ? annTargetsSel.delete(id) : annTargetsSel.add(id); renderAnnTargets(); }
-function annToggleAll(){ annTargetsSel = annTargetsSel.size ? new Set() : new Set(annTargetsAll.map(x=>x.id)); renderAnnTargets(); }
 async function sendAnnouncement(){
   if(annSending) return;
   const err = document.getElementById('annErr'); err.textContent = '';
@@ -1653,13 +1675,8 @@ async function loadProtTargets(){
     renderProtTargets();
   }catch(e){ console.error(e); }
 }
-function renderProtTargets(){
-  const el = document.getElementById('protTargets'); if(!el) return;
-  el.innerHTML = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">Destinatari ('+protTargetsSel.size+'/'+protTargetsAll.length+') <a style="color:var(--primary);cursor:pointer" onclick="protToggleAll()">toți / nimeni</a></div>' +
-    protTargetsAll.map(x=>`<span class="ann-chip ${protTargetsSel.has(x.id)?'on':''}" onclick="protToggle('${x.id}')">${escapeHtmlP(x.nume)}</span>`).join('');
-}
+function renderProtTargets(){ const el = document.getElementById('protTargets'); if(el) el.innerHTML = tgtHtml('prot', protTargetsAll, protTargetsSel); }
 function protToggle(id){ protTargetsSel.has(id) ? protTargetsSel.delete(id) : protTargetsSel.add(id); renderProtTargets(); }
-function protToggleAll(){ protTargetsSel = protTargetsSel.size ? new Set() : new Set(protTargetsAll.map(x=>x.id)); renderProtTargets(); }
 async function createProtocol(){
   if(protCreating) return;
   const err = document.getElementById('protErr'); err.style.color = 'var(--red)'; err.textContent = '';

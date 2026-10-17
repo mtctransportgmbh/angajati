@@ -402,7 +402,7 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
     <h1>Angajați MTC</h1>
     <p>Loghează-te cu numărul personal și PIN-ul tău — același cont ca la portalul de telefon.</p>
     <div style="text-align:left;">
-      <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:4px;">Număr personal</label>
+      <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:4px;">Cod de logare</label>
       <input type="text" id="coordNumarPersonal" inputmode="numeric" autocomplete="off"
         style="width:100%; padding:11px; font-size:15px; border:1.5px solid var(--border); border-radius:8px; margin-bottom:10px;">
       <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:4px;">PIN</label>
@@ -859,7 +859,7 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
       <div class="form-grid">
         <div class="field"><label>Prenume *</label><input type="text" id="f_prenume"></div>
         <div class="field"><label>Nume de familie *</label><input type="text" id="f_numeFamilie"></div>
-        <div class="field full"><label>Număr personal (din contractul de muncă) — folosit ca user de login</label><input type="text" id="f_numarPersonal" placeholder="ex: 4471"></div>
+        <div class="field full"><label>Număr personal (din contractul de muncă) — se folosește la login, în forma COD-NUMĂR (ex: MTC-0001-158)</label><input type="text" id="f_numarPersonal" placeholder="ex: 158"></div>
         <div class="field full">
           <label>Rol (poți bifa mai multe — ex. Șofer + Dispecer)</label>
           <div class="cat-grid" id="rolGrid"></div>
@@ -1084,7 +1084,7 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
   <div class="modal" style="max-width:460px;">
     <div class="modal-head"><h2>Acces cont — <span id="accessName"></span></h2><button class="modal-close" onclick="closeAccessModal()">✕</button></div>
     <div class="access-body">
-      <div class="access-row"><label>Număr personal (login)</label><span class="mono" id="accessNumarPersonal">—</span></div>
+      <div class="access-row"><label>Cod de logare</label><span class="mono" id="accessNumarPersonal">—</span></div>
       <div class="access-row"><label>Status cont</label><span id="accessStatusChip"></span></div>
       <div id="pinRevealBox"></div>
       <button class="btn btn-primary" style="width:100%;" onclick="generatePinForCurrent()">🔑 Generează PIN nou (resetare)</button>
@@ -1686,7 +1686,7 @@ function buildViewHtml(p, isCoord){
 
   let general = viewRow('Nume complet', p.numeComplet || ((p.numeFamilie||'')+' '+(p.prenume||'')).trim());
   if(p.employeeId!==undefined) general += viewRow('Cod angajat', p.employeeId);
-  if(!isCoord && p.numarPersonal!==undefined) general += viewRow('Număr personal (login)', p.numarPersonal);
+  if(!isCoord && p.numarPersonal!==undefined) general += viewRow('Număr personal', p.numarPersonal) + (p.employeeId && p.numarPersonal ? viewRow('Cod de logare', p.employeeId+'-'+p.numarPersonal) : '');
   general += viewRow('Rol', roluri);
   general += viewRow('Locații', employeeLocs(p).join(', '));
   general += viewRow('Data nașterii', p.dataNasterii);
@@ -2128,7 +2128,7 @@ function openAccessModal(id){
   const e = employees.find(x=>x.id===id);
   if(!e) return;
   document.getElementById('accessName').textContent = e.numeComplet||'';
-  document.getElementById('accessNumarPersonal').textContent = e.numarPersonal || '— (completează-l în fișa angajatului)';
+  document.getElementById('accessNumarPersonal').textContent = loginCodeOf(e) || '— (completează „Număr personal” în fișa angajatului)';
   document.getElementById('accessStatusChip').innerHTML = accessChip(e);
   document.getElementById('pinRevealBox').innerHTML = '';
   document.getElementById('accessBackdrop').classList.add('show');
@@ -2138,6 +2138,9 @@ function closeAccessModal(){
   accessEmployeeId = null;
 }
 
+/* Codul de logare = codul angajatului + numărul personal, ex: MTC-0001-158 */
+function loginCodeOf(e){ return (e.employeeId && e.numarPersonal) ? (e.employeeId + '-' + e.numarPersonal) : ''; }
+
 function randomPin(){
   return String(Math.floor(100000 + Math.random()*900000)); // 6 cifre
 }
@@ -2145,8 +2148,8 @@ function randomPin(){
 async function generatePinForCurrent(){
   const e = employees.find(x=>x.id===accessEmployeeId);
   if(!e) return;
-  if(!e.numarPersonal){
-    alert('Completează mai întâi „Număr personal” în fișa angajatului — e identificatorul de login.');
+  if(!loginCodeOf(e)){
+    alert('Completează mai întâi „Număr personal” în fișa angajatului — face parte din codul de logare.');
     return;
   }
   const pin = randomPin();
@@ -2199,7 +2202,7 @@ function sheetHtml(emp, pin, qrDataUrlStr){
     <div class="sheet-brand">MTC TRANSPORT · ACCES CONT</div>
     <h3>${escapeHtml(emp.numeComplet||'')}</h3>
     ${qrDataUrlStr ? `<div style="text-align:center; margin:14px 0;"><img src="${qrDataUrlStr}" style="width:170px; height:170px;"><div style="font-size:11px; color:#666; margin-top:6px;">Scanează cu telefonul pentru logare automată</div></div>` : ''}
-    <div class="sheet-row"><b>Cod de utilizator (număr personal)</b><span class="sheet-code">${emp.numarPersonal||'—'}</span></div>
+    <div class="sheet-row"><b>Cod de utilizator (logare)</b><span class="sheet-code">${loginCodeOf(emp)||'—'}</span></div>
     <div class="sheet-row"><b>PIN provizoriu (dacă nu poți scana)</b><span class="sheet-code">${pin}</span></div>
     <div class="sheet-note">Păstrează acest cod confidențial. La prima logare cu PIN ți se va cere să-ți setezi propriul PIN. Nu împărtăși acest plic cu nimeni.</div>
   </div>`;
@@ -2211,7 +2214,7 @@ async function printSelectedSheets(){
     return;
   }
   const targets = employees.filter(e=>selectedIds.has(e.id));
-  const missing = targets.filter(e=>!e.numarPersonal);
+  const missing = targets.filter(e=>!loginCodeOf(e));
   if(missing.length){
     alert('Angajați fără „Număr personal” completat: ' + missing.map(e=>e.numeComplet).join(', ') + '. Completează-l înainte de a genera fișe.');
     return;
