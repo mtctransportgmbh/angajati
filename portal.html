@@ -2650,7 +2650,15 @@ function renderNotifs(){
     '<div class="notif-t">'+escapeHtmlP(n.titlu)+'</div><div class="notif-x">'+escapeHtmlP(n.text)+'</div>'+
     '<div class="notif-w">'+ageRo(n.createdAt)+'</div></div></div>').join('');
 }
-function notifClick(tab){ closeNotifs(); openTabSafe(tab); if(tab==='acasa'){ const n=annList.find(a=>!a.citit); const pr=protList.find(a=>!a.semnat); if(n) openAnn(n.id); else if(pr) openProt(pr.id); } }
+async function notifClick(tab){
+  closeNotifs(); openTabSafe(tab);
+  if(tab==='acasa'){
+    try{ await Promise.all([loadAnnouncements(), loadProtocols()]); }catch(e){ console.error(e); }
+    const n = annList.find(a=>!a.citit), pr = protList.find(a=>!a.semnat);
+    if(n) openAnn(n.id); else if(pr) openProt(pr.id);
+    else if(annList.length) openAnn(annList[0].id);
+  }
+}
 async function openNotifs(){
   document.getElementById('notifOverlay').classList.add('show');
   renderNotifs(); renderPushBox();
