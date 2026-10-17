@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="MTC">
+<meta name="apple-mobile-web-app-title" content="MTC Transport GmbH">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -1425,7 +1425,7 @@ async function confirmAnn(){
       err.textContent = 'Mai citește puțin anunțul înainte de a confirma.';
       annActive = 0; annTick(true);
     }
-  }catch(e){ console.error(e); err.textContent = 'Nu am putut trimite confirmarea. Încearcă din nou.'; btn.disabled = false; }
+  }catch(e){ console.error(e); err.textContent = 'Nu am putut trimite confirmarea. Încearcă din nou.' + (e && e.code ? ' (' + e.code + (e.message ? ': ' + e.message : '') + ')' : ''); btn.disabled = false; }
 }
 function closeAnn(){
   clearInterval(annTimer); annOpen = null;
