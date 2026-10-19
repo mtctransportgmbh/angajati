@@ -436,6 +436,7 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
     <button class="view-tab-btn" id="tabBtn-mesaje" onclick="switchView('mesaje')">✉️ Mesaje</button>
     <button class="view-tab-btn" id="tabBtn-anunturi" onclick="switchView('anunturi')">📢 Anunțuri</button>
     <button class="view-tab-btn" id="tabBtn-protocoale" onclick="switchView('protocoale')">📝 Protocoale</button>
+    <button class="view-tab-btn" id="tabBtn-contracte" onclick="switchView('contracte')">📄 Contracte</button>
     <button class="view-tab-btn" id="tabBtn-propuneri" onclick="switchView('propuneri')">🆕 Angajați propuși<span class="badge-count" id="propuneriBadge" style="display:none;"></span></button>
   </div>
 
@@ -574,6 +575,35 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
     <div class="dist-panel" style="margin-top:16px;">
       <h3 style="margin:0 0 4px;">Cine a semnat</h3>
       <div id="aProtStatus" style="margin-top:12px;"></div>
+    </div>
+  </main>
+
+  <main id="view-contracte" style="display:none;">
+    <div class="dist-panel">
+      <h3 style="margin:0 0 4px;">✍️ Semnătura angajatorului</h3>
+      <div style="color:var(--text-muted); font-size:12.5px; margin-bottom:10px;">Încarci o singură dată semnătura (PNG, de preferat cu fundal transparent). Apare automat pe toate contractele semnate de angajați.</div>
+      <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
+        <div id="ctSigPreview" style="border:1.5px dashed var(--border); border-radius:8px; min-width:200px; height:80px; display:flex; align-items:center; justify-content:center; color:var(--text-muted); font-size:12px; background:#fff;">Nicio semnătură încărcată</div>
+        <div><input type="file" id="ctSigFile" accept="image/png" style="max-width:240px;"><div id="ctSigMsg" style="font-size:12px; margin-top:6px; min-height:14px;"></div></div>
+      </div>
+    </div>
+    <div class="dist-panel" style="margin-top:16px;">
+      <h3 style="margin:0 0 4px;">📄 Trimite contract de muncă</h3>
+      <div style="color:var(--text-muted); font-size:12.5px; margin-bottom:10px;">Datele (nume, adresă, data nașterii, data de început) se iau din fișa angajatului. Angajatul primește notificare, citește, semnează în portal cu degetul + PIN, iar contractul dispare din aplicația lui.</div>
+      <div class="form-grid">
+        <div class="field full"><label>Angajat</label><select id="ctEmp" class="adm-in" onchange="adminContractFill()"></select></div>
+        <div class="field"><label>Anrede</label><select id="ctAnrede" class="adm-in"><option value="Herrn">Herrn</option><option value="Frau">Frau</option></select></div>
+        <div class="field"><label>Locul nașterii (geboren in)</label><input type="text" id="ctGeburtsort" class="adm-in" value="Rumänien" maxlength="80"></div>
+        <div class="field"><label>Începutul contractului</label><input type="date" id="ctBeginn" class="adm-in"></div>
+      </div>
+      <div id="ctPreviewData" style="font-size:12.5px; color:var(--text-muted); margin:8px 0;"></div>
+      <button class="btn btn-primary" style="max-width:260px;" id="ctSendBtn" onclick="adminContractSend()">Trimite contractul</button>
+      <div id="ctErr" style="font-size:12px; min-height:14px; margin-top:6px;"></div>
+    </div>
+    <div class="dist-panel" style="margin-top:16px;">
+      <h3 style="margin:0 0 4px;">Contracte</h3>
+      <div style="margin:6px 0 10px;"><button class="btn btn-secondary" style="width:auto;" onclick="adminContractPrintAll()">⬇️ Descarcă toate contractele semnate (PDF)</button></div>
+      <div id="ctList"></div>
     </div>
   </main>
 
@@ -1110,6 +1140,12 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
       <div class="form-grid">
         <div class="field full"><label>Email-ul tău (unde primești toate alertele)</label><input type="email" id="adminAlert_email" placeholder="ex: birou@mtc-transport.de"></div>
         <div class="field full"><label>Email zile de naștere (opțional, în plus față de al tău)</label><input type="text" id="adminAlert_emailAniv" placeholder="ex: hr@firma.de (mai multe adrese separate prin virgulă)"></div>
+        <div class="field full" style="margin-top:6px;"><label>Zile de naștere pe locație (primește doar persoanele din locația respectivă)</label></div>
+        <div class="field"><label>Email Eiselfing (zile de naștere)</label><input type="text" id="adminAlert_aniv_Eiselfing" placeholder="adresă email"></div>
+        <div class="field"><label>Email Ruhstorf (zile de naștere)</label><input type="text" id="adminAlert_aniv_Ruhstorf" placeholder="adresă email"></div>
+        <div class="field"><label>Email Polling (zile de naștere)</label><input type="text" id="adminAlert_aniv_Polling" placeholder="adresă email"></div>
+        <div class="field full"><label style="display:flex;gap:8px;align-items:center;"><input type="checkbox" id="adminAlert_anivCoord" style="width:auto;"> Trimite zilele de naștere și coordonatorilor (fiecare primește doar echipa lui)</label></div>
+        <div class="field full" style="margin-top:6px;"><label>Expirări documente pe locație</label></div>
         <div class="field"><label>Email Eiselfing (expirări)</label><input type="text" id="adminAlert_loc_Eiselfing" placeholder="adresă email"></div>
         <div class="field"><label>Email Ruhstorf (expirări)</label><input type="text" id="adminAlert_loc_Ruhstorf" placeholder="adresă email"></div>
         <div class="field"><label>Email Polling (expirări)</label><input type="text" id="adminAlert_loc_Polling" placeholder="adresă email"></div>
@@ -1769,7 +1805,7 @@ function closeViewModal(){ document.getElementById('viewBackdrop').classList.rem
    email din functions/index.js (dailyExpiryDigest). Șoferii de camion au
    deja pragurile lor separate, setate de fiecare coordonator. Adminul
    scrie direct în meta/alertSettingsAdmin (același tipar ca meta/counter). */
-let adminAlertSettings = { emailAdmin:'', luniGeneral:2, emailAniversari:'', emailLocatii:{} };
+let adminAlertSettings = { emailAdmin:'', luniGeneral:2, emailAniversari:'', emailLocatii:{}, emailAniversariLocatii:{}, aniversariCoordonatori:false };
 const ALERT_LOCS = ['Eiselfing','Ruhstorf','Polling'];
 async function loadAdminAlertSettings(){
   try{
@@ -1780,6 +1816,8 @@ async function loadAdminAlertSettings(){
         emailAdmin: d.emailAdmin || '',
         emailAniversari: d.emailAniversari || '',
         emailLocatii: d.emailLocatii || {},
+        emailAniversariLocatii: d.emailAniversariLocatii || {},
+        aniversariCoordonatori: d.aniversariCoordonatori === true,
         luniGeneral: (Number(d.luniGeneral)>0) ? Number(d.luniGeneral) : 2
       };
     }
@@ -1789,7 +1827,8 @@ function openAdminAlertSettingsModal(){
   document.getElementById('adminAlert_email').value = adminAlertSettings.emailAdmin || '';
   document.getElementById('adminAlert_luniGeneral').value = adminAlertSettings.luniGeneral || 2;
   document.getElementById('adminAlert_emailAniv').value = adminAlertSettings.emailAniversari || '';
-  ALERT_LOCS.forEach(l=>{ document.getElementById('adminAlert_loc_'+l).value = (adminAlertSettings.emailLocatii||{})[l] || ''; });
+  ALERT_LOCS.forEach(l=>{ document.getElementById('adminAlert_loc_'+l).value = (adminAlertSettings.emailLocatii||{})[l] || ''; document.getElementById('adminAlert_aniv_'+l).value = (adminAlertSettings.emailAniversariLocatii||{})[l] || ''; });
+  document.getElementById('adminAlert_anivCoord').checked = adminAlertSettings.aniversariCoordonatori === true;
   document.getElementById('adminAlertSettingsBackdrop').classList.add('show');
 }
 async function sendDigestTest(btn){
@@ -1819,11 +1858,13 @@ async function saveAdminAlertSettingsModal(){
     const emailAniversari = document.getElementById('adminAlert_emailAniv').value.trim();
     const emailLocatii = {};
     ALERT_LOCS.forEach(l=>{ emailLocatii[l] = document.getElementById('adminAlert_loc_'+l).value.trim(); });
+    const emailAniversariLocatii = {}; ALERT_LOCS.forEach(l=>{ emailAniversariLocatii[l] = document.getElementById('adminAlert_aniv_'+l).value.trim(); });
+    const aniversariCoordonatori = document.getElementById('adminAlert_anivCoord').checked;
     await db.collection('meta').doc('alertSettingsAdmin').set({
-      emailAdmin, luniGeneral, emailAniversari, emailLocatii,
+      emailAdmin, luniGeneral, emailAniversari, emailLocatii, emailAniversariLocatii, aniversariCoordonatori,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge:true });
-    adminAlertSettings = { emailAdmin, luniGeneral, emailAniversari, emailLocatii };
+    adminAlertSettings = { emailAdmin, luniGeneral, emailAniversari, emailLocatii, emailAniversariLocatii, aniversariCoordonatori };
     closeAdminAlertSettingsModal();
   }catch(err){
     console.error(err);
@@ -2244,7 +2285,7 @@ function switchView(name){
   document.getElementById('view-distante').style.display = name==='distante' ? 'block' : 'none';
   document.getElementById('view-aprobari').style.display = name==='aprobari' ? 'block' : 'none';
   document.getElementById('view-propuneri').style.display = name==='propuneri' ? 'block' : 'none';
-  ['mesaje','anunturi','protocoale'].forEach(v=>{
+  ['mesaje','anunturi','protocoale','contracte'].forEach(v=>{
     document.getElementById('view-'+v).style.display = name===v ? 'block' : 'none';
     document.getElementById('tabBtn-'+v).classList.toggle('active', name===v);
   });
@@ -2257,6 +2298,7 @@ function switchView(name){
   if(name==='mesaje'){ loadAdminMessages(); }
   if(name==='anunturi'){ adminLoadAnnTargets(); adminLoadAnnStatus(); }
   if(name==='protocoale'){ adminLoadProtTargets(); adminLoadProtStatus(); }
+  if(name==='contracte'){ adminContractInit(); }
   if(name==='propuneri'){ renderPropuneri(); }
 }
 
@@ -3220,6 +3262,125 @@ async function adminPrintProt(id){
       </body></html>`);
     w.document.close();
   }catch(err){ console.error(err); w.document.body.innerHTML = '<p style="font-family:sans-serif">Nu am putut încărca raportul.</p>'; }
+}
+
+/* ================= CONTRACTE DE MUNCĂ (admin) ================= */
+let ctList = [], ctInit = false;
+async function adminContractInit(){
+  const sel = document.getElementById('ctEmp');
+  const act = employees.filter(e=>e.status!=='Arhivat').sort((a,b)=>(a.numeComplet||'').localeCompare(b.numeComplet||''));
+  const cur = sel.value;
+  sel.innerHTML = act.map(e=>`<option value="${e.id}">${escapeHtml(e.numeComplet||'')} (${escapeHtml(e.employeeId||'')})</option>`).join('');
+  if(cur) sel.value = cur;
+  adminContractFill();
+  try{
+    const st = await db.collection('meta').doc('contractSettings').get();
+    const img = st.exists ? st.data().semnaturaAngajator : '';
+    document.getElementById('ctSigPreview').innerHTML = img ? `<img src="${img}" style="max-height:74px;max-width:260px;">` : 'Nicio semnătură încărcată';
+  }catch(e){ console.error(e); }
+  if(!ctInit){
+    ctInit = true;
+    document.getElementById('ctSigFile').addEventListener('change', adminContractSaveSig);
+  }
+  adminContractLoadList();
+}
+function adminContractFill(){
+  const e = employees.find(x=>x.id===document.getElementById('ctEmp').value); if(!e) return;
+  document.getElementById('ctGeburtsort').value = e.locNasterii || 'Rumänien';
+  document.getElementById('ctBeginn').value = e.dataAngajare || '';
+  const miss = [];
+  if(!(e.prenume && e.numeFamilie)) miss.push('nume'); if(!e.dataNasterii) miss.push('data nașterii');
+  if(!e.strada) miss.push('strada'); if(!e.codPostal || !e.oras) miss.push('cod poștal/oraș'); if(!e.dataAngajare) miss.push('data angajării (poți alege data mai sus)');
+  document.getElementById('ctPreviewData').innerHTML = `${escapeHtml((e.prenume||'')+' '+(e.numeFamilie||''))} · ${escapeHtml(e.strada||'—')} · ${escapeHtml((e.codPostal||'')+' '+(e.oras||''))} · născut ${escapeHtml(e.dataNasterii||'—')}` +
+    (miss.length ? `<br><b style="color:var(--red)">Lipsește din fișă: ${miss.join(', ')}</b>` : '');
+}
+function adminContractSaveSig(ev){
+  const f = ev.target.files[0], msg = document.getElementById('ctSigMsg'); if(!f) return;
+  msg.style.color = 'var(--text-muted)'; msg.textContent = 'Se procesează…';
+  const img = new Image();
+  img.onload = async ()=>{
+    try{
+      const maxW = 600, sc = Math.min(1, maxW/img.width);
+      const c = document.createElement('canvas'); c.width = Math.round(img.width*sc); c.height = Math.round(img.height*sc);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      const url = c.toDataURL('image/png');
+      if(url.length > 400000) throw new Error('Imaginea e prea mare. Folosește una mai mică.');
+      await db.collection('meta').doc('contractSettings').set({ semnaturaAngajator: url, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true });
+      document.getElementById('ctSigPreview').innerHTML = `<img src="${url}" style="max-height:74px;max-width:260px;">`;
+      msg.style.color = 'var(--green)'; msg.textContent = '✓ Semnătura a fost salvată.';
+    }catch(err){ console.error(err); msg.style.color = 'var(--red)'; msg.textContent = err.message || 'Nu am putut salva.'; }
+  };
+  img.onerror = ()=>{ msg.style.color = 'var(--red)'; msg.textContent = 'Fișierul nu e o imagine PNG validă.'; };
+  img.src = URL.createObjectURL(f);
+}
+async function adminContractSend(){
+  const err = document.getElementById('ctErr'), btn = document.getElementById('ctSendBtn');
+  err.style.color = 'var(--red)'; err.textContent = '';
+  const eid = document.getElementById('ctEmp').value; if(!eid){ err.textContent = 'Alege un angajat.'; return; }
+  const e = employees.find(x=>x.id===eid);
+  if(!confirm('Trimit contractul de muncă lui ' + (e&&e.numeComplet) + '?')) return;
+  btn.disabled = true; btn.textContent = 'Se trimite…';
+  try{
+    await functionsRef.httpsCallable('sendContract')({
+      employeeId: eid, anrede: document.getElementById('ctAnrede').value,
+      geburtsort: document.getElementById('ctGeburtsort').value.trim(), beginn: document.getElementById('ctBeginn').value
+    });
+    err.style.color = 'var(--green)'; err.textContent = '✓ Contractul a fost trimis. Angajatul a primit notificare.';
+    adminContractLoadList();
+  }catch(ex){ console.error(ex); err.textContent = ex.message || 'Nu am putut trimite.'; }
+  btn.disabled = false; btn.textContent = 'Trimite contractul';
+}
+async function adminContractLoadList(){
+  const el = document.getElementById('ctList');
+  try{
+    ctList = (await functionsRef.httpsCallable('getContractsAdmin')({})).data.lista || [];
+    const dt = i => i ? new Date(i).toLocaleString('ro-RO',{timeZone:'Europe/Berlin'}) : '';
+    el.innerHTML = ctList.length ? '<table style="width:100%;border-collapse:collapse;font-size:13px;"><tr style="text-align:left;"><th style="padding:6px;">Angajat</th><th>Status</th><th>Data</th><th></th></tr>' +
+      ctList.map(c=>`<tr style="border-top:1px solid var(--border);"><td style="padding:8px 6px;">${escapeHtml(c.nume)}</td>
+        <td>${c.status==='semnat'?'<span style="color:var(--green);font-weight:700;">✅ Semnat</span>':(c.deschisAt?'👁️ Deschis, nesemnat':'⏳ Trimis')}</td>
+        <td>${c.status==='semnat'?dt(c.semnatAt):dt(c.createdAt)}</td>
+        <td style="text-align:right;">${c.status==='semnat'?`<button class="btn btn-secondary" style="width:auto;padding:4px 10px;" onclick="adminContractPrint(['${c.id}'])">📄 PDF</button>`:`<button class="btn btn-secondary" style="width:auto;padding:4px 10px;" onclick="adminContractCancel('${c.id}')">Anulează</button>`}</td></tr>`).join('') + '</table>'
+      : '<div style="color:var(--text-muted);font-size:13px;">Niciun contract trimis încă.</div>';
+  }catch(ex){ console.error(ex); el.textContent = 'Nu am putut încărca lista (verifică deploy-ul funcțiilor din angajati-mtc).'; }
+}
+async function adminContractCancel(id){
+  if(!confirm('Anulez acest contract nesemnat? Angajatul nu îl va mai vedea.')) return;
+  try{ await functionsRef.httpsCallable('deleteContract')({ id }); adminContractLoadList(); }catch(ex){ alert(ex.message || 'Nu am putut anula.'); }
+}
+function adminContractPrintAll(){
+  const ids = ctList.filter(c=>c.status==='semnat').map(c=>c.id);
+  if(!ids.length){ alert('Nu există contracte semnate.'); return; }
+  adminContractPrint(ids);
+}
+async function adminContractPrint(ids){
+  const w = window.open('', '_blank');
+  if(!w){ alert('Permite ferestrele pop-up pentru a deschide contractele.'); return; }
+  w.document.write('<p style="font-family:sans-serif">Se pregătesc contractele…</p>');
+  try{
+    const r = (await functionsRef.httpsCallable('getContractFull')({ ids })).data.contracte || [];
+    const e = escapeHtml, dt = i => i ? new Date(i).toLocaleString('ro-RO',{timeZone:'Europe/Berlin'}) : '', dd = i => i ? new Date(i).toLocaleDateString('de-DE',{timeZone:'Europe/Berlin'}) : '';
+    const sig = (img, who) => `<div><div class="ln">${img?`<img src="${img}">`:''}</div>${who}</div>`;
+    const one = c => `<section class="ct">` + (c.blocks||[]).map(b=>{
+      if(b.t==='title') return `<div class="ti">${e(b.x)}</div>`;
+      if(b.t==='kv') return `<div class="kv"><b>${e(b.k)}</b> <span class="f">${e(b.x)}</span></div>`;
+      if(b.t==='h') return (b.pb?'<div class="pb"></div>':'') + `<div class="h">${e(b.x)}</div>`;
+      if(b.t==='sign') return `<div class="p" style="margin-top:18px">Ort, Datum: <span class="f">${e((c.vals||{}).ort||'')}, ${dd(c.semnatAt)}</span></div><div class="sg">${sig(c.semnaturaAngajator,'Arbeitgeber')}${sig(c.semnatura,'Arbeitnehmer')}</div>`;
+      return `<div class="p">${b.b?`<b>${e(b.b)}</b> `:''}${e(b.x)}</div>`;
+    }).join('') + `<div class="ev">Digital signiert von ${e(c.nume)} am ${dt(c.semnatAt)} · Dokument-Hash (SHA-256): ${e(c.hash)} · Lesedauer ${Math.round((c.activMs||0)/1000)} s · IP ${e(c.ip)}</div></section>`;
+    w.document.open();
+    w.document.write(`<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Arbeitsverträge</title>
+      <style>body{font-family:Georgia,"Times New Roman",serif;color:#111;font-size:12.5px;line-height:1.5;margin:0}
+      .bar{position:sticky;top:0;background:#1f3a5f;padding:10px 16px}.bar button{padding:8px 14px;font-size:14px;cursor:pointer}
+      section.ct{max-width:760px;margin:20px auto;padding:0 28px;page-break-after:always}
+      .ti{text-align:center;font-weight:700;font-size:20px;letter-spacing:.06em;margin:6px 0 14px}.h{font-weight:700;margin:16px 0 5px;font-size:13.5px;page-break-after:avoid}
+      .p{margin:0 0 6px;text-align:justify}.kv{margin:0 0 3px}.kv b{display:inline-block;min-width:96px}.f{border-bottom:1px solid #999;padding:0 4px;font-weight:600}
+      .sg{display:flex;gap:30px;margin:22px 0 6px;page-break-inside:avoid}.sg>div{flex:1;text-align:center;font-size:11px;color:#444}
+      .ln{border-bottom:1px solid #333;height:58px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:3px}.ln img{max-height:56px;max-width:100%}
+      .pb{page-break-before:always}.ev{margin-top:20px;font-size:9.5px;color:#666;border-top:1px solid #ccc;padding-top:6px;word-break:break-all}
+      @media print{.bar{display:none}section.ct{margin:0 auto}}</style></head><body>
+      <div class="bar"><button onclick="print()">🖨️ Tipărește / Salvează ca PDF</button></div>${r.map(one).join('')}</body></html>`);
+    w.document.close();
+  }catch(ex){ console.error(ex); w.document.body.innerHTML = '<p style="font-family:sans-serif">Nu am putut încărca contractele: ' + (ex.message||'') + '</p>'; }
 }
 </script>
 </body>
