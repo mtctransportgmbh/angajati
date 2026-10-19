@@ -1151,6 +1151,19 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
         <div class="field"><label>Email Polling (expirări)</label><input type="text" id="adminAlert_loc_Polling" placeholder="adresă email"></div>
         <div class="field"><label>Restul angajaților (ex: șoferi de pachete) — luni înainte</label><input type="number" min="1" max="24" id="adminAlert_luniGeneral" value="2"></div>
       </div>
+      <div style="border-top:1px solid var(--border); margin:14px 0 10px; padding-top:12px;">
+        <div style="font-weight:700; margin-bottom:4px;">🗑️ Avertizări gunoi</div>
+        <div class="hint" style="margin:0 0 8px;">Primești un email cu o zi înainte la 08:00 (sâmbătă la 08:00 pentru colectările de luni) și în ziua colectării la 07:00.</div>
+        <div class="field full"><label>Email pentru avertizări gunoi</label><input type="text" id="adminAlert_emailGunoi" placeholder="adresă email (mai multe, separate prin virgulă)"></div>
+        <div style="display:flex; flex-wrap:wrap; gap:12px; margin:8px 0;">
+          <label style="display:flex;gap:6px;align-items:center;font-size:13px;"><input type="checkbox" class="gunoiTip" value="Restmülltonne" style="width:auto;"> Restmülltonne</label>
+          <label style="display:flex;gap:6px;align-items:center;font-size:13px;"><input type="checkbox" class="gunoiTip" value="Restmüllcontainer" style="width:auto;"> Restmüllcontainer</label>
+          <label style="display:flex;gap:6px;align-items:center;font-size:13px;"><input type="checkbox" class="gunoiTip" value="Papiertonne" style="width:auto;"> Papiertonne</label>
+          <label style="display:flex;gap:6px;align-items:center;font-size:13px;"><input type="checkbox" class="gunoiTip" value="Papiercontainer" style="width:auto;"> Papiercontainer</label>
+        </div>
+        <button class="btn btn-secondary" style="width:auto;" onclick="sendGunoiTest(this)">🗑️ Trimite un email de test (gunoi)</button>
+        <div id="gunoiTestResult" style="font-size:12.5px; margin-top:8px; line-height:1.5;"></div>
+      </div>
       <div style="margin:4px 0 12px;">
         <button class="btn btn-secondary" style="width:auto;" onclick="sendDigestTest(this)">📧 Trimite acum un email de test</button>
         <div id="digestTestResult" style="font-size:12.5px; margin-top:8px; line-height:1.5;"></div>
@@ -1805,7 +1818,7 @@ function closeViewModal(){ document.getElementById('viewBackdrop').classList.rem
    email din functions/index.js (dailyExpiryDigest). Șoferii de camion au
    deja pragurile lor separate, setate de fiecare coordonator. Adminul
    scrie direct în meta/alertSettingsAdmin (același tipar ca meta/counter). */
-let adminAlertSettings = { emailAdmin:'', luniGeneral:2, emailAniversari:'', emailLocatii:{}, emailAniversariLocatii:{}, aniversariCoordonatori:false };
+let adminAlertSettings = { emailAdmin:'', luniGeneral:2, emailAniversari:'', emailLocatii:{}, emailAniversariLocatii:{}, aniversariCoordonatori:false, emailGunoi:'', gunoiTipuri:[] };
 const ALERT_LOCS = ['Eiselfing','Ruhstorf','Polling'];
 async function loadAdminAlertSettings(){
   try{
@@ -1818,6 +1831,8 @@ async function loadAdminAlertSettings(){
         emailLocatii: d.emailLocatii || {},
         emailAniversariLocatii: d.emailAniversariLocatii || {},
         aniversariCoordonatori: d.aniversariCoordonatori === true,
+        emailGunoi: d.emailGunoi || '',
+        gunoiTipuri: Array.isArray(d.gunoiTipuri) ? d.gunoiTipuri : [],
         luniGeneral: (Number(d.luniGeneral)>0) ? Number(d.luniGeneral) : 2
       };
     }
@@ -1829,7 +1844,20 @@ function openAdminAlertSettingsModal(){
   document.getElementById('adminAlert_emailAniv').value = adminAlertSettings.emailAniversari || '';
   ALERT_LOCS.forEach(l=>{ document.getElementById('adminAlert_loc_'+l).value = (adminAlertSettings.emailLocatii||{})[l] || ''; document.getElementById('adminAlert_aniv_'+l).value = (adminAlertSettings.emailAniversariLocatii||{})[l] || ''; });
   document.getElementById('adminAlert_anivCoord').checked = adminAlertSettings.aniversariCoordonatori === true;
+  document.getElementById('adminAlert_emailGunoi').value = adminAlertSettings.emailGunoi || '';
+  const gt = adminAlertSettings.gunoiTipuri && adminAlertSettings.gunoiTipuri.length ? adminAlertSettings.gunoiTipuri : ['Restmülltonne','Restmüllcontainer','Papiertonne','Papiercontainer'];
+  document.querySelectorAll('.gunoiTip').forEach(c=>c.checked = gt.includes(c.value));
   document.getElementById('adminAlertSettingsBackdrop').classList.add('show');
+}
+async function sendGunoiTest(btn){
+  const out = document.getElementById('gunoiTestResult');
+  btn.disabled = true; out.style.color = 'var(--text-muted)'; out.textContent = 'Se trimite… (salvează întâi setările dacă ai schimbat adresa)';
+  try{
+    const r = (await functionsRef.httpsCallable('gunoiTest')({ mod:'maine' })).data;
+    if(r.ok && r.data) { out.style.color = 'var(--green)'; out.textContent = '✓ Trimis pentru colectarea din ' + r.data.split('-').reverse().join('.') + ': ' + r.tipuri; }
+    else { out.style.color = 'var(--red)'; out.textContent = r.motiv || 'Nu s-a trimis nimic.'; }
+  }catch(e){ console.error(e); out.style.color = 'var(--red)'; out.textContent = 'Eroare: ' + (e.message||e); }
+  btn.disabled = false;
 }
 async function sendDigestTest(btn){
   const out = document.getElementById('digestTestResult');
@@ -1860,11 +1888,13 @@ async function saveAdminAlertSettingsModal(){
     ALERT_LOCS.forEach(l=>{ emailLocatii[l] = document.getElementById('adminAlert_loc_'+l).value.trim(); });
     const emailAniversariLocatii = {}; ALERT_LOCS.forEach(l=>{ emailAniversariLocatii[l] = document.getElementById('adminAlert_aniv_'+l).value.trim(); });
     const aniversariCoordonatori = document.getElementById('adminAlert_anivCoord').checked;
+    const emailGunoi = document.getElementById('adminAlert_emailGunoi').value.trim();
+    const gunoiTipuri = [...document.querySelectorAll('.gunoiTip')].filter(c=>c.checked).map(c=>c.value);
     await db.collection('meta').doc('alertSettingsAdmin').set({
-      emailAdmin, luniGeneral, emailAniversari, emailLocatii, emailAniversariLocatii, aniversariCoordonatori,
+      emailAdmin, luniGeneral, emailAniversari, emailLocatii, emailAniversariLocatii, aniversariCoordonatori, emailGunoi, gunoiTipuri,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge:true });
-    adminAlertSettings = { emailAdmin, luniGeneral, emailAniversari, emailLocatii, emailAniversariLocatii, aniversariCoordonatori };
+    adminAlertSettings = { emailAdmin, luniGeneral, emailAniversari, emailLocatii, emailAniversariLocatii, aniversariCoordonatori, emailGunoi, gunoiTipuri };
     closeAdminAlertSettingsModal();
   }catch(err){
     console.error(err);
