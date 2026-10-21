@@ -399,11 +399,11 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
 <div id="coordGate" style="display:flex; position:fixed; inset:0; background:var(--primary); align-items:center; justify-content:center; z-index:999;">
   <div class="pinCard">
     <span class="tag">MTC Transport</span>
-    <h1>Angajați MTC</h1>
+    <h1 id="coordTitle" style="cursor:default;user-select:none;">Angajați MTC</h1>
     <p>Loghează-te cu numărul personal și PIN-ul tău — același cont ca la portalul de telefon.</p>
     <div style="text-align:left;">
       <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:4px;">Cod de logare</label>
-      <input type="text" id="coordNumarPersonal" autocomplete="off" placeholder="MTC-XXXX-X"
+      <input type="text" id="coordNumarPersonal" autocomplete="off" placeholder="MTC-XXXX-X" value="MTC-" autocapitalize="characters" inputmode="numeric" oninput="fmtLoginCode(this,event)" onfocus="fmtLoginCode(this)"
         style="width:100%; padding:11px; font-size:15px; border:1.5px solid var(--border); border-radius:8px; margin-bottom:10px;">
       <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:4px;">PIN</label>
       <input type="password" id="coordPin" inputmode="numeric" maxlength="8" autocomplete="off"
@@ -437,7 +437,7 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
     <button class="view-tab-btn" id="tabBtn-anunturi" onclick="switchView('anunturi')">📢 Anunțuri</button>
     <button class="view-tab-btn" id="tabBtn-protocoale" onclick="switchView('protocoale')">📝 Protocoale</button>
     <button class="view-tab-btn" id="tabBtn-contracte" onclick="switchView('contracte')">📄 Contracte</button>
-    <button class="view-tab-btn" id="tabBtn-propuneri" onclick="switchView('propuneri')">🆕 Angajați propuși<span class="badge-count" id="propuneriBadge" style="display:none;"></span></button>
+    <button class="view-tab-btn" id="tabBtn-propuneri" style="display:none;" onclick="switchView('propuneri')">🆕 Angajați propuși<span class="badge-count" id="propuneriBadge" style="display:none;"></span></button>
   </div>
 
   <main id="view-angajati">
@@ -646,12 +646,8 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
         <h3 style="margin:0;">Echipa mea</h3>
         <button class="btn btn-primary" style="width:auto;" onclick="openCoordModal(null)">+ Angajat nou</button>
       </div>
-      <div style="color:var(--text-muted); font-size:12.5px; margin-bottom:6px;">Angajații pe care îi modifici aici devin activi imediat. Un angajat nou trimis de tine intră mai întâi la admin pentru aprobare — îl vezi în „Propunerile mele" mai jos, cu statusul lui.</div>
+      <div style="color:var(--text-muted); font-size:12.5px; margin-bottom:6px;">Angajații pe care îi adaugi sau îi modifici aici devin activi imediat, fără aprobarea adminului.</div>
       <div id="coordTeamList" style="margin-top:14px;"></div>
-    </div>
-    <div class="dist-panel">
-      <h3 style="margin:0 0 4px;">Propunerile mele</h3>
-      <div id="coordProposalsList" style="margin-top:14px;"></div>
     </div>
   </main>
 </div>
@@ -660,7 +656,7 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
 <div class="modal-backdrop" id="coordEditBackdrop">
   <div class="modal">
     <div class="modal-head">
-      <h2 id="coordModalTitleText">Angajat nou (propunere)</h2>
+      <h2 id="coordModalTitleText">Angajat nou</h2>
       <button class="modal-close" onclick="closeCoordModal()">✕</button>
     </div>
     <div class="modal-body">
@@ -849,7 +845,7 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
     </div>
     <div class="modal-foot">
       <button class="btn btn-secondary" onclick="closeCoordModal()">Anulează</button>
-      <button class="btn btn-primary" id="submitCoordBtn" style="width:auto;" onclick="saveCoordMember()">Trimite propunerea</button>
+      <button class="btn btn-primary" id="submitCoordBtn" style="width:auto;" onclick="saveCoordMember()">Adaugă angajatul</button>
     </div>
   </div>
 </div>
@@ -1272,6 +1268,27 @@ async function checkPin(){
 }
 document.getElementById('pinInput').addEventListener('keydown', e=>{ if(e.key==='Enter') checkPin(); });
 
+/* Cod de logare: "MTC-" precompletat, apoi 4 cifre, "-" automat, apoi numărul personal. */
+function fmtLoginCode(el, ev){
+  let raw = String(el.value||'').toUpperCase().replace(/^MTC-?/,'');
+  let d = raw.replace(/[^0-9]/g,'');
+  let out = 'MTC-' + d.slice(0,4);
+  const deleting = ev && ev.inputType && ev.inputType.indexOf('delete')===0;
+  if(d.length>4) out += '-' + d.slice(4);
+  else if(d.length===4 && !deleting) out += '-';
+  el.value = out;
+}
+/* Intrare admin ascunsă: 5 apăsări rapide pe titlul „Angajați MTC”, sau adresa cu #admin la final. */
+(function(){
+  let n=0, t=null;
+  const h=document.getElementById('coordTitle');
+  if(h) h.addEventListener('click',()=>{
+    n++; clearTimeout(t); t=setTimeout(()=>{n=0;},2500);
+    if(n>=5){ n=0; showAdminGate(); }
+  });
+  if(location.hash==='#admin') setTimeout(showAdminGate,0);
+})();
+
 async function coordLogin(){
   const numarPersonal = document.getElementById('coordNumarPersonal').value.trim();
   const pin = document.getElementById('coordPin').value.trim();
@@ -1280,7 +1297,7 @@ async function coordLogin(){
   // Comutator ascuns spre ecranul de admin: nu există niciun buton/link
   // vizibil care să dea de gol că boardul are și un mod de admin — se scrie
   // pur și simplu "admin" în locul numărului personal.
-  if(numarPersonal.toLowerCase()==='admin'){
+  if(false){
     document.getElementById('coordNumarPersonal').value = '';
     document.getElementById('coordPin').value = '';
     showAdminGate();
@@ -2811,7 +2828,6 @@ async function initCoordApp(){
     console.error(err);
   }
   loadMyTeamCoord();
-  loadMyProposalsCoord();
 }
 
 async function loadMyTeamCoord(){
@@ -3041,10 +3057,10 @@ function openCoordModal(memberId){
     }
     document.getElementById('coordExpLabel').textContent = 'Data expir\u0103rii';
   } else {
-    document.getElementById('coordModalTitleText').textContent = 'Angajat nou (propunere)';
+    document.getElementById('coordModalTitleText').textContent = 'Angajat nou';
     document.getElementById('coordExpLabel').textContent = 'Data expir\u0103rii *';
   }
-  document.getElementById('submitCoordBtn').textContent = memberId ? 'Salveaz\u0103 modific\u0103rile' : 'Trimite propunerea';
+  document.getElementById('submitCoordBtn').textContent = memberId ? 'Salveaz\u0103 modific\u0103rile' : 'Adaugă angajatul';
   document.getElementById('coordEditBackdrop').classList.add('show');
 }
 function closeCoordModal(){
@@ -3117,10 +3133,10 @@ async function saveCoordMember(){
       closeCoordModal();
       loadMyTeamCoord();
     } else {
-      const submitProposal = functionsRef.httpsCallable('submitEmployeeProposal');
-      await submitProposal({ date: payload });
+      const addMember = functionsRef.httpsCallable('addTeamMember');
+      await addMember({ date: payload });
       closeCoordModal();
-      loadMyProposalsCoord();
+      loadMyTeamCoord();
     }
   }catch(err){
     console.error(err);
