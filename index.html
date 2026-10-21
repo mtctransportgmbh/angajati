@@ -119,6 +119,27 @@ main{max-width:100%; margin:0; padding:22px 32px 60px;}
 #alertBanner li{margin-bottom:4px;}
 
 
+
+/* coordonator: antet */
+.coord-hero{background:linear-gradient(135deg,#142B47 0%,#1E3A5F 55%,#2F5C8F 100%); color:#fff; padding:18px 32px 30px; position:relative; overflow:hidden;}
+.coord-hero::after{content:""; position:absolute; right:-80px; top:-120px; width:360px; height:360px; border-radius:50%; background:radial-gradient(circle,rgba(255,255,255,.12),transparent 70%);}
+.ch-inner{max-width:1400px; margin:0 auto; position:relative; z-index:1;}
+.ch-top{display:flex; justify-content:space-between; align-items:center; margin-bottom:22px;}
+.ch-brand{display:flex; align-items:center; gap:10px; font-weight:600; font-size:14px; opacity:.95;}
+.ch-brand .brand-mark{background:rgba(255,255,255,.16); color:#fff; width:34px; height:34px; font-size:12px;}
+.ch-logout{background:rgba(255,255,255,.12); color:#fff; border:1px solid rgba(255,255,255,.25); border-radius:8px; padding:8px 14px; font-size:13px; cursor:pointer; font-family:inherit;}
+.ch-logout:hover{background:rgba(255,255,255,.22);}
+.ch-main{display:flex; justify-content:space-between; align-items:flex-end; gap:24px; flex-wrap:wrap;}
+.ch-text{max-width:640px;}
+.ch-chip{display:inline-block; background:rgba(255,255,255,.16); border-radius:100px; padding:4px 12px; font-size:12px; letter-spacing:.03em; margin-bottom:10px;}
+.ch-text h1{font-family:'Space Grotesk',sans-serif; font-size:32px; line-height:1.15; margin:0 0 8px; color:#fff;}
+.ch-text p{margin:0; font-size:14px; line-height:1.55; opacity:.82;}
+.ch-stats{display:flex; gap:12px; flex-wrap:wrap;}
+.ch-stats .stat{background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.2); color:#fff; min-width:104px; backdrop-filter:blur(4px);}
+.ch-stats .stat small{color:rgba(255,255,255,.75);}
+.ch-stats .stat.alert-red b{color:#FFB4A8;}
+@media(max-width:700px){ .coord-hero{padding:16px 16px 24px;} .ch-text h1{font-size:24px;} }
+
 /* coordonator: mesaj de bun venit */
 .coord-welcome{
   display:flex; align-items:center; justify-content:space-between; gap:16px;
@@ -631,35 +652,32 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
 
 <!-- ============ COORDONATOR: APP (echipa mea) ============ -->
 <div id="coordApp" style="display:none;">
-  <header class="top">
-    <div class="top-inner">
-      <div class="brand">
-        <div class="brand-mark">MTC</div>
-        <div>
-          <h1>Angajați MTC Transport</h1>
-          <span>Panou coordonator · <span id="coordGroupLabel">echipa mea</span></span>
-        </div>
+  <header class="coord-hero">
+    <div class="ch-inner">
+      <div class="ch-top">
+        <div class="ch-brand"><div class="brand-mark">MTC</div><span>MTC Transport GmbH</span></div>
+        <button class="ch-logout" onclick="coordLogout()">Ieși din cont ⎋</button>
       </div>
-      <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
-        <div class="stats" id="coordStatsRow"></div>
-        <button class="btn btn-secondary" style="width:auto;" onclick="coordLogout()">Ieși din cont</button>
+      <div class="ch-main">
+        <div class="ch-text">
+          <span class="ch-chip" id="coordGroupLabel">Panou coordonator</span>
+          <h1 id="coordGreeting">Bine ai venit!</h1>
+          <p>Aici ai tot ce îți trebuie pentru echipa ta: adaugi oameni noi, le actualizezi fișele, aprobi concedii și le trimiți anunțuri sau protocoale.</p>
+        </div>
+        <div class="ch-stats" id="coordStatsRow"></div>
       </div>
     </div>
   </header>
 
   <div class="view-tabs">
-    <button class="view-tab-btn active">👥 Echipa mea</button>
+    <button class="view-tab-btn active" id="ctab-team" onclick="switchCoordView('team')">👥 Echipa mea</button>
+    <button class="view-tab-btn" id="ctab-aprobari" onclick="switchCoordView('aprobari')">✅ Aprobări concediu</button>
+    <button class="view-tab-btn" id="ctab-mesaje" onclick="switchCoordView('mesaje')">✉️ Mesaje</button>
+    <button class="view-tab-btn" id="ctab-anunturi" onclick="switchCoordView('anunturi')">📢 Anunțuri</button>
+    <button class="view-tab-btn" id="ctab-protocoale" onclick="switchCoordView('protocoale')">📝 Protocoale</button>
   </div>
 
-  <main>
-    <div class="coord-welcome">
-      <div>
-        <div class="cw-hello" id="coordGreeting">Bine ai venit!</div>
-        <div class="cw-sub" id="coordWelcomeSub">Aici ai tot ce îți trebuie pentru echipa ta: adaugi oameni noi, le actualizezi fișele și vezi din timp ce documente expiră.</div>
-      </div>
-      <div class="cw-emoji">🚚</div>
-    </div>
-
+  <main id="view-coordteam">
     <div class="dist-panel" id="coordAlertPanel" style="display:none; background:var(--red-soft); border-color:#F0C7C1;">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; flex-wrap:wrap; gap:10px;">
         <h3 style="margin:0; color:var(--red);">⚠ Alerte expirări — camion</h3>
@@ -2870,7 +2888,9 @@ function setCoordGreeting(){
   const h = new Date().getHours();
   const salut = h<11 ? 'Bună dimineața' : (h<18 ? 'Bună ziua' : 'Bună seara');
   const first = (coordMyName||'').trim().split(/\s+/).slice(-1)[0] || '';
-  document.getElementById('coordGreeting').textContent = 'Bine ai venit' + (first ? ', '+first : '') + '! ' + (h<11?'☀️':(h<18?'👋':'🌙'));
+  document.getElementById('coordGreeting').textContent = salut + (first ? ', '+first : '') + '! ' + (h<11?'☀️':(h<18?'👋':'🌙'));
+  const gl = (typeof COORD_GROUP_LABELS!=='undefined' && COORD_GROUP_LABELS[coordMyGroup]) || '';
+  document.getElementById('coordGroupLabel').textContent = gl ? 'Coordonator · Echipa ' + gl : 'Panou coordonator';
 }
 let coordEditingId = null; // null = propunere angajat nou; altfel = editare membru existent
 
@@ -2882,7 +2902,39 @@ function buildGenericGrid(containerId, list){
 buildGenericGrid('coordRolGrid', ROLURI_DISPONIBILE);
 buildGenericGrid('coordCatGrid', CATEGORII_PERMIS);
 
+
+/* Coordonatorul folosește aceleași ecrane ca adminul (aprobări, mesaje, anunțuri, protocoale);
+   serverul le limitează singur la echipa lui. Le mutăm în panoul de coordonator. */
+let coordViewsMoved = false;
+function moveSharedViewsToCoord(){
+  if(coordViewsMoved) return;
+  coordViewsMoved = true;
+  const host = document.getElementById('coordApp');
+  ['aprobari','mesaje','anunturi','protocoale'].forEach(v=>{
+    const el = document.getElementById('view-'+v);
+    if(el){ el.style.display='none'; host.appendChild(el); }
+  });
+  const h = document.querySelector('#view-aprobari h3');
+  if(h) h.textContent = 'Cereri de concediu — echipa ta';
+  const m = document.querySelector('#view-mesaje h3');
+  if(m) m.textContent = 'Mesaje de la oamenii din echipa ta (fără răspuns)';
+}
+function switchCoordView(name){
+  moveSharedViewsToCoord();
+  const all = ['team','aprobari','mesaje','anunturi','protocoale'];
+  all.forEach(v=>{
+    const el = document.getElementById(v==='team' ? 'view-coordteam' : 'view-'+v);
+    if(el) el.style.display = name===v ? 'block' : 'none';
+    document.getElementById('ctab-'+v).classList.toggle('active', name===v);
+  });
+  if(name==='aprobari') loadAdminApprovalQueue();
+  if(name==='mesaje') loadAdminMessages();
+  if(name==='anunturi'){ adminLoadAnnTargets(); adminLoadAnnStatus(); }
+  if(name==='protocoale'){ adminLoadProtTargets(); adminLoadProtStatus(); }
+}
+
 async function initCoordApp(){
+  moveSharedViewsToCoord();
   try{
     const uid = auth.currentUser.uid;
     const doc = await db.collection('angajati').doc(uid).get();
@@ -2903,6 +2955,7 @@ async function loadMyTeamCoord(){
     const result = await getMyTeam();
     coordTeamCache = result.data.lista || [];
     coordMyGroup = result.data.myGroup || null;
+    setCoordGreeting();
     renderCoordTeamList();
     await loadCoordAlertSettings();
     renderCoordAlerts();
