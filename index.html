@@ -118,6 +118,17 @@ main{max-width:100%; margin:0; padding:22px 32px 60px;}
 #alertBanner ul.open{display:block;}
 #alertBanner li{margin-bottom:4px;}
 
+
+/* coordonator: mesaj de bun venit */
+.coord-welcome{
+  display:flex; align-items:center; justify-content:space-between; gap:16px;
+  background:linear-gradient(135deg,var(--primary),#2F4A6B); color:#fff;
+  border-radius:var(--radius); padding:20px 26px; margin-bottom:18px; box-shadow:var(--shadow);
+}
+.coord-welcome .cw-hello{font-family:'Space Grotesk',sans-serif; font-size:22px; font-weight:700; margin-bottom:4px;}
+.coord-welcome .cw-sub{font-size:13.5px; opacity:.85; max-width:640px; line-height:1.5;}
+.coord-welcome .cw-emoji{font-size:40px; opacity:.9;}
+
 /* toolbar */
 .toolbar{
   display:flex; gap:10px; flex-wrap:wrap; align-items:center;
@@ -625,29 +636,75 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
       <div class="brand">
         <div class="brand-mark">MTC</div>
         <div>
-          <h1>Echipa mea</h1>
-          <span id="coordWelcomeName">—</span>
+          <h1>Angajați MTC Transport</h1>
+          <span>Panou coordonator · <span id="coordGroupLabel">echipa mea</span></span>
         </div>
       </div>
-      <button class="btn btn-secondary" style="width:auto;" onclick="coordLogout()">Ieși din cont</button>
+      <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+        <div class="stats" id="coordStatsRow"></div>
+        <button class="btn btn-secondary" style="width:auto;" onclick="coordLogout()">Ieși din cont</button>
+      </div>
     </div>
   </header>
-  <main style="max-width:900px; margin:0 auto; padding:28px 32px 60px;">
-    <div class="dist-panel" id="coordAlertPanel" style="display:none;">
+
+  <div class="view-tabs">
+    <button class="view-tab-btn active">👥 Echipa mea</button>
+  </div>
+
+  <main>
+    <div class="coord-welcome">
+      <div>
+        <div class="cw-hello" id="coordGreeting">Bine ai venit!</div>
+        <div class="cw-sub" id="coordWelcomeSub">Aici ai tot ce îți trebuie pentru echipa ta: adaugi oameni noi, le actualizezi fișele și vezi din timp ce documente expiră.</div>
+      </div>
+      <div class="cw-emoji">🚚</div>
+    </div>
+
+    <div class="dist-panel" id="coordAlertPanel" style="display:none; background:var(--red-soft); border-color:#F0C7C1;">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; flex-wrap:wrap; gap:10px;">
         <h3 style="margin:0; color:var(--red);">⚠ Alerte expirări — camion</h3>
         <button class="btn btn-secondary" style="width:auto;" onclick="openCoordAlertSettingsModal()">⚙ Setări alerte</button>
       </div>
-      <div style="color:var(--text-muted); font-size:12.5px; margin-bottom:6px;">Alertele astea țin cont doar de șoferii de camion din echipa ta (categorii C1/C1E/C/CE, ADR, modul Cod 95, card tahograf) — cu câte luni înainte de expirare vrei să apară, alegi tu din „Setări alerte”.</div>
+      <div style="color:var(--text-muted); font-size:12.5px; margin-bottom:6px;">Țin cont doar de șoferii de camion din echipa ta (categorii C1/C1E/C/CE, ADR, modul Cod 95, card tahograf). Cu câte luni înainte să apară, alegi tu din „Setări alerte”.</div>
       <div id="coordAlertList" style="font-size:13px;"></div>
     </div>
-    <div class="dist-panel">
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; flex-wrap:wrap; gap:10px;">
-        <h3 style="margin:0;">Echipa mea</h3>
-        <button class="btn btn-primary" style="width:auto;" onclick="openCoordModal(null)">+ Angajat nou</button>
+
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <input type="text" id="coordSearch" placeholder="Caută nume, telefon, cod..." oninput="renderCoordTeamList()">
+        <select id="coordFilterLoc" onchange="renderCoordTeamList()">
+          <option value="">Toate locațiile</option>
+          <option value="Ruhstorf">Ruhstorf</option>
+          <option value="Eiselfing">Eiselfing</option>
+          <option value="Polling">Polling</option>
+          <option value="Altul">Altul</option>
+        </select>
+        <label class="checkbtn"><input type="checkbox" id="coordFilterArh" onchange="renderCoordTeamList()"> Arată arhivați</label>
       </div>
-      <div style="color:var(--text-muted); font-size:12.5px; margin-bottom:6px;">Angajații pe care îi adaugi sau îi modifici aici devin activi imediat, fără aprobarea adminului.</div>
-      <div id="coordTeamList" style="margin-top:14px;"></div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn btn-primary" onclick="openCoordModal(null)">+ Angajat nou</button>
+      </div>
+    </div>
+
+    <div class="board-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th>Cod</th>
+            <th>Angajat</th>
+            <th>Rol · Locație</th>
+            <th>Expiră permis</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="coordTeamBody"></tbody>
+      </table>
+      <div class="empty-state" id="coordEmpty" style="display:none;">
+        <h3>Niciun angajat în echipa ta</h3>
+        <p>Apasă „+ Angajat nou” ca să adaugi primul om din echipă.</p>
+      </div>
     </div>
   </main>
 </div>
@@ -2808,6 +2865,13 @@ function exportCSV(){
    tahograf. */
 let coordTeamCache = [];
 let coordMyGroup = null;
+let coordMyName = '';
+function setCoordGreeting(){
+  const h = new Date().getHours();
+  const salut = h<11 ? 'Bună dimineața' : (h<18 ? 'Bună ziua' : 'Bună seara');
+  const first = (coordMyName||'').trim().split(/\s+/).slice(-1)[0] || '';
+  document.getElementById('coordGreeting').textContent = 'Bine ai venit' + (first ? ', '+first : '') + '! ' + (h<11?'☀️':(h<18?'👋':'🌙'));
+}
 let coordEditingId = null; // null = propunere angajat nou; altfel = editare membru existent
 
 function buildGenericGrid(containerId, list){
@@ -2823,7 +2887,8 @@ async function initCoordApp(){
     const uid = auth.currentUser.uid;
     const doc = await db.collection('angajati').doc(uid).get();
     const e = doc.exists ? doc.data() : {};
-    document.getElementById('coordWelcomeName').textContent = e.numeComplet || '\u2014';
+    coordMyName = e.numeComplet || '';
+    setCoordGreeting();
   }catch(err){
     console.error(err);
   }
@@ -2831,8 +2896,8 @@ async function initCoordApp(){
 }
 
 async function loadMyTeamCoord(){
-  const listEl = document.getElementById('coordTeamList');
-  listEl.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">Se \u00eencarc\u0103...</div>';
+  const listEl = document.getElementById('coordTeamBody');
+  listEl.innerHTML = '<tr><td colspan="7" style="padding:20px; color:var(--text-muted); font-size:13px;">Se \u00eencarc\u0103...</td></tr>';
   try{
     const getMyTeam = functionsRef.httpsCallable('getMyTeam');
     const result = await getMyTeam();
@@ -2843,7 +2908,7 @@ async function loadMyTeamCoord(){
     renderCoordAlerts();
   }catch(err){
     console.error(err);
-    listEl.innerHTML = '<div style="color:var(--red); font-size:13px;">Eroare la \u00eenc\u0103rcare: ' + (err.message||err) + '</div>';
+    listEl.innerHTML = '<tr><td colspan="7" style="padding:20px; color:var(--red); font-size:13px;">Eroare la \u00eenc\u0103rcare: ' + (err.message||err) + '</td></tr>';
   }
 }
 
@@ -2942,22 +3007,52 @@ function renderCoordAlerts(){
 }
 
 function renderCoordTeamList(){
-  const listEl = document.getElementById('coordTeamList');
-  listEl.innerHTML = coordTeamCache.length
-    ? coordTeamCache.map(m=>{
-        const nume = m.numeComplet || ((m.numeFamilie||'')+' '+(m.prenume||'')).trim() || '\u2014';
-        const roluri = (m.roluri||[]).join(', ') || '\u2014';
-        return `
-        <div class="appr-card" onclick="openViewModal('${m.id}', true)" style="cursor:pointer;">
-          <div class="who">${escapeHtml(nume)}</div>
-          <div class="when">${escapeHtml(employeeLocs(m).join(', ')||'\u2014')} \u00b7 ${escapeHtml(m.telefon||'\u2014')} \u00b7 ${escapeHtml(m.email||'\u2014')}</div>
-          <div class="motiv">Rol: ${escapeHtml(roluri)}</div>
-          <div class="appr-actions" onclick="event.stopPropagation()">
-            <button style="background:var(--primary); color:#fff;" onclick="openCoordModal('${m.id}')">Editeaz\u0103</button>
+  const q = (document.getElementById('coordSearch')||{value:''}).value.toLowerCase().trim();
+  const fLoc = (document.getElementById('coordFilterLoc')||{value:''}).value;
+  const showArh = !!(document.getElementById('coordFilterArh')||{}).checked;
+  const active = coordTeamCache.filter(m=>m.status!=='Arhivat');
+  const soferi = active.filter(m=>(m.roluri||[]).some(r=>/Șofer/.test(r)));
+  const exp = active.filter(m=>{ const d = daysUntil(m.dataExpirarePermis); return d!==null && d<=30; });
+  document.getElementById('coordStatsRow').innerHTML =
+    `<div class="stat"><b>${active.length}</b><small>În echipă</small></div>`+
+    `<div class="stat"><b>${soferi.length}</b><small>Șoferi</small></div>`+
+    `<div class="stat ${exp.length?'alert-red':''}"><b>${exp.length}</b><small>Expiră ≤30z</small></div>`;
+  const list = coordTeamCache.filter(m=>{
+    if(!showArh && m.status==='Arhivat') return false;
+    if(fLoc && !employeeLocs(m).includes(fLoc)) return false;
+    if(q){
+      const hay = [m.numeComplet,m.telefon,m.email,m.employeeId].filter(Boolean).join(' ').toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  }).sort((a,b)=>(a.numeComplet||'').localeCompare(b.numeComplet||''));
+  document.getElementById('coordEmpty').style.display = coordTeamCache.length ? 'none' : 'block';
+  document.getElementById('coordTeamBody').innerHTML = list.map(m=>{
+    const nume = m.numeComplet || ((m.numeFamilie||'')+' '+(m.prenume||'')).trim() || '—';
+    const ini = (((m.numeFamilie||'')[0]||'')+((m.prenume||'')[0]||'')).toUpperCase() || '—';
+    return `
+    <tr onclick="openViewModal('${m.id}', true)" style="cursor:pointer;">
+      <td style="padding:0; width:4px;"><div class="tab ${rowTabClass(m)}"></div></td>
+      <td><span class="id-tag mono">${escapeHtml(m.employeeId||'—')}</span></td>
+      <td>
+        <div class="identity">
+          <div class="avatar">${escapeHtml(ini)}</div>
+          <div class="identity-text">
+            <b>${escapeHtml(nume)}</b>
+            <small>${escapeHtml(addressLine(m))}${m.telefon?' · '+escapeHtml(m.telefon):''}</small>
           </div>
-        </div>`;
-      }).join('')
-    : '<div style="color:var(--text-muted); font-size:13px;">Nu ai \u00eenc\u0103 niciun angajat atribuit.</div>';
+        </div>
+      </td>
+      <td>${rolesText(m)} <span style="color:var(--text-muted);">· ${escapeHtml(employeeLocs(m).join(', ')||'—')}</span></td>
+      <td>${expiryChip(m.dataExpirarePermis)}</td>
+      <td><span class="status-pill status-${m.status||'Activ'}">${m.status||'Activ'}</span></td>
+      <td onclick="event.stopPropagation()">
+        <div class="row-actions">
+          <div class="icon-btn" onclick="openCoordModal('${m.id}')" title="Editează">✎</div>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
 }
 
 const COORD_PROP_STATUS_LABEL = { in_asteptare:'\u00cen a\u0219teptare', aprobat:'Aprobat', respins:'Respins' };
