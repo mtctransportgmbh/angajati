@@ -2800,34 +2800,50 @@ const CONCEDII_SYNC_CONFIG = {
   messagingSenderId: "124144206277",
   appId: "1:124144206277:web:dc813e88dd100a0443cbac"
 };
-let _syncApp = null;
-function getSyncApp(){ if(!_syncApp) _syncApp = firebase.initializeApp(CONCEDII_SYNC_CONFIG, 'concediiSync'); return _syncApp; }
-let _syncLastHash = '';
+// A doua destinatie: aplicatia Reclamatii (proiectul reclamatii-df0e7). Primeste ACELASI set minim de date.
+const RECLAMATII_SYNC_CONFIG = {
+  apiKey: "AIzaSyAUju0UiaAlTCjLgs0IZf01A65iiqpHZhI",
+  authDomain: "reclamatii-df0e7.firebaseapp.com",
+  projectId: "reclamatii-df0e7",
+  storageBucket: "reclamatii-df0e7.firebasestorage.app",
+  messagingSenderId: "231511007803",
+  appId: "1:231511007803:web:04b08affe925e6ef37f21e"
+};
+const _syncApps = {};
+function getSyncApp(){ if(!_syncApps.concedii) _syncApps.concedii = firebase.initializeApp(CONCEDII_SYNC_CONFIG, 'concediiSync'); return _syncApps.concedii; }
+function getReclSyncApp(){ if(!_syncApps.reclamatii) _syncApps.reclamatii = firebase.initializeApp(RECLAMATII_SYNC_CONFIG, 'reclamatiiSync'); return _syncApps.reclamatii; }
+const _syncTargets = [
+  { name: 'Concedii',   app: getSyncApp,     hash: '' },
+  { name: 'Reclamatii', app: getReclSyncApp, hash: '' }
+];
 let _syncTimer = null;
 function syncToConcedii(){
   clearTimeout(_syncTimer);
   _syncTimer = setTimeout(async ()=>{
-    try{
-      if(!employees || !employees.length) return;
-      const items = employees.map(e=>({
-        id: e.employeeId || e.id,
-        nume: e.numeComplet || ((e.numeFamilie||'')+' '+(e.prenume||'')).trim(),
-        status: e.status || 'Activ',
-        start: e.dataAngajare || '',
-        end: e.dataIncetare || '',
-        depot: e.depot || '',
-        locatii: e.locatii || [],
-        coord: e.coordonator || '',
-        link: (e.linkuri && e.linkuri.concedii) || '',
-        roluri: e.roluri || []
-      })).sort((a,b)=>a.id.localeCompare(b.id));
-      const hash = JSON.stringify(items);
-      if(hash === _syncLastHash) return;
-      await firebase.firestore(getSyncApp()).collection('angajati_sync').doc('list').set({
-        items, count: items.length, updatedAt: new Date().toISOString()
-      });
-      _syncLastHash = hash;
-    }catch(err){ console.warn('syncToConcedii:', err); }
+    if(!employees || !employees.length) return;
+    const items = employees.map(e=>({
+      id: e.employeeId || e.id,
+      nume: e.numeComplet || ((e.numeFamilie||'')+' '+(e.prenume||'')).trim(),
+      status: e.status || 'Activ',
+      start: e.dataAngajare || '',
+      end: e.dataIncetare || '',
+      depot: e.depot || '',
+      locatii: e.locatii || [],
+      coord: e.coordonator || '',
+      link: (e.linkuri && e.linkuri.concedii) || '',
+      roluri: e.roluri || []
+    })).sort((a,b)=>a.id.localeCompare(b.id));
+    const hash = JSON.stringify(items);
+    // fiecare destinatie independent: daca una esueaza, cealalta continua
+    for(const t of _syncTargets){
+      if(hash === t.hash) continue;
+      try{
+        await firebase.firestore(t.app()).collection('angajati_sync').doc('list').set({
+          items, count: items.length, updatedAt: new Date().toISOString()
+        });
+        t.hash = hash;
+      }catch(err){ console.warn('sync ' + t.name + ':', err); }
+    }
   }, 2500);
 }
 
