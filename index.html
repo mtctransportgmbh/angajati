@@ -133,6 +133,9 @@ main{max-width:100%; margin:0; padding:22px 32px 60px;}
 .ct-data .row b{text-align:right; font-weight:600;}
 .ct-data .row b.miss{color:var(--red);}
 .ct-edit{background:none; border:none; color:var(--primary); cursor:pointer; font-size:12px; text-decoration:underline; padding:0; margin-left:8px;}
+.ct-print-opts{display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin:0 0 10px; padding:10px 12px; background:var(--surface-alt); border-radius:8px; font-size:12.5px;}
+.ct-print-opts label{display:flex; align-items:center; gap:6px;}
+.ct-print-opts input[type=date]{width:auto; padding:5px 8px;}
 .ct-legend{font-size:11.5px; display:flex; gap:8px;}
 .ct-pap{background:#fff; color:#111; max-width:780px; margin:0 auto; padding:34px 40px; box-shadow:0 2px 14px rgba(0,0,0,.12); font-family:Georgia,"Times New Roman",serif; font-size:13.5px; line-height:1.55;}
 .ct-pap .t{text-align:center; font-weight:700; font-size:21px; letter-spacing:.08em; margin:0 0 16px;}
@@ -647,7 +650,7 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
       <div style="color:var(--text-muted); font-size:12.5px; margin-bottom:10px;">Încarci o singură dată semnătura (PNG, de preferat cu fundal transparent). Apare automat pe toate contractele semnate de angajați.</div>
       <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
         <div id="ctSigPreview" style="border:1.5px dashed var(--border); border-radius:8px; min-width:200px; height:80px; display:flex; align-items:center; justify-content:center; color:var(--text-muted); font-size:12px; background:#fff;">Nicio semnătură încărcată</div>
-        <div><input type="file" id="ctSigFile" accept="image/png" style="max-width:240px;"><div id="ctSigMsg" style="font-size:12px; margin-top:6px; min-height:14px;"></div></div>
+        <div><input type="file" id="ctSigFile" accept="image/png" style="max-width:240px;"><div style="margin-top:6px;"><button class="btn btn-secondary" style="width:auto;padding:4px 10px;" onclick="adminContractDelSig()">🗑 Șterge semnătura</button></div><div id="ctSigMsg" style="font-size:12px; margin-top:6px; min-height:14px;"></div></div>
       </div>
     </div>
     <div class="dist-panel" style="margin-top:16px;">
@@ -670,6 +673,7 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
     <div class="dist-panel" style="margin-top:16px;">
       <h3 style="margin:0 0 4px;">Contracte</h3>
       <div style="margin:6px 0 10px;"><button class="btn btn-secondary" style="width:auto;" onclick="adminContractPrintAll()">⬇️ Descarcă toate contractele semnate (PDF)</button></div>
+      <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">La tipărire se aplică „Data semnării” și „Fără semnături” din panoul de previzualizare.</div>
       <div id="ctList"></div>
     </div>
       </div>
@@ -678,6 +682,11 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
             <h3 style="margin:0;">👁️ Previzualizare contract</h3>
             <div class="ct-legend"><span class="ct-var ok">completat automat</span> <span class="ct-var miss">lipsește</span></div>
+          </div>
+          <div class="ct-print-opts">
+            <label>Data semnării pe contract <input type="date" id="ctPrintDate" class="adm-in" onchange="ctRenderPreview()"></label>
+            <label class="checkbtn"><input type="checkbox" id="ctNoSig" onchange="ctRenderPreview()"> Fără semnături (le semnez în original)</label>
+            <button class="btn btn-secondary" style="width:auto;" onclick="ctPrintPreview()">🖨️ Tipărește previzualizarea</button>
           </div>
           <div id="ctPaper" class="ct-scroll"><div style="color:var(--text-muted); font-size:13px;">Se încarcă contractul…</div></div>
         </div>
@@ -3624,7 +3633,11 @@ function ctRenderPreview(){
     if(b.t==='title') return '<div class="t">'+escapeHtml(b.x)+'</div>';
     if(b.t==='kv') return '<div class="kv"><b>'+ctSubHtml(b.k,v)+'</b> '+ctSubHtml(b.x,v)+'</div>';
     if(b.t==='h') return (b.pb?'<div class="pb"></div>':'')+'<div class="h">'+ctSubHtml(b.x,v)+'</div>';
-    if(b.t==='sign') return '<div class="p" style="margin-top:18px">Ort, Datum: '+escapeHtml((ctFirma&&ctFirma.ort)||'')+', <span style="color:#999">[data semnării]</span></div><div class="sg">'+sig(ctSigImg,'Arbeitgeber')+sig('','Arbeitnehmer')+'</div>';
+    if(b.t==='sign'){
+      const pd = ctIsoToDe((document.getElementById('ctPrintDate')||{}).value);
+      const noSig = !!(document.getElementById('ctNoSig')||{}).checked;
+      return '<div class="p" style="margin-top:18px">Ort, Datum: '+escapeHtml((ctFirma&&ctFirma.ort)||'')+', '+(pd?escapeHtml(pd):'<span style="color:#999">[data semnării]</span>')+'</div><div class="sg">'+sig(noSig?'':ctSigImg,'Arbeitgeber')+sig('','Arbeitnehmer')+'</div>';
+    }
     return '<div class="p">'+(b.b?'<b>'+ctSubHtml(b.b,v)+'</b> ':'')+ctSubHtml(b.x,v)+'</div>';
   }).join('') + '</div>';
 }
@@ -3698,7 +3711,7 @@ async function adminContractLoadList(){
       ctList.map(c=>`<tr style="border-top:1px solid var(--border);"><td style="padding:8px 6px;">${escapeHtml(c.nume)}</td>
         <td>${c.status==='semnat'?'<span style="color:var(--green);font-weight:700;">✅ Semnat</span>':(c.deschisAt?'👁️ Deschis, nesemnat':'⏳ Trimis')}</td>
         <td>${c.status==='semnat'?dt(c.semnatAt):dt(c.createdAt)}</td>
-        <td style="text-align:right;">${c.status==='semnat'?`<button class="btn btn-secondary" style="width:auto;padding:4px 10px;" onclick="adminContractPrint(['${c.id}'])">📄 PDF</button>`:`<button class="btn btn-secondary" style="width:auto;padding:4px 10px;" onclick="adminContractCancel('${c.id}')">Anulează</button>`}</td></tr>`).join('') + '</table>'
+        <td style="text-align:right;">${c.status==='semnat'?`<button class="btn btn-secondary" style="width:auto;padding:4px 10px;" onclick="adminContractPrint(['${c.id}'])">📄 PDF</button>`:`<button class="btn btn-secondary" style="width:auto;padding:4px 10px;" onclick="adminContractPrint(['${c.id}'])">🖨️</button> <button class="btn btn-secondary" style="width:auto;padding:4px 10px;" onclick="adminContractCancel('${c.id}')">Anulează</button>`}</td></tr>`).join('') + '</table>'
       : '<div style="color:var(--text-muted);font-size:13px;">Niciun contract trimis încă.</div>';
   }catch(ex){ console.error(ex); el.textContent = 'Nu am putut încărca lista (verifică deploy-ul funcțiilor din angajati-mtc).'; }
 }
@@ -3712,34 +3725,65 @@ function adminContractPrintAll(){
   adminContractPrint(ids);
 }
 async function adminContractPrint(ids){
-  const w = window.open('', '_blank');
-  if(!w){ alert('Permite ferestrele pop-up pentru a deschide contractele.'); return; }
-  w.document.write('<p style="font-family:sans-serif">Se pregătesc contractele…</p>');
   try{
     const r = (await functionsRef.httpsCallable('getContractFull')({ ids })).data.contracte || [];
-    const e = escapeHtml, dt = i => i ? new Date(i).toLocaleString('ro-RO',{timeZone:'Europe/Berlin'}) : '', dd = i => i ? new Date(i).toLocaleDateString('de-DE',{timeZone:'Europe/Berlin'}) : '';
-    const sig = (img, who) => `<div><div class="ln">${img?`<img src="${img}">`:''}</div>${who}</div>`;
-    const one = c => `<section class="ct">` + (c.blocks||[]).map(b=>{
+    ctOpenPrint(r);
+  }catch(ex){ console.error(ex); alert('Nu am putut încărca contractele: ' + (ex.message||'')); }
+}
+
+async function adminContractDelSig(){
+  if(!confirm('Șterg semnătura angajatorului? Contractele noi vor apărea fără semnătura ta.')) return;
+  const msg = document.getElementById('ctSigMsg');
+  try{
+    await db.collection('meta').doc('contractSettings').set({ semnaturaAngajator: '', updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true });
+    ctSigImg = '';
+    document.getElementById('ctSigPreview').innerHTML = 'Nicio semnătură încărcată';
+    ctRenderPreview();
+    msg.style.color = 'var(--green)'; msg.textContent = '✓ Semnătura a fost ștearsă.';
+  }catch(err){ console.error(err); msg.style.color = 'var(--red)'; msg.textContent = 'Nu am putut șterge.'; }
+}
+function ctPlainBlocks(){
+  const v = ctVals();
+  const sub = t => String(t||'').replace(/\{\{(\w+)\}\}/g, (_,k)=> v[k]||'');
+  return (ctTpl||[]).map(b=>Object.assign({}, b, b.x?{x:sub(b.x)}:{}, b.k?{k:sub(b.k)}:{}, b.b?{b:sub(b.b)}:{}));
+}
+function ctPrintPreview(){
+  if(!ctTpl){ alert('Contractul nu e încărcat încă.'); return; }
+  const v = ctVals();
+  ctOpenPrint([{ nume:'previzualizare', status:'previzualizare', blocks: ctPlainBlocks(), vals:{ ort:(ctFirma||{}).ort||'' }, semnaturaAngajator: ctSigImg, semnatura:'' }]);
+}
+function ctOpenPrint(list){
+  const noSig = !!document.getElementById('ctNoSig').checked;
+  const pdIso = document.getElementById('ctPrintDate').value;
+  const w = window.open('', '_blank');
+  if(!w){ alert('Permite ferestrele pop-up pentru a deschide contractele.'); return; }
+  const e = escapeHtml, dt = i => i ? new Date(i).toLocaleString('ro-RO',{timeZone:'Europe/Berlin'}) : '', dd = i => i ? new Date(i).toLocaleDateString('de-DE',{timeZone:'Europe/Berlin'}) : '';
+  const sig = (img, who) => `<div><div class="ln">${img?`<img src="${img}">`:''}</div>${who}</div>`;
+  const one = c => {
+    const semnat = c.status==='semnat';
+    const dateTxt = pdIso ? ctIsoToDe(pdIso) : (semnat ? dd(c.semnatAt) : '');
+    const showSig = !noSig;
+    return `<section class="ct">` + (c.blocks||[]).map(b=>{
       if(b.t==='title') return `<div class="ti">${e(b.x)}</div>`;
       if(b.t==='kv') return `<div class="kv"><b>${e(b.k)}</b> <span class="f">${e(b.x)}</span></div>`;
       if(b.t==='h') return (b.pb?'<div class="pb"></div>':'') + `<div class="h">${e(b.x)}</div>`;
-      if(b.t==='sign') return `<div class="p" style="margin-top:18px">Ort, Datum: <span class="f">${e((c.vals||{}).ort||'')}, ${dd(c.semnatAt)}</span></div><div class="sg">${sig(c.semnaturaAngajator,'Arbeitgeber')}${sig(c.semnatura,'Arbeitnehmer')}</div>`;
+      if(b.t==='sign') return `<div class="p" style="margin-top:18px">Ort, Datum: <span class="f">${e((c.vals||{}).ort||'')}, ${e(dateTxt)}</span></div><div class="sg">${sig(showSig?c.semnaturaAngajator:'','Arbeitgeber')}${sig(showSig&&semnat?c.semnatura:'','Arbeitnehmer')}</div>`;
       return `<div class="p">${b.b?`<b>${e(b.b)}</b> `:''}${e(b.x)}</div>`;
-    }).join('') + `<div class="ev">Digital signiert von ${e(c.nume)} am ${dt(c.semnatAt)} · Dokument-Hash (SHA-256): ${e(c.hash)} · Lesedauer ${Math.round((c.activMs||0)/1000)} s · IP ${e(c.ip)}</div></section>`;
-    w.document.open();
-    w.document.write(`<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Arbeitsverträge</title>
-      <style>body{font-family:Georgia,"Times New Roman",serif;color:#111;font-size:12.5px;line-height:1.5;margin:0}
-      .bar{position:sticky;top:0;background:#1f3a5f;padding:10px 16px}.bar button{padding:8px 14px;font-size:14px;cursor:pointer}
-      section.ct{max-width:760px;margin:20px auto;padding:0 28px;page-break-after:always}
-      .ti{text-align:center;font-weight:700;font-size:20px;letter-spacing:.06em;margin:6px 0 14px}.h{font-weight:700;margin:16px 0 5px;font-size:13.5px;page-break-after:avoid}
-      .p{margin:0 0 6px;text-align:justify}.kv{margin:0 0 3px}.kv b{display:inline-block;min-width:96px}.f{border-bottom:1px solid #999;padding:0 4px;font-weight:600}
-      .sg{display:flex;gap:30px;margin:22px 0 6px;page-break-inside:avoid}.sg>div{flex:1;text-align:center;font-size:11px;color:#444}
-      .ln{border-bottom:1px solid #333;height:58px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:3px}.ln img{max-height:56px;max-width:100%}
-      .pb{page-break-before:always}.ev{margin-top:20px;font-size:9.5px;color:#666;border-top:1px solid #ccc;padding-top:6px;word-break:break-all}
-      @media print{.bar{display:none}section.ct{margin:0 auto}}</style></head><body>
-      <div class="bar"><button onclick="print()">🖨️ Tipărește / Salvează ca PDF</button></div>${r.map(one).join('')}</body></html>`);
-    w.document.close();
-  }catch(ex){ console.error(ex); w.document.body.innerHTML = '<p style="font-family:sans-serif">Nu am putut încărca contractele: ' + (ex.message||'') + '</p>'; }
+    }).join('') + (semnat && showSig ? `<div class="ev">Digital signiert von ${e(c.nume)} am ${dt(c.semnatAt)} · Dokument-Hash (SHA-256): ${e(c.hash)} · Lesedauer ${Math.round((c.activMs||0)/1000)} s · IP ${e(c.ip)}</div>` : '') + `</section>`;
+  };
+  w.document.open();
+  w.document.write(`<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Arbeitsverträge</title>
+    <style>body{font-family:Georgia,"Times New Roman",serif;color:#111;font-size:12.5px;line-height:1.5;margin:0}
+    .bar{position:sticky;top:0;background:#1f3a5f;padding:10px 16px}.bar button{padding:8px 14px;font-size:14px;cursor:pointer}
+    section.ct{max-width:760px;margin:20px auto;padding:0 28px;page-break-after:always}
+    .ti{text-align:center;font-weight:700;font-size:20px;letter-spacing:.06em;margin:6px 0 14px}.h{font-weight:700;margin:16px 0 5px;font-size:13.5px;page-break-after:avoid}
+    .p{margin:0 0 6px;text-align:justify}.kv{margin:0 0 3px}.kv b{display:inline-block;min-width:96px}.f{border-bottom:1px solid #999;padding:0 4px;font-weight:600}
+    .sg{display:flex;gap:30px;margin:22px 0 6px;page-break-inside:avoid}.sg>div{flex:1;text-align:center;font-size:11px;color:#444}
+    .ln{border-bottom:1px solid #333;height:58px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:3px}.ln img{max-height:56px;max-width:100%}
+    .pb{page-break-before:always}.ev{margin-top:20px;font-size:9.5px;color:#666;border-top:1px solid #ccc;padding-top:6px;word-break:break-all}
+    @media print{.bar{display:none}section.ct{margin:0 auto}}</style></head><body>
+    <div class="bar"><button onclick="print()">🖨️ Tipărește / Salvează ca PDF</button></div>${list.map(one).join('')}</body></html>`);
+  w.document.close();
 }
 </script>
 </body>
