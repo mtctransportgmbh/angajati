@@ -650,6 +650,25 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
   <footer class="note">Codurile angajaților (ex. MTC-0001) sunt identificatorii folosiți de toate aplicațiile MTC pentru a atribui reclamații, concedii, curse și pontaj acestui angajat.</footer>
 </div>
 
+
+<!-- ============ COORDONATOR: SCHIMBARE PIN OBLIGATORIE ============ -->
+<div id="coordPinChange" style="display:none; position:fixed; inset:0; background:rgba(20,43,71,.92); align-items:center; justify-content:center; z-index:1200;">
+  <div class="pinCard">
+    <span class="tag">MTC Transport</span>
+    <h1>Alege-ți PIN-ul</h1>
+    <p>Acesta e un PIN provizoriu. Alege un PIN al tău (4–8 cifre) — rămâne fix, nu se mai schimbă decât dacă îl uiți.</p>
+    <div style="text-align:left;">
+      <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:4px;">PIN nou</label>
+      <input type="password" id="coordNewPin1" inputmode="numeric" maxlength="8" autocomplete="new-password" style="width:100%; padding:11px; font-size:15px; border:1.5px solid var(--border); border-radius:8px; margin-bottom:10px;">
+      <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:4px;">Repetă PIN-ul</label>
+      <input type="password" id="coordNewPin2" inputmode="numeric" maxlength="8" autocomplete="new-password" style="width:100%; padding:11px; font-size:15px; border:1.5px solid var(--border); border-radius:8px; margin-bottom:12px;">
+    </div>
+    <button class="btn btn-primary" onclick="coordSaveNewPin()">Salvează PIN-ul</button>
+    <div id="coordPinChangeErr" style="color:var(--red); font-size:12.5px; margin-top:10px; min-height:16px;"></div>
+    <div style="margin-top:8px;"><a href="#" onclick="coordLogout(); return false;" style="font-size:12px; color:var(--text-muted);">Ieși din cont</a></div>
+  </div>
+</div>
+
 <!-- ============ COORDONATOR: APP (echipa mea) ============ -->
 <div id="coordApp" style="display:none;">
   <header class="coord-hero">
@@ -1180,8 +1199,14 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
       <div class="access-row"><label>Cod de logare</label><span class="mono" id="accessNumarPersonal">—</span></div>
       <div class="access-row"><label>Status cont</label><span id="accessStatusChip"></span></div>
       <div id="pinRevealBox"></div>
-      <button class="btn btn-primary" style="width:100%;" onclick="generatePinForCurrent()">🔑 Generează PIN nou (resetare)</button>
-      <div class="warn-box">PIN-ul se arată o singură dată, aici. Notează-l pe fișă și predă-l angajatului în plic sigilat — sistemul nu îl mai poate afișa după ce închizi fereastra asta.</div>
+      <div id="fixedPinBox" style="display:none; margin-bottom:12px;">
+        <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:4px;">PIN provizoriu pentru coordonator (4–8 cifre)</label>
+        <input type="text" id="fixedPinInput" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="ex: 482916" style="width:100%; padding:10px; border:1.5px solid var(--border); border-radius:8px; margin-bottom:8px;">
+        <button class="btn btn-primary" style="width:100%;" onclick="setFixedPinForCurrent()">🔑 Setează PIN provizoriu</button>
+        <div class="warn-box">Coordonatorul trebuie să-și schimbe PIN-ul la prima logare. După aceea PIN-ul lui rămâne fix: nu se mai resetează din „Fișe acces”. Dacă îl uită, îi dai de aici un PIN provizoriu nou.</div>
+      </div>
+      <button class="btn btn-primary" id="genPinBtn" style="width:100%;" onclick="generatePinForCurrent()">🔑 Generează PIN nou (resetare)</button>
+      <div class="warn-box" id="genPinWarn">PIN-ul se arată o singură dată, aici. Notează-l pe fișă și predă-l angajatului în plic sigilat — sistemul nu îl mai poate afișa după ce închizi fereastra asta.</div>
 
       <div id="qrRevealBox"></div>
       <button class="btn btn-secondary" style="width:100%; margin-top:10px;" onclick="generateQrForCurrent()">📱 Generează cod QR nou (resetare)</button>
@@ -1382,6 +1407,7 @@ async function coordLogin(){
     const login = functionsRef.httpsCallable('employeeLogin');
     const result = await login({ numarPersonal, pin });
     sessionStorage.setItem('mtc_login_mode','coord');
+    if(result.data.mustChangePin) sessionStorage.setItem('mtc_coord_mustchange','1');
     await authReady;
     await auth.signInWithCustomToken(result.data.token);
   }catch(err){
@@ -1700,6 +1726,7 @@ function rolesText(e){
 
 function accessChip(e){
   if(!e.hasAccount) return '<span class="chip gray">Fără cont</span>';
+  if(e.pinFix) return '<span class="chip green">PIN fix</span>';
   if(e.mustChangePin) return '<span class="chip amber">PIN provizoriu</span>';
   return '<span class="chip green">Cont activ</span>';
 }
@@ -2286,6 +2313,11 @@ function openAccessModal(id){
   document.getElementById('accessNumarPersonal').textContent = loginCodeOf(e) || '— (completează „Număr personal” în fișa angajatului)';
   document.getElementById('accessStatusChip').innerHTML = accessChip(e);
   document.getElementById('pinRevealBox').innerHTML = '';
+  const isCo = !!e.rolAprobator;
+  document.getElementById('fixedPinBox').style.display = isCo ? 'block' : 'none';
+  document.getElementById('genPinBtn').style.display = isCo ? 'none' : '';
+  document.getElementById('genPinWarn').style.display = isCo ? 'none' : '';
+  document.getElementById('fixedPinInput').value = '';
   document.getElementById('accessBackdrop').classList.add('show');
 }
 function closeAccessModal(){
@@ -2298,6 +2330,22 @@ function loginCodeOf(e){ return (e.employeeId && e.numarPersonal) ? (e.employeeI
 
 function randomPin(){
   return String(Math.floor(100000 + Math.random()*900000)); // 6 cifre
+}
+
+async function setFixedPinForCurrent(){
+  const e = employees.find(x=>x.id===accessEmployeeId);
+  if(!e) return;
+  if(!loginCodeOf(e)){ alert('Completează mai întâi „Număr personal” în fișa angajatului — face parte din codul de logare.'); return; }
+  const pin = document.getElementById('fixedPinInput').value.trim();
+  if(!/^\d{4,8}$/.test(pin)){ alert('PIN-ul trebuie să aibă 4-8 cifre.'); return; }
+  try{
+    await functionsRef.httpsCallable('setFixedPin')({ employeeId: e.id, pin });
+    document.getElementById('pinRevealBox').innerHTML = `<div class="pin-reveal"><div class="code">${pin}</div><small>PIN provizoriu — coordonatorul și-l schimbă la prima logare, apoi rămâne fix</small></div>`;
+    document.getElementById('fixedPinInput').value = '';
+  }catch(err){
+    console.error(err);
+    alert('Eroare la setarea PIN-ului: ' + (err.message||err.code||err));
+  }
 }
 
 async function generatePinForCurrent(){
@@ -2368,7 +2416,11 @@ async function printSelectedSheets(){
     alert('Selectează cel puțin un angajat din tabel (căsuța din stânga).');
     return;
   }
-  const targets = employees.filter(e=>selectedIds.has(e.id));
+  const allSel = employees.filter(e=>selectedIds.has(e.id));
+  const fixedSkip = allSel.filter(e=>e.pinFix);
+  const targets = allSel.filter(e=>!e.pinFix);
+  if(fixedSkip.length) alert('Nu generez PIN nou pentru (au PIN fix): ' + fixedSkip.map(e=>e.numeComplet).join(', '));
+  if(!targets.length) return;
   const missing = targets.filter(e=>!loginCodeOf(e));
   if(missing.length){
     alert('Angajați fără „Număr personal” completat: ' + missing.map(e=>e.numeComplet).join(', ') + '. Completează-l înainte de a genera fișe.');
@@ -2800,50 +2852,34 @@ const CONCEDII_SYNC_CONFIG = {
   messagingSenderId: "124144206277",
   appId: "1:124144206277:web:dc813e88dd100a0443cbac"
 };
-// A doua destinatie: aplicatia Reclamatii (proiectul reclamatii-df0e7). Primeste ACELASI set minim de date.
-const RECLAMATII_SYNC_CONFIG = {
-  apiKey: "AIzaSyAUju0UiaAlTCjLgs0IZf01A65iiqpHZhI",
-  authDomain: "reclamatii-df0e7.firebaseapp.com",
-  projectId: "reclamatii-df0e7",
-  storageBucket: "reclamatii-df0e7.firebasestorage.app",
-  messagingSenderId: "231511007803",
-  appId: "1:231511007803:web:04b08affe925e6ef37f21e"
-};
-const _syncApps = {};
-function getSyncApp(){ if(!_syncApps.concedii) _syncApps.concedii = firebase.initializeApp(CONCEDII_SYNC_CONFIG, 'concediiSync'); return _syncApps.concedii; }
-function getReclSyncApp(){ if(!_syncApps.reclamatii) _syncApps.reclamatii = firebase.initializeApp(RECLAMATII_SYNC_CONFIG, 'reclamatiiSync'); return _syncApps.reclamatii; }
-const _syncTargets = [
-  { name: 'Concedii',   app: getSyncApp,     hash: '' },
-  { name: 'Reclamatii', app: getReclSyncApp, hash: '' }
-];
+let _syncApp = null;
+function getSyncApp(){ if(!_syncApp) _syncApp = firebase.initializeApp(CONCEDII_SYNC_CONFIG, 'concediiSync'); return _syncApp; }
+let _syncLastHash = '';
 let _syncTimer = null;
 function syncToConcedii(){
   clearTimeout(_syncTimer);
   _syncTimer = setTimeout(async ()=>{
-    if(!employees || !employees.length) return;
-    const items = employees.map(e=>({
-      id: e.employeeId || e.id,
-      nume: e.numeComplet || ((e.numeFamilie||'')+' '+(e.prenume||'')).trim(),
-      status: e.status || 'Activ',
-      start: e.dataAngajare || '',
-      end: e.dataIncetare || '',
-      depot: e.depot || '',
-      locatii: e.locatii || [],
-      coord: e.coordonator || '',
-      link: (e.linkuri && e.linkuri.concedii) || '',
-      roluri: e.roluri || []
-    })).sort((a,b)=>a.id.localeCompare(b.id));
-    const hash = JSON.stringify(items);
-    // fiecare destinatie independent: daca una esueaza, cealalta continua
-    for(const t of _syncTargets){
-      if(hash === t.hash) continue;
-      try{
-        await firebase.firestore(t.app()).collection('angajati_sync').doc('list').set({
-          items, count: items.length, updatedAt: new Date().toISOString()
-        });
-        t.hash = hash;
-      }catch(err){ console.warn('sync ' + t.name + ':', err); }
-    }
+    try{
+      if(!employees || !employees.length) return;
+      const items = employees.map(e=>({
+        id: e.employeeId || e.id,
+        nume: e.numeComplet || ((e.numeFamilie||'')+' '+(e.prenume||'')).trim(),
+        status: e.status || 'Activ',
+        start: e.dataAngajare || '',
+        end: e.dataIncetare || '',
+        depot: e.depot || '',
+        locatii: e.locatii || [],
+        coord: e.coordonator || '',
+        link: (e.linkuri && e.linkuri.concedii) || '',
+        roluri: e.roluri || []
+      })).sort((a,b)=>a.id.localeCompare(b.id));
+      const hash = JSON.stringify(items);
+      if(hash === _syncLastHash) return;
+      await firebase.firestore(getSyncApp()).collection('angajati_sync').doc('list').set({
+        items, count: items.length, updatedAt: new Date().toISOString()
+      });
+      _syncLastHash = hash;
+    }catch(err){ console.warn('syncToConcedii:', err); }
   }, 2500);
 }
 
@@ -2949,8 +2985,22 @@ function switchCoordView(name){
   if(name==='protocoale'){ adminLoadProtTargets(); adminLoadProtStatus(); }
 }
 
+async function coordSaveNewPin(){
+  const a = document.getElementById('coordNewPin1').value.trim();
+  const b = document.getElementById('coordNewPin2').value.trim();
+  const err = document.getElementById('coordPinChangeErr');
+  err.textContent = '';
+  if(!/^\d{4,8}$/.test(a)){ err.textContent = 'PIN-ul trebuie să aibă 4-8 cifre.'; return; }
+  if(a!==b){ err.textContent = 'Cele două PIN-uri nu sunt la fel.'; return; }
+  try{
+    await functionsRef.httpsCallable('changePin')({ newPin: a });
+    sessionStorage.removeItem('mtc_coord_mustchange');
+    document.getElementById('coordPinChange').style.display = 'none';
+  }catch(e){ console.error(e); err.textContent = 'Nu am putut salva: ' + (e.message||e.code||e); }
+}
 async function initCoordApp(){
   moveSharedViewsToCoord();
+  if(sessionStorage.getItem('mtc_coord_mustchange')==='1') document.getElementById('coordPinChange').style.display = 'flex';
   try{
     const uid = auth.currentUser.uid;
     const doc = await db.collection('angajati').doc(uid).get();
