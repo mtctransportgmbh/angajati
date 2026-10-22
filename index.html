@@ -120,6 +120,35 @@ main{max-width:100%; margin:0; padding:22px 32px 60px;}
 
 
 
+
+/* contracte: previzualizare */
+.ct-layout{display:grid; grid-template-columns:minmax(340px,440px) minmax(0,1fr); gap:16px; align-items:start;}
+.ct-right{position:sticky; top:10px;}
+.ct-scroll{max-height:calc(100vh - 150px); overflow:auto; background:#E9EDF2; border-radius:8px; padding:14px;}
+.ct-sec{margin:14px 0 6px; font-size:11.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted);}
+.ct-data{border:1px solid var(--border); border-radius:8px; overflow:hidden; font-size:13px;}
+.ct-data .row{display:flex; justify-content:space-between; gap:10px; padding:8px 12px; border-bottom:1px solid var(--border); align-items:center;}
+.ct-data .row:last-child{border-bottom:none;}
+.ct-data .row span:first-child{color:var(--text-muted); white-space:nowrap;}
+.ct-data .row b{text-align:right; font-weight:600;}
+.ct-data .row b.miss{color:var(--red);}
+.ct-edit{background:none; border:none; color:var(--primary); cursor:pointer; font-size:12px; text-decoration:underline; padding:0; margin-left:8px;}
+.ct-legend{font-size:11.5px; display:flex; gap:8px;}
+.ct-pap{background:#fff; color:#111; max-width:780px; margin:0 auto; padding:34px 40px; box-shadow:0 2px 14px rgba(0,0,0,.12); font-family:Georgia,"Times New Roman",serif; font-size:13.5px; line-height:1.55;}
+.ct-pap .t{text-align:center; font-weight:700; font-size:21px; letter-spacing:.08em; margin:0 0 16px;}
+.ct-pap .h{font-weight:700; margin:18px 0 5px; font-size:14.5px;}
+.ct-pap .p{margin:0 0 7px; text-align:justify; hyphens:auto;}
+.ct-pap .kv{margin:0 0 3px;} .ct-pap .kv b{display:inline-block; min-width:110px;}
+.ct-pap .pb{border-top:2px dashed #b8c2cf; margin:26px 0 8px; position:relative;}
+.ct-pap .pb::after{content:"pagină nouă"; position:absolute; right:0; top:-9px; background:#fff; font:10px sans-serif; color:#9aa5b4; padding:0 6px;}
+.ct-pap .sg{display:flex; gap:30px; margin:26px 0 8px;} .ct-pap .sg>div{flex:1; text-align:center; font-size:11.5px; color:#444;}
+.ct-pap .sg .ln{border-bottom:1px solid #333; height:58px; display:flex; align-items:flex-end; justify-content:center; margin-bottom:3px;}
+.ct-pap .sg img{max-height:54px; max-width:100%;}
+.ct-var{border-radius:3px; padding:0 4px; font-weight:600; font-family:inherit;}
+.ct-var.ok{background:#E3F4E8; color:#14602F; box-shadow:inset 0 -2px 0 #7CCB97;}
+.ct-var.miss{background:#FBE4E0; color:#B3261E; box-shadow:inset 0 -2px 0 #E8928A;}
+@media(max-width:1000px){ .ct-layout{grid-template-columns:1fr;} .ct-right{position:static;} .ct-pap{padding:22px 18px;} }
+
 /* coordonator: antet */
 .coord-hero{background:linear-gradient(135deg,#142B47 0%,#1E3A5F 55%,#2F5C8F 100%); color:#fff; padding:18px 32px 30px; position:relative; overflow:hidden;}
 .coord-hero::after{content:""; position:absolute; right:-80px; top:-120px; width:360px; height:360px; border-radius:50%; background:radial-gradient(circle,rgba(255,255,255,.12),transparent 70%);}
@@ -611,6 +640,8 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
   </main>
 
   <main id="view-contracte" style="display:none;">
+    <div class="ct-layout">
+      <div class="ct-left">
     <div class="dist-panel">
       <h3 style="margin:0 0 4px;">✍️ Semnătura angajatorului</h3>
       <div style="color:var(--text-muted); font-size:12.5px; margin-bottom:10px;">Încarci o singură dată semnătura (PNG, de preferat cu fundal transparent). Apare automat pe toate contractele semnate de angajați.</div>
@@ -621,21 +652,36 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
     </div>
     <div class="dist-panel" style="margin-top:16px;">
       <h3 style="margin:0 0 4px;">📄 Trimite contract de muncă</h3>
-      <div style="color:var(--text-muted); font-size:12.5px; margin-bottom:10px;">Datele (nume, adresă, data nașterii, data de început) se iau din fișa angajatului. Angajatul primește notificare, citește, semnează în portal cu degetul + PIN, iar contractul dispare din aplicația lui.</div>
+      <div style="color:var(--text-muted); font-size:12.5px; margin-bottom:10px;">Alegi angajatul și vezi în dreapta contractul complet, exact cum îl va primi. Angajatul primește notificare, citește, semnează în portal și contractul dispare de la el.</div>
       <div class="form-grid">
         <div class="field full"><label>Angajat</label><select id="ctEmp" class="adm-in" onchange="adminContractFill()"></select></div>
-        <div class="field"><label>Anrede</label><select id="ctAnrede" class="adm-in"><option value="Herrn">Herrn</option><option value="Frau">Frau</option></select></div>
-        <div class="field"><label>Locul nașterii (geboren in)</label><input type="text" id="ctGeburtsort" class="adm-in" value="Rumänien" maxlength="80"></div>
-        <div class="field"><label>Începutul contractului</label><input type="date" id="ctBeginn" class="adm-in"></div>
       </div>
-      <div id="ctPreviewData" style="font-size:12.5px; color:var(--text-muted); margin:8px 0;"></div>
-      <button class="btn btn-primary" style="max-width:260px;" id="ctSendBtn" onclick="adminContractSend()">Trimite contractul</button>
+      <h4 class="ct-sec">Preluat automat din aplicația Angajați</h4>
+      <div id="ctPreviewData" class="ct-data"></div>
+      <h4 class="ct-sec">De completat de tine</h4>
+      <div class="form-grid">
+        <div class="field"><label>Anrede</label><select id="ctAnrede" class="adm-in" onchange="ctRenderPreview()"><option value="Herrn">Herrn</option><option value="Frau">Frau</option></select></div>
+        <div class="field"><label>Locul nașterii (geboren in)</label><input type="text" id="ctGeburtsort" class="adm-in" value="Rumänien" maxlength="80" oninput="ctRenderPreview()"></div>
+        <div class="field full"><label>Începutul contractului</label><input type="date" id="ctBeginn" class="adm-in" onchange="ctRenderPreview()"></div>
+      </div>
+      <button class="btn btn-primary" style="max-width:260px; margin-top:10px;" id="ctSendBtn" onclick="adminContractSend()">Trimite contractul</button>
       <div id="ctErr" style="font-size:12px; min-height:14px; margin-top:6px;"></div>
     </div>
     <div class="dist-panel" style="margin-top:16px;">
       <h3 style="margin:0 0 4px;">Contracte</h3>
       <div style="margin:6px 0 10px;"><button class="btn btn-secondary" style="width:auto;" onclick="adminContractPrintAll()">⬇️ Descarcă toate contractele semnate (PDF)</button></div>
       <div id="ctList"></div>
+    </div>
+      </div>
+      <div class="ct-right">
+        <div class="dist-panel" style="margin:0;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+            <h3 style="margin:0;">👁️ Previzualizare contract</h3>
+            <div class="ct-legend"><span class="ct-var ok">completat automat</span> <span class="ct-var miss">lipsește</span></div>
+          </div>
+          <div id="ctPaper" class="ct-scroll"><div style="color:var(--text-muted); font-size:13px;">Se încarcă contractul…</div></div>
+        </div>
+      </div>
     </div>
   </main>
 
@@ -3533,9 +3579,11 @@ async function adminContractInit(){
   sel.innerHTML = act.map(e=>`<option value="${e.id}">${escapeHtml(e.numeComplet||'')} (${escapeHtml(e.employeeId||'')})</option>`).join('');
   if(cur) sel.value = cur;
   adminContractFill();
+  ctLoadTemplate();
   try{
     const st = await db.collection('meta').doc('contractSettings').get();
     const img = st.exists ? st.data().semnaturaAngajator : '';
+    ctSigImg = img || ''; ctRenderPreview();
     document.getElementById('ctSigPreview').innerHTML = img ? `<img src="${img}" style="max-height:74px;max-width:260px;">` : 'Nicio semnătură încărcată';
   }catch(e){ console.error(e); }
   if(!ctInit){
@@ -3544,15 +3592,65 @@ async function adminContractInit(){
   }
   adminContractLoadList();
 }
+let ctTpl = null, ctFirma = null, ctSigImg = '';
+const CT_LABELS = { name:'nume', geburtsdatum:'data nașterii', geburtsort:'locul nașterii', strasse:'stradă', plzOrt:'cod poștal / oraș', beginn:'data de început' };
+function ctIsoToDe(iso){ const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso||''); return m ? m[3]+'.'+m[2]+'.'+m[1] : ''; }
+function ctVals(){
+  const e = employees.find(x=>x.id===document.getElementById('ctEmp').value) || {};
+  return Object.assign({}, ctFirma||{}, {
+    anrede: document.getElementById('ctAnrede').value,
+    name: ((e.prenume||'')+' '+(e.numeFamilie||'')).trim(),
+    geburtsdatum: ctIsoToDe(e.dataNasterii),
+    geburtsort: document.getElementById('ctGeburtsort').value.trim(),
+    strasse: e.strada||'',
+    plzOrt: ((e.codPostal||'')+' '+(e.oras||'')).trim(),
+    beginn: ctIsoToDe(document.getElementById('ctBeginn').value)
+  });
+}
+function ctSubHtml(str, v){
+  return escapeHtml(str||'').replace(/\{\{(\w+)\}\}/g, (_, k)=>{
+    const val = v[k];
+    const isFirm = k.indexOf('firma')===0 || k==='anrede';
+    if(val) return isFirm ? escapeHtml(val) : '<span class="ct-var ok">'+escapeHtml(val)+'</span>';
+    return '<span class="ct-var miss">['+escapeHtml(CT_LABELS[k]||k)+' lipsește]</span>';
+  });
+}
+function ctRenderPreview(){
+  const el = document.getElementById('ctPaper'); if(!el) return;
+  if(!ctTpl){ return; }
+  const v = ctVals();
+  const sig = (img, who)=>'<div><div class="ln">'+(img?'<img src="'+img+'">':'')+'</div>'+who+'</div>';
+  el.innerHTML = '<div class="ct-pap">' + ctTpl.map(b=>{
+    if(b.t==='title') return '<div class="t">'+escapeHtml(b.x)+'</div>';
+    if(b.t==='kv') return '<div class="kv"><b>'+ctSubHtml(b.k,v)+'</b> '+ctSubHtml(b.x,v)+'</div>';
+    if(b.t==='h') return (b.pb?'<div class="pb"></div>':'')+'<div class="h">'+ctSubHtml(b.x,v)+'</div>';
+    if(b.t==='sign') return '<div class="p" style="margin-top:18px">Ort, Datum: '+escapeHtml((ctFirma&&ctFirma.ort)||'')+', <span style="color:#999">[data semnării]</span></div><div class="sg">'+sig(ctSigImg,'Arbeitgeber')+sig('','Arbeitnehmer')+'</div>';
+    return '<div class="p">'+(b.b?'<b>'+ctSubHtml(b.b,v)+'</b> ':'')+ctSubHtml(b.x,v)+'</div>';
+  }).join('') + '</div>';
+}
+async function ctLoadTemplate(){
+  if(ctTpl) return;
+  try{
+    const r = (await functionsRef.httpsCallable('getContractTemplate')({})).data;
+    ctTpl = r.template; ctFirma = r.firma;
+    ctRenderPreview();
+  }catch(ex){
+    console.error(ex);
+    document.getElementById('ctPaper').innerHTML = '<div style="color:var(--red); font-size:13px;">Nu am putut încărca șablonul contractului. Verifică deploy-ul funcției getContractTemplate din angajati-mtc.</div>';
+  }
+}
 function adminContractFill(){
   const e = employees.find(x=>x.id===document.getElementById('ctEmp').value); if(!e) return;
   document.getElementById('ctGeburtsort').value = e.locNasterii || 'Rumänien';
   document.getElementById('ctBeginn').value = e.dataAngajare || '';
-  const miss = [];
-  if(!(e.prenume && e.numeFamilie)) miss.push('nume'); if(!e.dataNasterii) miss.push('data nașterii');
-  if(!e.strada) miss.push('strada'); if(!e.codPostal || !e.oras) miss.push('cod poștal/oraș'); if(!e.dataAngajare) miss.push('data angajării (poți alege data mai sus)');
-  document.getElementById('ctPreviewData').innerHTML = `${escapeHtml((e.prenume||'')+' '+(e.numeFamilie||''))} · ${escapeHtml(e.strada||'—')} · ${escapeHtml((e.codPostal||'')+' '+(e.oras||''))} · născut ${escapeHtml(e.dataNasterii||'—')}` +
-    (miss.length ? `<br><b style="color:var(--red)">Lipsește din fișă: ${miss.join(', ')}</b>` : '');
+  const row = (lbl, val)=>`<div class="row"><span>${lbl}</span><b class="${val?'':'miss'}">${val?escapeHtml(val):'lipsește'}</b></div>`;
+  document.getElementById('ctPreviewData').innerHTML =
+    row('Nume', ((e.prenume||'')+' '+(e.numeFamilie||'')).trim()) +
+    row('Data nașterii', ctIsoToDe(e.dataNasterii)) +
+    row('Stradă, nr.', e.strada||'') +
+    row('Cod poștal, oraș', ((e.codPostal||'')+' '+(e.oras||'')).trim()) +
+    `<div class="row"><span>Datele greșite sau lipsă se corectează în fișă</span><button class="ct-edit" onclick="openModal('${e.id}')">✎ Editează fișa</button></div>`;
+  ctRenderPreview();
 }
 function adminContractSaveSig(ev){
   const f = ev.target.files[0], msg = document.getElementById('ctSigMsg'); if(!f) return;
@@ -3567,6 +3665,7 @@ function adminContractSaveSig(ev){
       if(url.length > 400000) throw new Error('Imaginea e prea mare. Folosește una mai mică.');
       await db.collection('meta').doc('contractSettings').set({ semnaturaAngajator: url, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true });
       document.getElementById('ctSigPreview').innerHTML = `<img src="${url}" style="max-height:74px;max-width:260px;">`;
+      ctSigImg = url; ctRenderPreview();
       msg.style.color = 'var(--green)'; msg.textContent = '✓ Semnătura a fost salvată.';
     }catch(err){ console.error(err); msg.style.color = 'var(--red)'; msg.textContent = err.message || 'Nu am putut salva.'; }
   };
