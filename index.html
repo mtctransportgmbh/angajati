@@ -152,6 +152,16 @@ main{max-width:100%; margin:0; padding:22px 32px 60px;}
 .ct-var.miss{background:#FBE4E0; color:#B3261E; box-shadow:inset 0 -2px 0 #E8928A;}
 @media(max-width:1000px){ .ct-layout{grid-template-columns:1fr;} .ct-right{position:static;} .ct-pap{padding:22px 18px;} }
 
+/* backup */
+.bk-status{padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:12px; background:var(--surface-alt);}
+.bk-status.ok{background:#E3F4E8; color:#14602F;} .bk-status.old{background:#FBE4E0; color:#B3261E; font-weight:600;}
+.bk-prog{height:8px; background:var(--surface-alt); border-radius:6px; margin-top:12px; overflow:hidden;}
+.bk-prog > div{height:100%; width:0; background:var(--primary); transition:width .2s;}
+.bk-code{background:#0F1B2D; color:#CFE3FF; padding:12px 14px; border-radius:8px; font-size:12.5px; overflow:auto; margin:0 0 10px; font-family:'JetBrains Mono',monospace; white-space:pre;}
+.bk-row{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 4px; border-bottom:1px solid var(--border); font-size:13px; flex-wrap:wrap;}
+.bk-row:last-child{border-bottom:none;}
+.bk-detail{border:1px solid var(--border); border-radius:8px; padding:14px; background:var(--surface-alt);}
+
 /* coordonator: antet */
 .coord-hero{background:linear-gradient(135deg,#142B47 0%,#1E3A5F 55%,#2F5C8F 100%); color:#fff; padding:18px 32px 30px; position:relative; overflow:hidden;}
 .coord-hero::after{content:""; position:absolute; right:-80px; top:-120px; width:360px; height:360px; border-radius:50%; background:radial-gradient(circle,rgba(255,255,255,.12),transparent 70%);}
@@ -501,6 +511,7 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
     <button class="view-tab-btn" id="tabBtn-anunturi" onclick="switchView('anunturi')">📢 Anunțuri</button>
     <button class="view-tab-btn" id="tabBtn-protocoale" onclick="switchView('protocoale')">📝 Protocoale</button>
     <button class="view-tab-btn" id="tabBtn-contracte" onclick="switchView('contracte')">📄 Contracte</button>
+    <button class="view-tab-btn" id="tabBtn-backup" onclick="switchView('backup')">💾 Backup</button>
     <button class="view-tab-btn" id="tabBtn-propuneri" style="display:none;" onclick="switchView('propuneri')">🆕 Angajați propuși<span class="badge-count" id="propuneriBadge" style="display:none;"></span></button>
   </div>
 
@@ -691,6 +702,55 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
           <div id="ctPaper" class="ct-scroll"><div style="color:var(--text-muted); font-size:13px;">Se încarcă contractul…</div></div>
         </div>
       </div>
+    </div>
+  </main>
+
+  <main id="view-backup" style="display:none;">
+    <div class="dist-panel">
+      <h3 style="margin:0 0 4px;">💾 Backup criptat pe calculatorul tău</h3>
+      <div style="color:var(--text-muted); font-size:12.5px; margin-bottom:10px;">Descarcă toate datele din aplicația Angajați (angajați, conturi, contracte cu semnături, anunțuri, protocoale, notificări, setări) într-un singur fișier <b>criptat</b> (AES-256) și îl pune în folderul ales de tine. Fișierul se deschide doar cu parola ta.</div>
+      <div id="bkStatus" class="bk-status"></div>
+      <div class="form-grid">
+        <div class="field full"><label>Folder pentru backup-uri</label>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <button class="btn btn-secondary" style="width:auto;" onclick="bkPickFolder()">📁 Alege folderul</button>
+            <span id="bkFolderName" style="font-size:13px; color:var(--text-muted);">niciun folder ales — fișierul se va descărca în Descărcări</span>
+          </div></div>
+        <div class="field"><label>Parola de criptare</label><input type="password" id="bkPw" class="adm-in" autocomplete="new-password"></div>
+        <div class="field"><label>Repetă parola</label><input type="password" id="bkPw2" class="adm-in" autocomplete="new-password"></div>
+        <div class="field"><label>Păstrează ultimele … backup-uri</label><input type="number" id="bkKeep" class="adm-in" value="30" min="1" max="500"></div>
+      </div>
+      <div class="warn-box" style="margin-top:8px;">⚠ Parola nu se salvează nicăieri. Dacă o pierzi, backup-urile nu mai pot fi deschise de nimeni. Notește-o într-un loc sigur (manager de parole / seif).</div>
+      <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn btn-primary" style="width:auto;" id="bkRunBtn" onclick="bkCreate()">💾 Creează backup acum</button>
+        <button class="btn btn-secondary" style="width:auto;" onclick="document.getElementById('bkOpenFile').click()">📂 Deschide un fișier de backup…</button>
+        <input type="file" id="bkOpenFile" accept=".mtcbak" style="display:none;" onchange="bkOpenExternal(event)">
+      </div>
+      <div class="bk-prog" id="bkProg" style="display:none;"><div id="bkProgBar"></div></div>
+      <div id="bkMsg" style="font-size:12.5px; min-height:16px; margin-top:8px; white-space:pre-line;"></div>
+    </div>
+
+    <div class="dist-panel" style="margin-top:16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+        <h3 style="margin:0;">🗂 Backup-uri din folder</h3>
+        <button class="btn btn-secondary" style="width:auto;" onclick="bkLoadList()">↻ Reîncarcă lista</button>
+      </div>
+      <div id="bkList" style="margin-top:10px;"></div>
+      <div id="bkDetail" style="margin-top:14px;"></div>
+    </div>
+
+    <div class="dist-panel" style="margin-top:16px;">
+      <h3 style="margin:0 0 4px;">☁️ Backup automat în Firestore (Google)</h3>
+      <div style="color:var(--text-muted); font-size:12.5px; margin-bottom:10px;">Google poate face singur un backup zilnic al bazei de date, păstrat 14 săptămâni, plus restaurare la orice moment din ultimele 7 zile. Se activează o singură dată, din browser, fără să instalezi nimic:</div>
+      <ol style="font-size:13px; line-height:1.6; padding-left:20px; margin:0 0 10px;">
+        <li>Deschide <b>console.cloud.google.com</b>, alege proiectul <b>angajati-f1b01</b> și apasă pe iconița <b>„Activate Cloud Shell"</b> (>_) din dreapta sus.</li>
+        <li>Lipește comenzile de mai jos, una câte una, și apasă Enter.</li>
+      </ol>
+      <pre class="bk-code" id="bkCmds">gcloud config set project angajati-f1b01
+gcloud firestore databases update --database="(default)" --enable-pitr
+gcloud firestore backups schedules create --database="(default)" --recurrence=daily --retention=14w</pre>
+      <button class="btn btn-secondary" style="width:auto;" onclick="bkCopyCmds()">📋 Copiază comenzile</button>
+      <div style="color:var(--text-muted); font-size:12px; margin-top:8px;">Cere planul Blaze (cel de acum, dacă folosești deja funcțiile) și costă foarte puțin la o bază de date de mărimea asta. Aceleași comenzi, cu alt proiect, se pot rula și pentru celelalte aplicații (concedii, reclamații).</div>
     </div>
   </main>
 
@@ -2514,7 +2574,7 @@ function switchView(name){
   document.getElementById('view-distante').style.display = name==='distante' ? 'block' : 'none';
   document.getElementById('view-aprobari').style.display = name==='aprobari' ? 'block' : 'none';
   document.getElementById('view-propuneri').style.display = name==='propuneri' ? 'block' : 'none';
-  ['mesaje','anunturi','protocoale','contracte'].forEach(v=>{
+  ['mesaje','anunturi','protocoale','contracte','backup'].forEach(v=>{
     document.getElementById('view-'+v).style.display = name===v ? 'block' : 'none';
     document.getElementById('tabBtn-'+v).classList.toggle('active', name===v);
   });
@@ -2528,6 +2588,7 @@ function switchView(name){
   if(name==='anunturi'){ adminLoadAnnTargets(); adminLoadAnnStatus(); }
   if(name==='protocoale'){ adminLoadProtTargets(); adminLoadProtStatus(); }
   if(name==='contracte'){ adminContractInit(); }
+  if(name==='backup'){ bkInit(); }
   if(name==='propuneri'){ renderPropuneri(); }
 }
 
@@ -3785,6 +3846,195 @@ function ctOpenPrint(list){
     <div class="bar"><button onclick="print()">🖨️ Tipărește / Salvează ca PDF</button></div>${list.map(one).join('')}</body></html>`);
   w.document.close();
 }
+
+/* ================= BACKUP CRIPTAT (admin) ================= */
+let bkDir = null, bkFiles = [];
+const BK_MAGIC = 'MTCBAK1\n';
+function bkMsg(t, color){ const m = document.getElementById('bkMsg'); if(m){ m.style.color = color||'var(--text-muted)'; m.textContent = t; } }
+function bkProg(p){ const w = document.getElementById('bkProg'), b = document.getElementById('bkProgBar'); if(!w) return; w.style.display = p==null ? 'none' : 'block'; if(p!=null) b.style.width = Math.round(p*100)+'%'; }
+function bkFmtSize(n){ return n>1048576 ? (n/1048576).toFixed(1)+' MB' : Math.max(1,Math.round(n/1024))+' KB'; }
+function bkB64(buf){ let s=''; const a=new Uint8Array(buf); for(let i=0;i<a.length;i+=0x8000) s+=String.fromCharCode.apply(null,a.subarray(i,i+0x8000)); return btoa(s); }
+function bkUnB64(str){ const s=atob(str); const a=new Uint8Array(s.length); for(let i=0;i<s.length;i++) a[i]=s.charCodeAt(i); return a; }
+
+/* folderul ales se ține minte (IndexedDB), dar permisiunea se cere din nou la fiecare sesiune */
+function bkIdb(){ return new Promise((res,rej)=>{ const r = indexedDB.open('mtc-backup',1); r.onupgradeneeded = ()=>r.result.createObjectStore('kv'); r.onsuccess = ()=>res(r.result); r.onerror = ()=>rej(r.error); }); }
+async function bkIdbGet(k){ try{ const db = await bkIdb(); return await new Promise((res,rej)=>{ const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); }); }catch(e){ return null; } }
+async function bkIdbSet(k,v){ try{ const db = await bkIdb(); await new Promise((res,rej)=>{ const t = db.transaction('kv','readwrite'); t.objectStore('kv').put(v,k); t.oncomplete=res; t.onerror=()=>rej(t.error); }); }catch(e){ console.error(e); } }
+
+async function bkPickFolder(){
+  if(!window.showDirectoryPicker){ alert('Alegerea folderului merge în Chrome sau Edge pe calculator. În alt browser, fișierul se descarcă în Descărcări.'); return; }
+  try{
+    bkDir = await window.showDirectoryPicker({ mode:'readwrite', id:'mtc-backup' });
+    await bkIdbSet('dir', bkDir);
+    document.getElementById('bkFolderName').textContent = '📁 ' + bkDir.name;
+    bkLoadList();
+  }catch(e){ if(e.name!=='AbortError') console.error(e); }
+}
+async function bkEnsureDir(interactive){
+  if(!bkDir) return false;
+  try{
+    let p = await bkDir.queryPermission({ mode:'readwrite' });
+    if(p!=='granted' && interactive) p = await bkDir.requestPermission({ mode:'readwrite' });
+    return p==='granted';
+  }catch(e){ return false; }
+}
+async function bkInit(){
+  bkMsg('');
+  if(!bkDir){
+    const h = await bkIdbGet('dir');
+    if(h){ bkDir = h; document.getElementById('bkFolderName').textContent = '📁 ' + h.name + ' (apasă „Reîncarcă lista" ca să redai accesul)'; }
+  }
+  try{
+    const d = await db.collection('meta').doc('backupLog').get();
+    const el = document.getElementById('bkStatus');
+    if(d.exists && d.data().lastAt){
+      const t = d.data().lastAt.toDate ? d.data().lastAt.toDate() : new Date(d.data().lastAt);
+      const days = Math.floor((Date.now()-t.getTime())/86400000);
+      el.className = 'bk-status ' + (days>7 ? 'old' : 'ok');
+      el.textContent = (days>7 ? '⚠ ' : '✓ ') + 'Ultimul backup: ' + t.toLocaleString('ro-RO',{timeZone:'Europe/Berlin'}) + ' (acum ' + (days===0?'mai puțin de o zi':days+' zile') + ') · ' + (d.data().docs||0) + ' documente · ' + bkFmtSize(d.data().size||0);
+    } else { el.className = 'bk-status old'; el.textContent = '⚠ Nu ai făcut încă niciun backup criptat.'; }
+  }catch(e){ console.error(e); }
+  if(bkDir && await bkEnsureDir(false)) bkLoadList();
+}
+
+async function bkLoadList(){
+  const el = document.getElementById('bkList');
+  if(!bkDir){ el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Alege mai întâi un folder.</div>'; return; }
+  if(!(await bkEnsureDir(true))){ el.innerHTML = '<div style="color:var(--red);font-size:13px;">Nu am acces la folder. Apasă „Alege folderul" din nou.</div>'; return; }
+  bkFiles = [];
+  for await (const [name, h] of bkDir.entries()){
+    if(h.kind==='file' && /^mtc-angajati-.*\.mtcbak$/.test(name)){ const f = await h.getFile(); bkFiles.push({ name, size:f.size, mod:f.lastModified, handle:h }); }
+  }
+  bkFiles.sort((a,b)=>b.name.localeCompare(a.name));
+  el.innerHTML = bkFiles.length ? bkFiles.map((f,i)=>`<div class="bk-row"><span><b>${escapeHtml(f.name)}</b> · ${bkFmtSize(f.size)}</span><span style="display:flex;gap:6px;"><button class="btn btn-secondary" style="width:auto;padding:4px 10px;" onclick="bkOpenFromList(${i})">🔍 Verifică / restaurează</button></span></div>`).join('')
+    : '<div style="color:var(--text-muted);font-size:13px;">Niciun backup în folderul ales.</div>';
+}
+
+/* ---- criptare ---- */
+async function bkKey(pw, salt, iter){
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name:'PBKDF2', salt, iterations:iter, hash:'SHA-256' }, base, { name:'AES-GCM', length:256 }, false, ['encrypt','decrypt']);
+}
+async function bkGzip(bytes){ return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer()); }
+async function bkGunzip(bytes){ return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer()); }
+async function bkEncrypt(obj, pw){
+  const plain = await bkGzip(new TextEncoder().encode(JSON.stringify(obj)));
+  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12)), iter = 600000;
+  const header = new TextEncoder().encode(JSON.stringify({ v:1, alg:'AES-256-GCM', kdf:'PBKDF2-SHA256', iter, salt:bkB64(salt), iv:bkB64(iv), gz:true, created:new Date().toISOString() }));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name:'AES-GCM', iv, additionalData:header }, await bkKey(pw, salt, iter), plain));
+  const len = new Uint8Array(4); new DataView(len.buffer).setUint32(0, header.length);
+  return new Blob([new TextEncoder().encode(BK_MAGIC), len, header, ct], { type:'application/octet-stream' });
+}
+async function bkDecrypt(buf, pw){
+  const b = new Uint8Array(buf), mg = new TextEncoder().encode(BK_MAGIC);
+  for(let i=0;i<mg.length;i++) if(b[i]!==mg[i]) throw new Error('Nu e un fișier de backup MTC.');
+  const hl = new DataView(b.buffer, b.byteOffset+mg.length, 4).getUint32(0);
+  const hOff = mg.length+4, header = b.slice(hOff, hOff+hl), ct = b.slice(hOff+hl);
+  const h = JSON.parse(new TextDecoder().decode(header));
+  let plain;
+  try{ plain = new Uint8Array(await crypto.subtle.decrypt({ name:'AES-GCM', iv:bkUnB64(h.iv), additionalData:header }, await bkKey(pw, bkUnB64(h.salt), h.iter), ct)); }
+  catch(e){ throw new Error('Parolă greșită sau fișier deteriorat.'); }
+  return JSON.parse(new TextDecoder().decode(h.gz ? await bkGunzip(plain) : plain));
+}
+
+/* ---- creare ---- */
+async function bkCreate(){
+  const pw = document.getElementById('bkPw').value, pw2 = document.getElementById('bkPw2').value;
+  if(pw.length < 10){ bkMsg('Parola trebuie să aibă cel puțin 10 caractere.', 'var(--red)'); return; }
+  if(pw !== pw2){ bkMsg('Cele două parole nu sunt la fel.', 'var(--red)'); return; }
+  if(bkDir && !(await bkEnsureDir(true))){ bkMsg('Nu am acces la folder. Alege-l din nou.', 'var(--red)'); return; }
+  const btn = document.getElementById('bkRunBtn'); btn.disabled = true;
+  try{
+    bkProg(0.02); bkMsg('Citesc lista de colecții…');
+    const cols = (await functionsRef.httpsCallable('backupCollections')({})).data.colectii;
+    const out = { v:1, proiect:'angajati-f1b01', creat:new Date().toISOString(), colectii:{} };
+    let totalDocs = 0, done = 0;
+    for(const c of cols){
+      const docs = []; let after = null;
+      for(;;){
+        const r = (await functionsRef.httpsCallable('backupExportPage')({ collection:c.name, after })).data;
+        docs.push(...r.docs); after = r.last;
+        bkMsg('Descarc „' + c.name + '": ' + docs.length + (c.count!=null ? ' / ' + c.count : '') + ' documente…');
+        if(r.done) break;
+      }
+      out.colectii[c.name] = docs; totalDocs += docs.length; done++;
+      bkProg(0.05 + 0.75*done/cols.length);
+    }
+    bkMsg('Criptez datele…'); bkProg(0.85);
+    const blob = await bkEncrypt(out, pw);
+    bkMsg('Verific fișierul (îl decriptez încă o dată)…'); bkProg(0.92);
+    const chk = await bkDecrypt(await blob.arrayBuffer(), pw);
+    const n2 = Object.values(chk.colectii).reduce((a,x)=>a+x.length, 0);
+    if(n2 !== totalDocs) throw new Error('Verificarea a eșuat (număr diferit de documente). Backup-ul NU a fost salvat.');
+    const d = new Date(), pad = n=>String(n).padStart(2,'0');
+    const name = `mtc-angajati-${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}.mtcbak`;
+    if(bkDir){
+      const fh = await bkDir.getFileHandle(name, { create:true });
+      const w = await fh.createWritable(); await w.write(blob); await w.close();
+      const keep = Math.max(1, parseInt(document.getElementById('bkKeep').value,10) || 30);
+      await bkLoadList();
+      const olds = bkFiles.slice(keep);
+      for(const f of olds){ try{ await bkDir.removeEntry(f.name); }catch(e){ console.error(e); } }
+      if(olds.length) await bkLoadList();
+    } else {
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    }
+    await db.collection('meta').doc('backupLog').set({ lastAt: firebase.firestore.FieldValue.serverTimestamp(), docs: totalDocs, size: blob.size, file: name }, { merge:true });
+    bkProg(1);
+    bkMsg('✓ Backup creat și verificat: ' + name + '\n' + totalDocs + ' documente din ' + cols.length + ' colecții · ' + bkFmtSize(blob.size) + (bkDir ? ' · salvat în folderul ales' : ' · descărcat în Descărcări'), 'var(--green)');
+    document.getElementById('bkPw').value = ''; document.getElementById('bkPw2').value = '';
+    bkInit();
+  }catch(e){ console.error(e); bkMsg('Eroare: ' + (e.message||e), 'var(--red)'); bkProg(null); }
+  btn.disabled = false;
+}
+
+/* ---- verificare / restaurare ---- */
+let bkOpened = null;
+async function bkOpenFromList(i){ const f = await bkFiles[i].handle.getFile(); bkOpenBuf(await f.arrayBuffer(), bkFiles[i].name); }
+async function bkOpenExternal(ev){ const f = ev.target.files[0]; if(!f) return; bkOpenBuf(await f.arrayBuffer(), f.name); ev.target.value=''; }
+async function bkOpenBuf(buf, name){
+  const pw = prompt('Parola de criptare pentru ' + name + ':'); if(!pw) return;
+  const el = document.getElementById('bkDetail'); el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Se decriptează…</div>';
+  try{
+    const data = await bkDecrypt(buf, pw); bkOpened = { data, name };
+    const cols = Object.keys(data.colectii);
+    const total = cols.reduce((a,c)=>a+data.colectii[c].length, 0);
+    el.innerHTML = `<div class="bk-detail">
+      <div style="color:var(--green);font-weight:700;margin-bottom:6px;">✓ Fișier valid, parola corectă</div>
+      <div style="font-size:13px;margin-bottom:10px;">${escapeHtml(name)} · creat ${new Date(data.creat).toLocaleString('ro-RO',{timeZone:'Europe/Berlin'})} · ${total} documente</div>
+      <div style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:6px;">Restaurează (bifează ce vrei)</div>
+      ${cols.map(c=>`<label class="checkbtn" style="margin-bottom:4px;"><input type="checkbox" class="bkRestCol" value="${escapeHtml(c)}"> ${escapeHtml(c)} <span style="color:var(--text-muted)">(${data.colectii[c].length})</span></label>`).join('')}
+      <div style="margin-top:10px;font-size:13px;">
+        <label class="checkbtn"><input type="radio" name="bkMode" value="lipsa" checked> Doar ce lipsește acum (sigur — nu atinge ce există)</label>
+        <label class="checkbtn"><input type="radio" name="bkMode" value="suprascrie"> Suprascrie tot ce e în backup (înlocuiește documentele existente cu cele din fișier)</label>
+      </div>
+      <div style="margin-top:10px;"><input type="text" id="bkConfirm" class="adm-in" placeholder='Scrie RESTAUREAZA ca să confirmi' style="max-width:280px;"></div>
+      <button class="btn btn-primary" style="width:auto;margin-top:10px;" onclick="bkRestore()">♻️ Restaurează selecția</button>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:8px;">Restaurarea nu șterge niciodată documente. Dacă vrei să fii în siguranță, fă întâi un backup nou.</div>
+      <div id="bkRestMsg" style="font-size:12.5px;margin-top:8px;white-space:pre-line;"></div>
+    </div>`;
+  }catch(e){ el.innerHTML = '<div style="color:var(--red);font-size:13px;">' + escapeHtml(e.message||String(e)) + '</div>'; }
+}
+async function bkRestore(){
+  if(!bkOpened) return;
+  const msg = document.getElementById('bkRestMsg');
+  const cols = [...document.querySelectorAll('.bkRestCol:checked')].map(c=>c.value);
+  if(!cols.length){ msg.style.color='var(--red)'; msg.textContent='Bifează cel puțin o colecție.'; return; }
+  if(document.getElementById('bkConfirm').value.trim() !== 'RESTAUREAZA'){ msg.style.color='var(--red)'; msg.textContent='Scrie RESTAUREAZA în câmpul de confirmare.'; return; }
+  const mode = document.querySelector('input[name=bkMode]:checked').value;
+  msg.style.color='var(--text-muted)';
+  let scrise = 0, sarite = 0;
+  try{
+    for(const c of cols){
+      const docs = bkOpened.data.colectii[c]; let batch = [], size = 0;
+      const flush = async ()=>{ if(!batch.length) return; const r = (await functionsRef.httpsCallable('backupRestorePage')({ collection:c, docs:batch, mode })).data; scrise += r.scrise; sarite += r.sarite; batch = []; size = 0; msg.textContent = 'Restaurez „'+c+'"… ('+scrise+' scrise, '+sarite+' sărite)'; };
+      for(const d of docs){ const l = JSON.stringify(d).length; if(batch.length && (size+l > 3000000 || batch.length >= 300)) await flush(); batch.push(d); size += l; }
+      await flush();
+    }
+    msg.style.color='var(--green)'; msg.textContent = '✓ Gata. ' + scrise + ' documente scrise, ' + sarite + ' sărite (existau deja).';
+  }catch(e){ console.error(e); msg.style.color='var(--red)'; msg.textContent = 'Eroare: ' + (e.message||e) + '\n(' + scrise + ' scrise până acum)'; }
+}
+function bkCopyCmds(){ const t = document.getElementById('bkCmds').textContent; (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>alert('Comenzile au fost copiate.')).catch(()=>{ const r = document.createRange(); r.selectNode(document.getElementById('bkCmds')); getSelection().removeAllRanges(); getSelection().addRange(r); }); }
 </script>
 </body>
 </html>
