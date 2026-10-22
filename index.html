@@ -2960,16 +2960,7 @@ function renderDistanceTable(){
    singură persoanele noi. Nu se scrie nimic dacă lista e goală sau neschimbată. */
 // Proiectul în care rulează aplicația Concedii (USE_TEST=false în Concedii => producție calendar-f2589).
 // Dacă pui Concedii înapoi pe test, schimbă aici cu concedii-test.
-const CONCEDII_SYNC_CONFIG = {
-  apiKey: "AIzaSyBb0IFuofRG4vRlcnd9eMBuA8MyK_z0PRc",
-  authDomain: "calendar-f2589.firebaseapp.com",
-  projectId: "calendar-f2589",
-  storageBucket: "calendar-f2589.firebasestorage.app",
-  messagingSenderId: "124144206277",
-  appId: "1:124144206277:web:dc813e88dd100a0443cbac"
-};
-let _syncApp = null;
-function getSyncApp(){ if(!_syncApp) _syncApp = firebase.initializeApp(CONCEDII_SYNC_CONFIG, 'concediiSync'); return _syncApp; }
+const CONCEDII_SYNC_URL = 'https://europe-west1-calendar-f2589.cloudfunctions.net/syncAngajati';
 let _syncLastHash = '';
 let _syncTimer = null;
 function syncToConcedii(){
@@ -2991,9 +2982,23 @@ function syncToConcedii(){
       })).sort((a,b)=>a.id.localeCompare(b.id));
       const hash = JSON.stringify(items);
       if(hash === _syncLastHash) return;
-      await firebase.firestore(getSyncApp()).collection('angajati_sync').doc('list').set({
-        items, count: items.length, updatedAt: new Date().toISOString()
+      let secret = '';
+      try{ secret = localStorage.getItem('concedii_sync_secret') || ''; }catch(e){}
+      if(!secret){
+        if(window._syncSecretAsked) return;
+        window._syncSecretAsked = true;
+        secret = (prompt('Sincronizare Concedii: introdu secretul de sincronizare (o singură dată pe acest browser). Lasă gol pentru a sări peste.') || '').trim();
+        if(!secret) return;
+        try{ localStorage.setItem('concedii_sync_secret', secret); }catch(e){}
+      }
+      const resp = await fetch(CONCEDII_SYNC_URL, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ data: { secret, items } })
       });
+      if(!resp.ok){
+        if(resp.status === 403){ try{ localStorage.removeItem('concedii_sync_secret'); }catch(e){} window._syncSecretAsked = false; }
+        throw new Error('sync HTTP ' + resp.status);
+      }
       _syncLastHash = hash;
     }catch(err){ console.warn('syncToConcedii:', err); }
   }, 2500);
