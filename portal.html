@@ -694,7 +694,7 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
           <h3>Contul meu</h3>
           <div id="pinChangeCard" class="setpin-box" style="display:none;">
             <p id="pinChangeMsg">Introdu noul PIN pe care vrei să-l folosești de acum înainte.</p>
-            <div class="field"><label>PIN nou (4-8 cifre)</label><input type="password" id="f_newPin" inputmode="numeric" maxlength="8"></div>
+            <div class="field"><label>PIN nou (6-8 cifre)</label><input type="password" id="f_newPin" inputmode="numeric" maxlength="8"></div>
             <button class="btn btn-primary" onclick="setNewPin()">Salvează PIN nou</button>
             <div id="setPinError" style="color:#8A6300; font-size:12px; margin-top:8px;"></div>
           </div>
@@ -2565,8 +2565,12 @@ async function setNewPin(){
   const newPin = document.getElementById('f_newPin').value.trim();
   const errEl = document.getElementById('setPinError');
   errEl.textContent = '';
-  if(!/^\d{4,8}$/.test(newPin)){
-    errEl.textContent = 'PIN-ul trebuie să aibă 4-8 cifre.';
+  if(!/^\d{6,8}$/.test(newPin)){
+    errEl.textContent = 'PIN-ul trebuie să aibă 6-8 cifre.';
+    return;
+  }
+  if(/^(\d)\1+$/.test(newPin) || '01234567890'.includes(newPin) || '98765432109'.includes(newPin) || ['123123','112233','121212','696969','159753','147258','258369'].includes(newPin)){
+    errEl.textContent = 'PIN prea simplu (evită 123456, 111111, 121212 etc.).';
     return;
   }
   try{

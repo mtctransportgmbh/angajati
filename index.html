@@ -771,7 +771,7 @@ gcloud firestore backups schedules create --database="(default)" --recurrence=da
   <div class="pinCard">
     <span class="tag">MTC Transport</span>
     <h1>Alege-ți PIN-ul</h1>
-    <p>Acesta e un PIN provizoriu. Alege un PIN al tău (4–8 cifre) — rămâne fix, nu se mai schimbă decât dacă îl uiți.</p>
+    <p>Acesta e un PIN provizoriu. Alege un PIN al tău (6–8 cifre, fără șiruri ca 123456 sau 111111) — rămâne fix, nu se mai schimbă decât dacă îl uiți.</p>
     <div style="text-align:left;">
       <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:4px;">PIN nou</label>
       <input type="password" id="coordNewPin1" inputmode="numeric" maxlength="8" autocomplete="new-password" style="width:100%; padding:11px; font-size:15px; border:1.5px solid var(--border); border-radius:8px; margin-bottom:10px;">
@@ -1315,7 +1315,7 @@ gcloud firestore backups schedules create --database="(default)" --recurrence=da
       <div class="access-row"><label>Status cont</label><span id="accessStatusChip"></span></div>
       <div id="pinRevealBox"></div>
       <div id="fixedPinBox" style="display:none; margin-bottom:12px;">
-        <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:4px;">PIN provizoriu pentru coordonator (4–8 cifre)</label>
+        <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:4px;">PIN provizoriu pentru coordonator (6–8 cifre)</label>
         <input type="text" id="fixedPinInput" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="ex: 482916" style="width:100%; padding:10px; border:1.5px solid var(--border); border-radius:8px; margin-bottom:8px;">
         <button class="btn btn-primary" style="width:100%;" onclick="setFixedPinForCurrent()">🔑 Setează PIN provizoriu</button>
         <div class="warn-box">Coordonatorul trebuie să-și schimbe PIN-ul la prima logare. După aceea PIN-ul lui rămâne fix: nu se mai resetează din „Fișe acces”. Dacă îl uită, îi dai de aici un PIN provizoriu nou.</div>
@@ -2443,8 +2443,19 @@ function closeAccessModal(){
 /* Codul de logare = codul angajatului + numărul personal, ex: MTC-0001-158 */
 function loginCodeOf(e){ return (e.employeeId && e.numarPersonal) ? (e.employeeId + '-' + e.numarPersonal) : ''; }
 
+function isWeakPinClient(p){
+  if(!/^\d{6,8}$/.test(p)) return true;
+  if(/^(\d)\1+$/.test(p)) return true;
+  const d=p.split('').map(Number), st=d[1]-d[0];
+  if((st===1||st===-1)&&d.every((x,i)=>i===0||x-d[i-1]===st)) return true;
+  for(const k of [2,3,4]) if(p.length%k===0 && p===p.slice(0,k).repeat(p.length/k)) return true;
+  return ['123123','112233','696969','159753','147258','258369','789456','456789','123321','520520','101010','202020','098765'].includes(p);
+}
 function randomPin(){
-  return String(Math.floor(100000 + Math.random()*900000)); // 6 cifre
+  // 6 cifre, generate criptografic, fără PIN-uri ușoare
+  let p;
+  do { const a=new Uint32Array(1); crypto.getRandomValues(a); p=String(a[0]%1000000).padStart(6,'0'); } while(isWeakPinClient(p));
+  return p;
 }
 
 async function setFixedPinForCurrent(){
@@ -2452,7 +2463,8 @@ async function setFixedPinForCurrent(){
   if(!e) return;
   if(!loginCodeOf(e)){ alert('Completează mai întâi „Număr personal” în fișa angajatului — face parte din codul de logare.'); return; }
   const pin = document.getElementById('fixedPinInput').value.trim();
-  if(!/^\d{4,8}$/.test(pin)){ alert('PIN-ul trebuie să aibă 4-8 cifre.'); return; }
+  if(!/^\d{6,8}$/.test(pin)){ alert('PIN-ul trebuie să aibă 6-8 cifre.'); return; }
+  if(isWeakPinClient(pin)){ alert('PIN prea simplu (evită 123456, 111111, 121212 etc.).'); return; }
   try{
     await functionsRef.httpsCallable('setFixedPin')({ employeeId: e.id, pin });
     document.getElementById('pinRevealBox').innerHTML = `<div class="pin-reveal"><div class="code">${pin}</div><small>PIN provizoriu — coordonatorul și-l schimbă la prima logare, apoi rămâne fix</small></div>`;
@@ -2964,6 +2976,8 @@ const CONCEDII_SYNC_URL = 'https://europe-west1-calendar-f2589.cloudfunctions.ne
 let _syncLastHash = '';
 let _syncTimer = null;
 function syncToConcedii(){
+  // DEZACTIVAT: sincronizarea se face acum automat, de pe server (funcția syncAngajatiAuto), fără secret în browser.
+  return;
   clearTimeout(_syncTimer);
   _syncTimer = setTimeout(async ()=>{
     try{
@@ -3111,7 +3125,8 @@ async function coordSaveNewPin(){
   const b = document.getElementById('coordNewPin2').value.trim();
   const err = document.getElementById('coordPinChangeErr');
   err.textContent = '';
-  if(!/^\d{4,8}$/.test(a)){ err.textContent = 'PIN-ul trebuie să aibă 4-8 cifre.'; return; }
+  if(!/^\d{6,8}$/.test(a)){ err.textContent = 'PIN-ul trebuie să aibă 6-8 cifre.'; return; }
+  if(isWeakPinClient(a)){ err.textContent = 'PIN prea simplu (evită 123456, 111111, 121212 etc.).'; return; }
   if(a!==b){ err.textContent = 'Cele două PIN-uri nu sunt la fel.'; return; }
   try{
     await functionsRef.httpsCallable('changePin')({ newPin: a });
