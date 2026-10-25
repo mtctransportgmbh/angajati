@@ -563,6 +563,7 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
             <th onclick="setSort('employeeId')">Cod</th>
             <th onclick="setSort('numeComplet')">Angajat</th>
             <th onclick="setSort('rol')">Rol · Locație</th>
+            <th>Mașină</th>
             <th onclick="setSort('dataExpirarePermis')">Expiră permis</th>
             <th>Acces cont</th>
             <th>Concediu (an curent)</th>
@@ -1614,6 +1615,7 @@ function initBoard(){
   unsub = db.collection('angajati').onSnapshot(snap=>{
     employees = snap.docs.map(d=>({ id:d.id, ...d.data() }));
     renderBoard();
+    loadVehiclesAdmin(false);
     syncToConcedii();
   }, async err=>{
     console.error(err);
@@ -1627,7 +1629,7 @@ function initBoard(){
       }
     }catch(e){ claimsInfo = 'eroare: ' + e.message; }
     document.getElementById('boardBody').innerHTML =
-      `<tr><td colspan="10" style="padding:24px; color:var(--red);">
+      `<tr><td colspan="11" style="padding:24px; color:var(--red);">
         Eroare de conectare la Firestore: ${err.message}<br><br>
         <b>Claims curente (trimite-mi exact linia asta):</b><br>
         <span class="mono" style="font-size:12px;">${claimsInfo}</span>
@@ -1839,6 +1841,24 @@ function rolesText(e){
   return arr.length ? arr.map(r=>escapeHtml(r)).join(', ') : '—';
 }
 
+/* Mașina atribuită în aplicația Flotă (vine prin sincronizare); ⚠ = angajatul a raportat că nu conduce mașina afișată */
+let _vehAdmin = { map:{}, open:{}, at:0 };
+function vehicleCell(e){
+  const v = _vehAdmin.map[e.id];
+  const flag = _vehAdmin.open[e.id];
+  if(!v && !flag) return '<span style="color:var(--text-muted);">—</span>';
+  return '<b>'+escapeHtml(v||'—')+'</b>' + (flag ? ' <span title="Angajatul a raportat că nu conduce această mașină" style="color:#B26A00;font-size:12px;">⚠ '+escapeHtml(flag)+'</span>' : '');
+}
+async function loadVehiclesAdmin(force){
+  if(!force && Date.now() - _vehAdmin.at < 60000) return;
+  _vehAdmin.at = Date.now();
+  try{
+    const r = (await functionsRef.httpsCallable('getAllVehicles')({})).data || {};
+    _vehAdmin.map = r.map || {}; _vehAdmin.open = r.open || {};
+    renderBoard();
+  }catch(err){ console.warn('getAllVehicles:', err); }
+}
+setInterval(()=>{ if(typeof auth!=='undefined' && auth.currentUser && !document.hidden) loadVehiclesAdmin(true); }, 120000);
 function accessChip(e){
   if(!e.hasAccount) return '<span class="chip gray">Fără cont</span>';
   if(e.pinFix) return '<span class="chip green">PIN fix</span>';
@@ -1903,6 +1923,7 @@ function renderBoard(){
         </div>
       </td>
       <td>${rolesText(e)} <span style="color:var(--text-muted);">· ${escapeHtml(employeeLocs(e).join(', ')||'—')}</span></td>
+      <td>${vehicleCell(e)}</td>
       <td>${expiryChip(e.dataExpirarePermis)}</td>
       <td>${accessChip(e)}</td>
       <td>${vacationCell(e)}</td>
