@@ -655,6 +655,19 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
         <div id="annBox"></div>
         <div id="protBox"></div>
         <div class="coord-line" id="coordLine"><span>👤</span><span id="coordLineTxt">Coordonatorul tău: —</span></div>
+        <div id="vehCard" style="display:none; background:var(--surface,#fff); border:1px solid var(--border,#e3e6ec); border-radius:12px; padding:12px 14px; margin:0 0 12px;">
+          <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">🚗 Mașina ta acum</div>
+          <div id="vehNr" style="font-size:20px; font-weight:700; letter-spacing:.02em;"></div>
+          <div id="vehInfo" style="font-size:12px; color:var(--text-muted); margin-top:2px;"></div>
+          <div id="vehReported" style="display:none; font-size:12px; margin-top:8px; color:#8A6300;"></div>
+          <button class="btn btn-small" id="vehWrongBtn" style="margin-top:10px;" onclick="vehToggleReport()">Nu conduc această mașină</button>
+          <div id="vehReportBox" style="display:none; margin-top:10px;">
+            <div style="font-size:12px; color:var(--text-muted); margin-bottom:6px;">Coordonatorul primește o notificare. Poți scrie mașina pe care o conduci acum (opțional).</div>
+            <input type="text" id="vehReal" maxlength="20" placeholder="Număr mașină reală (opțional)" style="width:100%; box-sizing:border-box; padding:9px 10px; border:1px solid var(--border,#d6dae3); border-radius:8px; font-size:14px;">
+            <button class="btn btn-primary btn-small" id="vehSendBtn" style="margin-top:8px;" onclick="vehSendReport()">Trimite notificarea</button>
+            <div id="vehErr" style="color:var(--red); font-size:12px; min-height:14px; margin-top:6px;"></div>
+          </div>
+        </div>
         <div class="glance-row">
           <div class="glance-tile" onclick="switchTab('concediu')">
             <div class="glance-num" id="g_vacRamase">—</div>
@@ -827,6 +840,7 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
           <h3>Echipa mea</h3>
           <div class="hub-card" onclick="switchTab('mesaje')"><span class="hub-ic">✉️</span><div><div class="hub-t">Mesaje de la echipă <span class="seg-badge" id="hubMsgBadge" style="display:none;">0</span></div><div class="hub-x">Mesaje private primite, răspunsuri</div></div><span class="hub-go">›</span></div>
           <div class="hub-card" onclick="switchTab('anunturi')"><span class="hub-ic">📢</span><div><div class="hub-t">Anunțuri</div><div class="hub-x">Trimite un anunț și vezi cine l-a citit</div></div><span class="hub-go">›</span></div>
+          <div class="hub-card" onclick="switchTab('masini')"><span class="hub-ic">🚗</span><div><div class="hub-t">Mașini echipă <span class="seg-badge" id="vehBadge" style="display:none;">0</span></div><div class="hub-x">Ce mașină conduce fiecare și raportările „nu conduc această mașină".</div></div></div>
           <div class="hub-card" onclick="switchTab('protocoale')"><span class="hub-ic">📝</span><div><div class="hub-t">Protocoale</div><div class="hub-x">Postează un protocol și adună semnături</div></div><span class="hub-go">›</span></div>
         </div>
       </section>
@@ -836,6 +850,17 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
         <div class="section" style="margin-top:0;">
           <h3><span id="coordMsgTitle">Mesaje de la echipă</span> <span class="seg-badge" id="coordMsgBadge" style="display:none;">0</span></h3>
           <div id="coordMsgList"></div>
+        </div>
+      </section>
+
+      <section id="tab-masini" class="tab-panel">
+        <div class="sub-head"><button class="ph-icon-btn" onclick="switchTab('echipa')" aria-label="Înapoi">←</button><span>🚗 Mașini echipă</span></div>
+        <div class="section" style="margin-top:0;">
+          <h3>Raportări deschise</h3>
+          <div id="vehReports"><div class="vac-empty">Se încarcă...</div></div>
+          <div class="section-divider"></div>
+          <h3>Mașina fiecărui angajat</h3>
+          <div id="vehTeam"></div>
         </div>
       </section>
 
@@ -970,13 +995,80 @@ function showError(msg){
 }
 
 /* ================= TAB NAVIGATION ================= */
+/* ================= MAȘINA ATRIBUITĂ (din aplicația Flotă) ================= */
+let _vehCur = null;
+async function loadMyVehicle(){
+  try{
+    const r = (await functionsRef.httpsCallable('getMyVehicle')({})).data || {};
+    const card = document.getElementById('vehCard');
+    if(!card) return;
+    const m = r.masini || [];
+    if(!m.length){ card.style.display='none'; _vehCur = null; return; }
+    _vehCur = m;
+    card.style.display='';
+    document.getElementById('vehNr').textContent = m.map(x=>x.nr).join(' · ');
+    const tips = m.map(x=>x.tip).filter(Boolean).join(', ');
+    const when = r.updatedAt ? 'Atribuită / actualizată: '+new Date(r.updatedAt).toLocaleDateString('ro-RO') : '';
+    document.getElementById('vehInfo').textContent = [tips, when].filter(Boolean).join(' · ');
+    const rep = document.getElementById('vehReported');
+    if(r.raportat){
+      rep.style.display=''; rep.textContent = '✓ Ai anunțat coordonatorul că nu conduci '+r.raportat.nr+(r.raportat.nrReal?' (conduci '+r.raportat.nrReal+')':'')+'. Așteaptă corectarea.';
+      document.getElementById('vehWrongBtn').style.display='none';
+      document.getElementById('vehReportBox').style.display='none';
+    } else {
+      rep.style.display='none'; document.getElementById('vehWrongBtn').style.display='';
+    }
+  }catch(e){ console.warn('getMyVehicle', e); }
+}
+function vehToggleReport(){
+  const b = document.getElementById('vehReportBox');
+  b.style.display = b.style.display==='none' ? '' : 'none';
+  document.getElementById('vehErr').textContent='';
+}
+async function vehSendReport(){
+  if(!_vehCur || !_vehCur.length) return;
+  const btn = document.getElementById('vehSendBtn'); const err = document.getElementById('vehErr');
+  err.textContent=''; btn.disabled = true;
+  try{
+    await functionsRef.httpsCallable('reportWrongVehicle')({ nr: _vehCur[0].nr, nrReal: document.getElementById('vehReal').value.trim() });
+    document.getElementById('vehReal').value='';
+    await loadMyVehicle();
+  }catch(e){ err.textContent = (e && e.message) || 'Nu am putut trimite. Încearcă din nou.'; }
+  btn.disabled = false;
+}
+async function loadTeamVehicles(){
+  if(!roleFlags.isCoordonator) return;
+  try{
+    const r = (await functionsRef.httpsCallable('getTeamVehicles')({})).data || {};
+    const rap = r.rapoarte || [];
+    const badge = document.getElementById('vehBadge');
+    if(badge){ badge.textContent = rap.length; badge.style.display = rap.length ? '' : 'none'; }
+    document.getElementById('vehReports').innerHTML = rap.length ? rap.map(x=>
+      `<div style="border:1px solid var(--border,#e3e6ec); border-radius:10px; padding:10px 12px; margin-bottom:8px;">
+        <div><b>${escapeHtmlP(x.nume||'')}</b> spune că nu conduce <b>${escapeHtmlP(x.nr||'')}</b>${x.nrReal?', ci <b>'+escapeHtmlP(x.nrReal)+'</b>':''}.</div>
+        <div style="font-size:12px; color:var(--text-muted); margin:3px 0 8px;">${x.createdAt?new Date(x.createdAt).toLocaleString('ro-RO'):''} · corectează în aplicația Flotă, apoi marchează ca rezolvat</div>
+        <button class="btn btn-small" onclick="vehResolve('${escapeHtmlP(x.id)}')">Marchează rezolvat</button>
+      </div>`).join('') : '<div class="vac-empty">Nicio raportare deschisă.</div>';
+    document.getElementById('vehTeam').innerHTML = (r.lista||[]).map(x=>
+      `<div style="display:flex; justify-content:space-between; gap:10px; padding:7px 0; border-bottom:1px solid var(--border,#eef0f4);">
+        <span>${escapeHtmlP(x.numeComplet)}</span>
+        <b>${x.masini && x.masini.length ? escapeHtmlP(x.masini.map(m=>m.nr).join(' · ')) : '<span style="color:var(--text-muted);font-weight:400;">—</span>'}</b>
+      </div>`).join('') || '<div class="vac-empty">Niciun angajat în echipă.</div>';
+  }catch(e){ console.warn('getTeamVehicles', e); }
+}
+async function vehResolve(id){
+  try{ await functionsRef.httpsCallable('resolveVehicleReport')({ id }); await loadTeamVehicles(); }
+  catch(e){ alert((e && e.message) || 'Nu am putut marca raportarea.'); }
+}
+
 function switchTab(name){
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active', p.id === 'tab-'+name));
-  const navName = ['mesaje','anunturi','protocoale'].includes(name) ? 'echipa' : name;
+  const navName = ['mesaje','anunturi','protocoale','masini'].includes(name) ? 'echipa' : name;
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab === navName));
   document.getElementById('fabNewRequest').classList.toggle('show', name === 'concediu');
   closeRequestOverlay();
   refreshAllData(false);
+  if(name === 'masini' || name === 'echipa') loadTeamVehicles();
   const content = document.getElementById('phContent');
   if(content) content.scrollTop = 0;
 }
@@ -1871,6 +1963,7 @@ function refreshAllData(force){
   loadMyMessages();
   loadAnnouncements();
   loadProtocols();
+  loadMyVehicle();
   if(roleFlags.isCoordonator){ loadAnnStatus(); loadProtStatus(); }
   if(roleFlags.isCoordonator) loadCoordMessages(true);
   if(roleFlags.poateVedeaReclamatii) loadReclamatiiData(true);
@@ -2081,6 +2174,7 @@ async function loadProfile(){
   startNotifications();
   loadAnnouncements();
   loadProtocols();
+  loadMyVehicle();
 
   // 3) Profilul proaspăt (rolurile pot fi schimbate între timp).
   const doc = await db.collection('angajati').doc(uid).get();
