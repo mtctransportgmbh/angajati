@@ -554,6 +554,7 @@ footer.note{max-width:100%; margin:0; padding:0 32px 40px; color:var(--text-mute
       <div style="display:flex; gap:10px;">
         <button class="btn btn-secondary" onclick="openAdminAlertSettingsModal()">✉ Alerte email</button>
         <button class="btn btn-secondary" onclick="openTotpAdmin()" title="Autentificare în doi pași pentru Admin și coordonatori">🔐 2FA</button>
+        <button class="btn btn-secondary" onclick="openDepotList()" title="Listă alfabetică de angajați, pe depozite alese de tine">🖨 Listă pe depozite</button>
         <button class="btn btn-secondary" onclick="printSelectedSheets()">🖨 Fișe acces (selectați)</button>
         <button class="btn btn-secondary" onclick="exportCSV()">⬇ Export CSV</button>
         <button class="btn btn-secondary" onclick="exportPentruConcedii()" title="Fișier fără date sensibile (fără CNP/permis/adresă), pentru aplicația Concedii">⬇ Export pentru Concedii</button>
@@ -3699,6 +3700,114 @@ function totpCancel(){ totpClearSecret(); }
 async function totpOff(id){
   if(!confirm('Dezactivezi 2FA pentru această persoană? Se va putea loga din nou doar cu PIN-ul.')) return;
   try{ await functionsRef.httpsCallable('adminTotpDisable')({target:id}); openTotpAdmin(); }catch(e){ alert('Eroare: '+(e.message||e)); }
+}
+</script>
+
+<!-- ============ MODAL: LISTĂ PE DEPOZITE (printare) ============ -->
+<div class="modal-backdrop" id="depotListBackdrop">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-head"><h2>🖨 Listă angajați pe depozite</h2><button class="modal-close" onclick="closeDepotList()">✕</button></div>
+    <div class="modal-body">
+      <div style="font-weight:700; margin-bottom:6px;">Depozite</div>
+      <div id="dlDepots" style="display:flex; flex-wrap:wrap; gap:6px 16px; margin-bottom:12px;"></div>
+      <div class="form-grid">
+        <div class="field"><label>Status</label>
+          <select id="dlStatus"><option value="activ">Doar activi</option><option value="toti">Toți (inclusiv arhivați)</option></select></div>
+        <div class="field"><label>Rol</label><select id="dlRol"></select></div>
+        <div class="field"><label>Aranjare</label>
+          <select id="dlMode"><option value="sectiuni">Pe secțiuni, câte una per depozit</option><option value="unica">O singură listă alfabetică</option></select></div>
+        <div class="field"><label>Sortare</label>
+          <select id="dlSort"><option value="nume">Alfabetic după nume</option><option value="prenume">Alfabetic după prenume</option></select></div>
+      </div>
+      <label style="display:flex; gap:8px; align-items:center; font-size:13px; margin:6px 0;"><input type="checkbox" id="dlBreak" style="width:auto;"> Fiecare depozit pe pagină nouă</label>
+      <div style="font-weight:700; margin:12px 0 6px;">Coloane</div>
+      <div id="dlCols" style="display:flex; flex-wrap:wrap; gap:6px 16px;"></div>
+      <div class="field full" style="margin-top:12px;"><label>Titlu (opțional)</label><input type="text" id="dlTitle" placeholder="ex: Lista angajați — octombrie"></div>
+      <div class="hint" id="dlInfo" style="margin-top:8px;"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeDepotList()">Anulează</button>
+      <button class="btn btn-primary" onclick="printDepotList()">🖨 Printează</button>
+    </div>
+  </div>
+</div>
+<script>
+const DL_COLS = [
+  ['nr','Nr. crt.',true], ['nume','Nume și prenume',true], ['numarPersonal','Număr personal',false], ['rol','Rol',true],
+  ['coord','Coordonator',true], ['depozit','Depozit',false], ['telefon','Telefon',true], ['dataAngajare','Data angajării',false], ['status','Status',false]
+];
+function dlRoles(e){ return Array.isArray(e.roluri) && e.roluri.length ? e.roluri : (e.rol ? String(e.rol).split(',').map(x=>x.trim()).filter(Boolean) : []); }
+function dlName(e){ return (e.numeComplet || ((e.numeFamilie||'')+' '+(e.prenume||'')).trim() || '—'); }
+function dlKey(e, mode){
+  const fam = (e.numeFamilie||'').trim(), pre = (e.prenume||'').trim();
+  if(!fam && !pre){ return dlName(e); }
+  return mode==='prenume' ? (pre+' '+fam) : (fam+' '+pre);
+}
+function openDepotList(){
+  const locs = [...new Set(employees.flatMap(e=>employeeLocs(e)))].sort((a,b)=>a.localeCompare(b,'ro'));
+  const hasNone = employees.some(e=>!employeeLocs(e).length);
+  document.getElementById('dlDepots').innerHTML = locs.concat(hasNone?['__none']:[]).map(l=>
+    `<label style="display:flex;gap:6px;align-items:center;font-size:14px;"><input type="checkbox" class="dlDepot" value="${escapeHtml(l)}" checked style="width:auto;"> ${l==='__none'?'Fără depozit':escapeHtml(l)}</label>`).join('') || '<span class="hint">Nu există depozite în date.</span>';
+  const roles = [...new Set(employees.flatMap(dlRoles))].sort((a,b)=>a.localeCompare(b,'ro'));
+  document.getElementById('dlRol').innerHTML = '<option value="">Toate rolurile</option>' + roles.map(r=>`<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join('');
+  document.getElementById('dlCols').innerHTML = DL_COLS.map(c=>`<label style="display:flex;gap:6px;align-items:center;font-size:13px;"><input type="checkbox" class="dlCol" value="${c[0]}" ${c[2]?'checked':''} style="width:auto;"> ${c[1]}</label>`).join('');
+  document.getElementById('dlInfo').textContent = 'Un angajat care lucrează în mai multe depozite apare în fiecare depozit bifat (în lista unică apare o singură dată).';
+  document.getElementById('depotListBackdrop').classList.add('show');
+}
+function closeDepotList(){ document.getElementById('depotListBackdrop').classList.remove('show'); }
+function printDepotList(){
+  const picked = [...document.querySelectorAll('.dlDepot')].filter(c=>c.checked).map(c=>c.value);
+  if(!picked.length){ alert('Alege cel puțin un depozit.'); return; }
+  const cols = DL_COLS.filter(c=>[...document.querySelectorAll('.dlCol')].some(x=>x.checked && x.value===c[0]));
+  if(!cols.length){ alert('Alege cel puțin o coloană.'); return; }
+  const onlyActive = document.getElementById('dlStatus').value==='activ';
+  const rol = document.getElementById('dlRol').value;
+  const mode = document.getElementById('dlMode').value, sortBy = document.getElementById('dlSort').value;
+  const brk = document.getElementById('dlBreak').checked;
+  const title = document.getElementById('dlTitle').value.trim() || 'Lista angajaților';
+  const cmp = (a,b)=>dlKey(a,sortBy).localeCompare(dlKey(b,sortBy),'ro',{sensitivity:'base'});
+  const base = employees.filter(e=>(!onlyActive || (e.status||'Activ')==='Activ') && (!rol || dlRoles(e).includes(rol)));
+  const inDepot = (e,l)=>{ const ls=employeeLocs(e); return l==='__none' ? !ls.length : ls.includes(l); };
+  const cell = (e,c,i,sectionDepot)=>{
+    switch(c[0]){
+      case 'nr': return String(i+1);
+      case 'nume': return escapeHtml(dlName(e));
+      case 'numarPersonal': return escapeHtml(e.numarPersonal||'');
+      case 'rol': return escapeHtml(dlRoles(e).join(', '));
+      case 'coord': return escapeHtml(e.coordonator||'');
+      case 'depozit': return escapeHtml(employeeLocs(e).join(', '));
+      case 'telefon': return escapeHtml(e.telefon||'');
+      case 'dataAngajare': return escapeHtml((e.dataAngajare||'').split('-').reverse().join('.'));
+      case 'status': return escapeHtml(e.status||'Activ');
+    }
+    return '';
+  };
+  const table = (list)=>`<table><thead><tr>${cols.map(c=>`<th>${c[1]}</th>`).join('')}</tr></thead><tbody>${
+    list.map((e,i)=>`<tr>${cols.map(c=>`<td>${cell(e,c,i)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+  let body = '', total = 0;
+  if(mode==='unica'){
+    const seen = new Set(); const list = base.filter(e=>picked.some(l=>inDepot(e,l)) && !seen.has(e.id) && seen.add(e.id)).sort(cmp);
+    total = list.length;
+    body = `<div class="sec">${picked.map(l=>l==='__none'?'Fără depozit':l).map(escapeHtml).join(' · ')} <span>${list.length} persoane</span></div>` + table(list);
+  } else {
+    body = picked.slice().sort((a,b)=>(a==='__none'?'zzz':a).localeCompare(b==='__none'?'zzz':b,'ro')).map((l,idx)=>{
+      const list = base.filter(e=>inDepot(e,l)).sort(cmp); total += list.length;
+      return `<div class="${brk&&idx>0?'pb':''}"><div class="sec">${l==='__none'?'Fără depozit':escapeHtml(l)} <span>${list.length} persoane</span></div>${list.length?table(list):'<div class="empty">Nicio persoană.</div>'}</div>`;
+    }).join('');
+  }
+  const d = new Date(); const dateStr = d.toLocaleDateString('ro-RO');
+  const w = window.open('', '_blank');
+  if(!w){ alert('Permite ferestrele pop-up ca să poți printa.'); return; }
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>
+    body{font-family:Arial,Helvetica,sans-serif; font-size:12px; color:#111; margin:18px;}
+    h1{font-size:18px; margin:0 0 2px;} .meta{color:#555; font-size:11px; margin-bottom:12px;}
+    .sec{font-size:14px; font-weight:700; margin:16px 0 6px; padding-bottom:3px; border-bottom:2px solid #111;} .sec span{font-weight:400; color:#555; font-size:11px; margin-left:8px;}
+    table{border-collapse:collapse; width:100%;} th,td{border:1px solid #999; padding:4px 6px; text-align:left;} th{background:#eee; font-size:11px;}
+    tr{page-break-inside:avoid;} .pb{page-break-before:always;} .empty{color:#777; font-style:italic; padding:6px 0;}
+    @media print{ body{margin:8mm;} }
+  </style></head><body><h1>${escapeHtml(title)}</h1><div class="meta">MTC Transport · ${dateStr} · ${total} ${mode==='unica'?'persoane':'intrări'} · ${onlyActive?'doar activi':'inclusiv arhivați'}${rol?' · rol: '+escapeHtml(rol):''}</div>${body}</body></html>`);
+  w.document.close(); w.focus(); setTimeout(()=>w.print(), 300);
+  closeDepotList();
 }
 </script>
 
