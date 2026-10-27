@@ -581,6 +581,7 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
     <div id="loginState">
       <div class="field"><label>Cod de logare (MTC-XXXX-X)</label><input type="text" id="f_numarPersonal" autocomplete="off" autocapitalize="characters" inputmode="numeric" value="MTC-" oninput="fmtLoginCode(this,event)" onfocus="fmtLoginCode(this)"></div>
       <div class="field"><label>PIN</label><input type="password" id="f_pin" inputmode="numeric" autocomplete="off" maxlength="8"></div>
+      <div class="field" id="f_codeWrap" style="display:none;"><label>Cod Google Authenticator (6 cifre)</label><input type="text" id="f_code" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></div>
       <button class="btn btn-primary" onclick="loginManual()">Intră în cont</button>
       <div class="or-sep"><span>sau</span></div>
       <button class="btn btn-secondary" onclick="startQrScan()">📷 Scanează codul QR</button>
@@ -1279,10 +1280,18 @@ let lastVacData = null;
 let lastReclData = null;
 let lastMyRequests = null;
 
-async function loginWithQrToken(qrToken){
+let _pendingQrToken = null;
+function askTotpCode(msg){
+  document.getElementById('f_codeWrap').style.display='';
+  showLogin();
+  document.getElementById('loginError').textContent = msg || 'Introdu codul de 6 cifre din Google Authenticator.';
+  setTimeout(()=>{ const c=document.getElementById('f_code'); if(c) c.focus(); },50);
+}
+async function loginWithQrToken(qrToken, code){
   try{
     const loginByQr = functionsRef.httpsCallable('employeeLoginByQr');
-    const result = await loginByQr({ token: qrToken });
+    const result = await loginByQr({ token: qrToken, code: code || '' });
+    _pendingQrToken = null;
     await authReady;
     await auth.signInWithCustomToken(result.data.token);
     // curăță token-ul din bara de adresă / istoric, din grijă pentru confidențialitate
@@ -1291,6 +1300,13 @@ async function loginWithQrToken(qrToken){
     await loadProfile();
   }catch(err){
     console.error(err);
+    if(err.code === 'functions/failed-precondition' && /code-required/.test(err.message||'')){
+      _pendingQrToken = qrToken; askTotpCode('Contul tău de coordonator are 2FA. Introdu codul din Google Authenticator și apasă „Intră în cont”.'); return;
+    }
+    if(err.code === 'functions/permission-denied' && /2FA/.test(err.message||'')){
+      _pendingQrToken = qrToken; askTotpCode('Cod 2FA greșit. Încearcă din nou.'); return;
+    }
+    if(err.code === 'functions/resource-exhausted'){ showError('Prea multe încercări. Așteaptă câteva minute.'); return; }
     showError('Cod QR invalid sau expirat. Cere administratorului un cod nou.');
   }
 }
@@ -2048,18 +2064,22 @@ async function loginManual(){
   const pin = document.getElementById('f_pin').value.trim();
   const errEl = document.getElementById('loginError');
   errEl.textContent = '';
+  const codeVisible = document.getElementById('f_codeWrap').style.display !== 'none';
+  const code = codeVisible ? document.getElementById('f_code').value.trim() : '';
+  if(_pendingQrToken){ document.getElementById('f_code').value=''; return loginWithQrToken(_pendingQrToken, code); }
   try{
     const login = functionsRef.httpsCallable('employeeLogin');
-    const result = await login({ numarPersonal, pin });
+    const result = await login({ numarPersonal, pin, code });
     await authReady;
     await auth.signInWithCustomToken(result.data.token);
     currentMustChangePin = !!result.data.mustChangePin;
     await loadProfile();
   }catch(err){
     console.error(err);
+    if(err.code === 'functions/failed-precondition' && /code-required/.test(err.message||'')){ askTotpCode(); return; }
     errEl.textContent = err.code === 'functions/resource-exhausted'
       ? 'Prea multe încercări. Așteaptă câteva minute.'
-      : 'Cod sau PIN incorect.';
+      : (codeVisible ? 'Cod, PIN sau cod 2FA incorect.' : 'Cod sau PIN incorect.');
   }
 }
 
