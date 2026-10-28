@@ -4962,8 +4962,10 @@ async function saveAdminAlertSettingsModal(){
   }
 }
 
+// „Inactiv” și „Arhivat” = fără alerte, fără statistici, fără „De completat”
+function isLive(e){ return !!e && e.status!=='Arhivat' && e.status!=='Inactiv'; }
 function computeAlertItems(){
-  const active = employees.filter(e=>e.status!=='Arhivat');
+  const active = employees.filter(e=>isLive(e));
   const items = [];
   active.forEach(e=>{
     const p = daysUntil(e.dataExpirarePermis);
@@ -4990,7 +4992,7 @@ function computeAlertItems(){
 }
 
 function renderStats(){
-  const active = employees.filter(e=>e.status!=='Arhivat');
+  const active = employees.filter(e=>isLive(e));
   const soonIds = new Set(computeAlertItems().map(i=>i.id));
   // Numărul total de "Șoferi" din statistici include ambele tipuri —
   // șofer camion și șofer pachete — e o cifră de ansamblu, nu contează
@@ -5778,7 +5780,7 @@ function renderDistanceTable(){
   const activePoints = fixedPoints.filter(p=>p.lat!=null);
   head.innerHTML = '<th>Angajat</th><th>Adresă</th>' + activePoints.map(p=>`<th>${escapeHtml(p.nume)}</th>`).join('');
 
-  const rows = employees.filter(e=>e.status!=='Arhivat');
+  const rows = employees.filter(e=>isLive(e));
   if(!rows.length || !activePoints.length){
     body.innerHTML = `<tr><td colspan="${2+activePoints.length}" style="padding:20px; text-align:center; color:var(--text-muted);">
       ${!activePoints.length ? 'Adaugă un punct fix mai sus.' : 'Niciun angajat activ.'}</td></tr>`;
@@ -6096,7 +6098,7 @@ function renderCoordTeamList(){
   const q = (document.getElementById('coordSearch')||{value:''}).value.toLowerCase().trim();
   const fLoc = (document.getElementById('coordFilterLoc')||{value:''}).value;
   const showArh = !!(document.getElementById('coordFilterArh')||{}).checked;
-  const active = coordTeamCache.filter(m=>m.status!=='Arhivat');
+  const active = coordTeamCache.filter(m=>isLive(m));
   const soferi = active.filter(m=>(m.roluri||[]).some(r=>/Șofer/.test(r)));
   const exp = active.filter(m=>{ const d = daysUntil(m.dataExpirarePermis); return d!==null && d<=30; });
   document.getElementById('coordStatsRow').innerHTML =
@@ -6933,7 +6935,7 @@ function renderAzRail(letters){
 }
 function updateCompletareBadge(){
   const b = document.getElementById('completareBadge'); if(!b) return;
-  const n = employees.filter(e=>e.status!=='Arhivat' && missingOf(e).length).length;
+  const n = employees.filter(e=>isLive(e) && missingOf(e).length).length;
   b.textContent = n; b.style.display = n ? 'inline-block' : 'none';
 }
 
@@ -6943,7 +6945,7 @@ function cpSetFilter(f){ cpFilter=f; cpField=''; renderCompletare(); }
 function cpSetField(l){ cpField = (cpField===l ? '' : l); cpFilter='incomplete'; renderCompletare(); }
 function renderCompletare(){
   const host = document.getElementById('view-completare'); if(!host) return;
-  const active = employees.filter(e=>e.status!=='Arhivat');
+  const active = employees.filter(e=>isLive(e));
   const rows = active.map(e=>({e, c:completenessOf(e)}));
   const incomplete = rows.filter(r=>r.c.miss.length);
   const totalMiss = incomplete.reduce((s,r)=>s+r.c.miss.length,0);
