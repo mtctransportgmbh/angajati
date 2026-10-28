@@ -499,10 +499,11 @@ header.top{background:#fff; border-bottom:1px solid var(--border);}
 .stat.alert-red{background:var(--red-soft);} .stat.alert-amber{background:var(--amber-soft);}
 
 /* navigare laterală (admin) */
-#app[style*="block"]{display:grid !important; grid-template-columns:248px minmax(0,1fr); grid-template-rows:auto 1fr; min-height:100vh;}
+#app[style*="block"]{display:grid !important; grid-template-columns:248px minmax(0,1fr); grid-template-rows:auto 1fr auto; min-height:100vh;}
 #app > header.top{grid-column:1 / -1; grid-row:1;}
-#app > .view-tabs{grid-column:1; grid-row:2; flex-direction:column; align-items:stretch; gap:4px; padding:18px 14px; background:#fff; border-right:1px solid var(--border);}
-#app > main, #app > footer{grid-column:2; grid-row:2; min-width:0;}
+#app > .view-tabs{grid-column:1; grid-row:2 / 4; flex-direction:column; align-items:stretch; gap:4px; padding:18px 14px; background:#fff; border-right:1px solid var(--border);}
+#app > main{grid-column:2; grid-row:2; min-width:0;}
+#app > footer{grid-column:2; grid-row:3; min-width:0;}
 .view-tab-btn{display:flex; align-items:center; gap:8px; border:0; border-radius:12px; padding:11px 14px; background:transparent; color:var(--text-muted); font:600 14px 'Figtree','Inter',sans-serif; text-align:left; cursor:pointer; transition:background .15s, color .15s, transform .15s;}
 .view-tab-btn:hover{background:var(--surface-alt); color:var(--text);}
 .view-tab-btn:active{transform:scale(.97);}
@@ -518,7 +519,17 @@ header.top{background:#fff; border-bottom:1px solid var(--border);}
 }
 
 /* listă / tabel */
-.board-wrap{border-radius:18px; box-shadow:var(--shadow);}
+.board-wrap{border-radius:18px; box-shadow:var(--shadow); overflow-x:auto;}
+.toolbar > div:last-child{flex-wrap:wrap; justify-content:flex-end;}
+.toolbar .btn{white-space:nowrap; flex:none;}
+.toolbar .btn-primary{width:auto;}
+#view-angajati tbody td{padding:12px 10px;}
+#view-angajati thead th{padding:12px 10px;}
+#view-angajati .board-wrap td:last-child, #view-angajati .board-wrap thead th:last-child{position:sticky; right:0; background:#fff; box-shadow:-8px 0 12px -8px rgba(14,90,70,.18); z-index:2;}
+#view-angajati .board-wrap thead th:last-child{background:#F7FBF9;}
+#view-angajati tbody tr:hover td:last-child{background:#F5FBF8;}
+#view-angajati tr.letter-row td:last-child{position:static; box-shadow:none;}
+#view-angajati .id-tag{white-space:nowrap;}
 thead th{background:#F7FBF9;}
 tbody tr{transition:background .15s;}
 tbody tr:hover{background:#F5FBF8;}
@@ -6872,13 +6883,14 @@ function missingOf(e){
   COMPLETE_FIELDS.forEach(([k,l])=>{ if(!hasVal(e[k])) miss.push({k,l}); });
   const roles = (e.roluri && e.roluri.length) ? e.roluri : (e.rol ? String(e.rol).split(/,\s*/) : []);
   if(roles.some(r=>/^Șofer/.test(r)) && !hasVal(e.numarPermis)) miss.push({k:'numarPermis',l:'Număr permis'});
+  if(roles.some(r=>/^Șofer/.test(r)) && !hasVal(e.categoriiPermis)) miss.push({k:'categoriiPermis',l:'Categorii permis'});
   if(e.areCardTahograf && !hasVal(e.numarTahograf)) miss.push({k:'numarTahograf',l:'Număr card tahograf'});
   if(!(e.docCats||[]).includes('contract')) miss.push({k:'__contract',l:'Contract semnat (document)'});
   return miss;
 }
 function totalFieldsOf(e){
   const roles = (e.roluri && e.roluri.length) ? e.roluri : (e.rol ? String(e.rol).split(/,\s*/) : []);
-  return COMPLETE_FIELDS.length + 1 + (roles.some(r=>/^Șofer/.test(r))?1:0) + (e.areCardTahograf?1:0);
+  return COMPLETE_FIELDS.length + 1 + (roles.some(r=>/^Șofer/.test(r))?2:0) + (e.areCardTahograf?1:0);
 }
 function completenessOf(e){
   const miss = missingOf(e), tot = totalFieldsOf(e);
@@ -6969,6 +6981,7 @@ function formEmpSnapshot(){
   const o = { docCats: e.docCats||[] };
   COMPLETE_FIELDS.forEach(([k])=>{ o[k] = g('f_'+k); });
   o.asigurareMedicala = g('f_asigurareMedicala');
+  o.categoriiPermis = getSelectedCats();
   o.numarPermis = g('f_numarPermis'); o.numarTahograf = g('f_numarTahograf');
   o.areCardTahograf = !!(document.getElementById('f_areTahograf')||{}).checked;
   o.roluri = getSelectedRoluri();
@@ -6980,7 +6993,7 @@ function refreshMissingMarks(){
   modal.querySelectorAll('.f-miss').forEach(el=>el.classList.remove('f-miss'));
   c.miss.forEach(m=>{
     if(m.k==='__contract') return;
-    const el = document.getElementById('f_'+m.k);
+    const el = m.k==='categoriiPermis' ? document.getElementById('catGrid') : document.getElementById('f_'+m.k);
     const f = el && el.closest('.field'); if(f) f.classList.add('f-miss');
   });
   const pr = document.getElementById('mprog'); if(!pr) return;
@@ -6994,7 +7007,7 @@ function refreshMissingMarks(){
     head.insertBefore(d, head.querySelector('.modal-close'));
   }
   const body = document.querySelector('#editBackdrop .modal-body');
-  if(body){ body.addEventListener('input', refreshMissingMarks); body.addEventListener('change', refreshMissingMarks); }
+  if(body){ body.addEventListener('input', refreshMissingMarks); body.addEventListener('change', refreshMissingMarks); body.addEventListener('click', ev=>{ if(ev.target.closest('.cat-check,.cat-grid')) setTimeout(refreshMissingMarks,0); }); }
 })();
 
 /* ---------- adrese: sugestii gratuite din hartă (Photon / OpenStreetMap) ---------- */
