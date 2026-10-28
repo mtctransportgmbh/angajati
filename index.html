@@ -139,19 +139,20 @@ main{max-width:100%; margin:0; padding:22px 32px 60px;}
 .ct-print-opts label{display:flex; align-items:center; gap:6px;}
 .ct-print-opts input[type=date]{width:auto; padding:5px 8px;}
 .ct-legend{font-size:11.5px; display:flex; gap:8px;}
-.ct-pap{background:#fff; color:#111; max-width:780px; margin:0 auto; padding:34px 40px; box-shadow:0 2px 14px rgba(0,0,0,.12); font-family:Georgia,"Times New Roman",serif; font-size:13.5px; line-height:1.55;}
-.ct-pap .t{text-align:center; font-weight:700; font-size:21px; letter-spacing:.08em; margin:0 0 16px;}
-.ct-pap .h{font-weight:700; margin:18px 0 5px; font-size:14.5px;}
+.ct-pap{background:#fff; color:#14201d; max-width:780px; margin:0 auto; padding:40px 48px; box-shadow:0 2px 14px rgba(0,0,0,.12); font-family:'Figtree','Segoe UI',Calibri,Arial,sans-serif; font-size:13px; line-height:1.6;}
+.ct-pap .t{text-align:center; font-weight:700; font-size:22px; letter-spacing:.14em; margin:0 0 22px; padding-bottom:14px; position:relative;}
+.ct-pap .t::after{content:""; position:absolute; left:50%; bottom:0; width:64px; height:3px; margin-left:-32px; border-radius:2px; background:#10B981;}
+.ct-pap .h{font-weight:700; margin:20px 0 6px; font-size:13.5px; color:#0A6F5A; border-left:3px solid #10B981; padding-left:9px;}
 .ct-pap .p{margin:0 0 7px; text-align:justify; hyphens:auto;}
-.ct-pap .kv{margin:0 0 3px;} .ct-pap .kv b{display:inline-block; min-width:110px;}
+.ct-pap .kv{margin:0 0 3px; display:flex; gap:10px;} .ct-pap .kv b{display:inline-block; min-width:128px; font-weight:600; color:#4b5d58;}
 .ct-pap .pb{border-top:2px dashed #b8c2cf; margin:26px 0 8px; position:relative;}
 .ct-pap .pb::after{content:"pagină nouă"; position:absolute; right:0; top:-9px; background:#fff; font:10px sans-serif; color:#9aa5b4; padding:0 6px;}
 .ct-pap .sg{display:flex; gap:30px; margin:26px 0 8px;} .ct-pap .sg>div{flex:1; text-align:center; font-size:11.5px; color:#444;}
 .ct-pap .sg .ln{border-bottom:1px solid #333; height:58px; display:flex; align-items:flex-end; justify-content:center; margin-bottom:3px;}
 .ct-pap .sg img{max-height:54px; max-width:100%;}
-.ct-var{border-radius:3px; padding:0 4px; font-weight:600; font-family:inherit;}
-.ct-var.ok{background:#E3F4E8; color:#14602F; box-shadow:inset 0 -2px 0 #7CCB97;}
-.ct-var.miss{background:#FBE4E0; color:#B3261E; box-shadow:inset 0 -2px 0 #E8928A;}
+.ct-var{border-radius:4px; padding:0 3px; font-weight:700; font-family:inherit;}
+.ct-var.ok{background:#E6F6EF; color:#0F2A26;}
+.ct-var.miss{background:#FBE4E0; color:#B3261E;}
 @media(max-width:1000px){ .ct-layout{grid-template-columns:1fr;} .ct-right{position:static;} .ct-pap{padding:22px 18px;} }
 
 /* backup */
@@ -523,20 +524,26 @@ header.top{background:#fff; border-bottom:1px solid var(--border);}
 .toolbar > div:last-child{flex-wrap:wrap; justify-content:flex-end;}
 .toolbar .btn{white-space:nowrap; flex:none;}
 .toolbar .btn-primary{width:auto;}
-/* meniu lateral îngust: doar iconițe (numele apar la trecerea mouse-ului) */
-#app[style*="block"]{grid-template-columns:68px minmax(0,1fr) !important;}
-#app > .view-tabs{padding:14px 8px; align-items:center;}
-#app > .view-tabs .view-tab-btn{position:relative; justify-content:center; width:48px; height:46px; padding:0;}
+/* meniu lateral îngust: iconiță + etichetă mică dedesubt */
+#app[style*="block"]{grid-template-columns:84px minmax(0,1fr) !important;}
+#app > .view-tabs{padding:12px 6px; align-items:center; gap:2px;}
+#app > .view-tabs .view-tab-btn{position:relative; flex-direction:column; justify-content:center; gap:3px; width:72px; height:auto; padding:8px 2px 7px; border-radius:12px;}
 #app > .view-tabs .ti{font-size:20px; line-height:1;}
-#app > .view-tabs .tl{display:none;}
-#app > .view-tabs .view-tab-btn:hover .tl{display:block; position:absolute; left:54px; top:50%; transform:translateY(-50%); background:#0F2A26; color:#fff; padding:6px 11px; border-radius:9px; font-size:12.5px; white-space:nowrap; z-index:50; box-shadow:0 8px 20px rgba(14,42,38,.25);}
-#app > .view-tabs .badge-count{position:absolute; top:2px; right:0; margin:0; padding:1px 6px; font-size:10.5px;}
+#app > .view-tabs .tl{display:block; font-size:10.5px; line-height:1.15; font-weight:600; text-align:center; max-width:70px; overflow:hidden; text-overflow:ellipsis;}
+#app > .view-tabs .badge-count{position:absolute; top:2px; right:4px; margin:0; padding:1px 6px; font-size:10.5px;}
+.vt-sep{height:1px; width:44px; background:var(--border); margin:8px 0;}
+.view-tabs .vt-sep{display:block;} #coordApp .vt-sep{display:none;}
 @media(max-width:980px){
-  #app > .view-tabs .view-tab-btn{width:auto; height:auto; padding:8px 14px;}
-  #app > .view-tabs .tl{display:inline; position:static; background:none; color:inherit; padding:0 0 0 6px; box-shadow:none; transform:none;}
-  #app > .view-tabs .view-tab-btn:hover .tl{position:static; transform:none; background:none; color:inherit; box-shadow:none; padding:0 0 0 6px;}
+  #app > .view-tabs .view-tab-btn{flex-direction:row; width:auto; height:auto; padding:8px 14px; gap:6px;}
+  #app > .view-tabs .tl{max-width:none; font-size:13px;}
   #app > .view-tabs .badge-count{position:static;}
+  .vt-sep{display:none !important;}
 }
+/* „Angajat nou”: mare, în dreapta */
+.toolbar{align-items:center;}
+.toolbar .btn-new{order:2; margin-left:auto; padding:14px 28px; font-size:15.5px; border-radius:14px; box-shadow:0 8px 20px rgba(16,185,129,.32);}
+.toolbar .toolbar-left{order:1; flex:0 1 auto;}
+.toolbar .toolbar-actions{order:3; width:100%; flex-wrap:wrap; justify-content:flex-start !important;}
 /* tabel: coloane lizibile, fără suprapuneri */
 #view-angajati .identity-text small{display:block; max-width:185px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 #view-angajati .identity-text b{white-space:nowrap;}
@@ -773,13 +780,16 @@ input[type=text]:focus, select:focus, .field input:focus, .field select:focus, .
     <button class="view-tab-btn active" id="tabBtn-angajati" onclick="switchView('angajati')" title="Angajați"><span class="ti">👥</span><span class="tl">Angajați</span></button>
     <button class="view-tab-btn" id="tabBtn-completare" onclick="switchView('completare')" title="De completat"><span class="ti">📝</span><span class="tl">De completat</span><span class="badge-count" id="completareBadge" style="display:none;"></span></button>
     <button class="view-tab-btn" id="tabBtn-distante" onclick="switchView('distante')" title="Distanțe"><span class="ti">📍</span><span class="tl">Distanțe</span></button>
-    <button class="view-tab-btn" id="tabBtn-aprobari" onclick="switchView('aprobari')" title="Aprobări concediu"><span class="ti">✅</span><span class="tl">Aprobări concediu</span></button>
+    <button class="view-tab-btn" id="tabBtn-aprobari" onclick="switchView('aprobari')" title="Aprobări concediu"><span class="ti">✅</span><span class="tl">Concedii</span></button>
     <button class="view-tab-btn" id="tabBtn-mesaje" onclick="switchView('mesaje')" title="Mesaje"><span class="ti">✉️</span><span class="tl">Mesaje</span></button>
     <button class="view-tab-btn" id="tabBtn-anunturi" onclick="switchView('anunturi')" title="Anunțuri"><span class="ti">📢</span><span class="tl">Anunțuri</span></button>
     <button class="view-tab-btn" id="tabBtn-protocoale" onclick="switchView('protocoale')" title="Protocoale"><span class="ti">📝</span><span class="tl">Protocoale</span></button>
     <button class="view-tab-btn" id="tabBtn-contracte" onclick="switchView('contracte')" title="Contracte"><span class="ti">📄</span><span class="tl">Contracte</span></button>
     <button class="view-tab-btn" id="tabBtn-backup" onclick="switchView('backup')" title="Backup"><span class="ti">💾</span><span class="tl">Backup</span></button>
-    <button class="view-tab-btn" id="tabBtn-propuneri" style="display:none;" onclick="switchView('propuneri')" title="Angajați propuși"><span class="ti">🆕</span><span class="tl">Angajați propuși</span><span class="badge-count" id="propuneriBadge" style="display:none;"></span></button>
+    <button class="view-tab-btn" id="tabBtn-propuneri" style="display:none;" onclick="switchView('propuneri')" title="Angajați propuși"><span class="ti">🆕</span><span class="tl">Propuși</span><span class="badge-count" id="propuneriBadge" style="display:none;"></span></button>
+    <div class="vt-sep"></div>
+    <button class="view-tab-btn" id="tabBtn-2fa" title="Autentificare în doi pași pentru Admin și coordonatori" onclick="openTotpAdmin()"><span class="ti">🔐</span><span class="tl">2FA</span></button>
+    <button class="view-tab-btn" id="tabBtn-alerte" title="Alerte email" onclick="openAdminAlertSettingsModal()"><span class="ti">✉️</span><span class="tl">Alerte email</span></button>
   </div>
 
   <div id="azRail" style="display:none;"></div>
@@ -813,14 +823,11 @@ input[type=text]:focus, select:focus, .field input:focus, .field select:focus, .
         </select>
         <label class="checkbtn"><input type="checkbox" id="filterArhivat" onchange="renderBoard()"> Arată arhivați</label>
       </div>
-      <div style="display:flex; gap:10px;">
-        <button class="btn btn-secondary" onclick="openAdminAlertSettingsModal()">✉ Alerte email</button>
-        <button class="btn btn-secondary" onclick="openTotpAdmin()" title="Autentificare în doi pași pentru Admin și coordonatori">🔐 2FA</button>
+      <button class="btn btn-primary btn-new" onclick="openModal()">+ Angajat nou</button>
+      <div class="toolbar-actions" style="display:flex; gap:10px;">
         <button class="btn btn-secondary" onclick="openDepotList()" title="Listă alfabetică de angajați, pe depozite alese de tine">🖨 Listă pe depozite</button>
         <button class="btn btn-secondary" onclick="printSelectedSheets()">🖨 Fișe acces (selectați)</button>
-        <button class="btn btn-secondary" onclick="exportCSV()">⬇ Export CSV</button>
         <button class="btn btn-secondary" onclick="exportPentruConcedii()" title="Fișier fără date sensibile (fără CNP/permis/adresă), pentru aplicația Concedii">⬇ Export pentru Concedii</button>
-        <button class="btn btn-primary" onclick="openModal()">+ Angajat nou</button>
       </div>
     </div>
 
@@ -954,6 +961,20 @@ input[type=text]:focus, select:focus, .field input:focus, .field select:focus, .
       </div>
       <button class="btn btn-primary" style="max-width:260px; margin-top:10px;" id="ctSendBtn" onclick="adminContractSend()">Trimite contractul</button>
       <div id="ctErr" style="font-size:12px; min-height:14px; margin-top:6px;"></div>
+    </div>
+    <div class="dist-panel" style="margin-top:16px;">
+      <h3 style="margin:0 0 4px;">🖨️ Tipărire în masă</h3>
+      <div style="color:var(--text-muted); font-size:12.5px; margin-bottom:8px;">Vezi doar angajații la care sunt completate datele pentru contract (nume, data nașterii, adresă, data angajării). Bifezi și tipărești toate odată. Data semnării și „Fără semnături” se iau din panoul de previzualizare.</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">
+        <input type="text" id="ctBulkQ" class="adm-in" placeholder="Caută angajat..." oninput="ctBulkRender()" style="flex:1; min-width:140px;">
+        <button class="btn btn-secondary" style="width:auto;padding:7px 12px;" onclick="ctBulkAll(true)">Bifează toți</button>
+        <button class="btn btn-secondary" style="width:auto;padding:7px 12px;" onclick="ctBulkAll(false)">Debifează</button>
+      </div>
+      <div id="ctBulkList" style="max-height:340px; overflow:auto; border:1px solid var(--border); border-radius:10px;"></div>
+      <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
+        <button class="btn btn-primary" id="ctBulkBtn" style="width:auto;" onclick="ctBulkPrint()">🖨️ Tipărește selectați</button>
+        <span id="ctBulkInfoTxt" style="font-size:12.5px; color:var(--text-muted);"></span>
+      </div>
     </div>
     <div class="dist-panel" style="margin-top:16px;">
       <h3 style="margin:0 0 4px;">Contracte</h3>
@@ -6503,6 +6524,7 @@ async function adminContractInit(){
   if(cur) sel.value = cur;
   adminContractFill();
   ctLoadTemplate();
+  ctBulkRender();
   try{
     const st = await db.collection('meta').doc('contractSettings').get();
     const img = st.exists ? st.data().semnaturaAngajator : '';
@@ -6518,17 +6540,20 @@ async function adminContractInit(){
 let ctTpl = null, ctFirma = null, ctSigImg = '';
 const CT_LABELS = { name:'nume', geburtsdatum:'data nașterii', geburtsort:'locul nașterii', strasse:'stradă', plzOrt:'cod poștal / oraș', beginn:'data de început' };
 function ctIsoToDe(iso){ const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso||''); return m ? m[3]+'.'+m[2]+'.'+m[1] : ''; }
-function ctVals(){
-  const e = employees.find(x=>x.id===document.getElementById('ctEmp').value) || {};
+function ctValsFor(e, anrede, geburtsort, beginnIso){
   return Object.assign({}, ctFirma||{}, {
-    anrede: document.getElementById('ctAnrede').value,
+    anrede: anrede,
     name: ((e.prenume||'')+' '+(e.numeFamilie||'')).trim(),
     geburtsdatum: ctIsoToDe(e.dataNasterii),
-    geburtsort: document.getElementById('ctGeburtsort').value.trim(),
+    geburtsort: (geburtsort||'').trim(),
     strasse: e.strada||'',
     plzOrt: ((e.codPostal||'')+' '+(e.oras||'')).trim(),
-    beginn: ctIsoToDe(document.getElementById('ctBeginn').value)
+    beginn: ctIsoToDe(beginnIso)
   });
+}
+function ctVals(){
+  const e = employees.find(x=>x.id===document.getElementById('ctEmp').value) || {};
+  return ctValsFor(e, document.getElementById('ctAnrede').value, document.getElementById('ctGeburtsort').value, document.getElementById('ctBeginn').value);
 }
 function ctSubHtml(str, v){
   return escapeHtml(str||'').replace(/\{\{(\w+)\}\}/g, (_, k)=>{
@@ -6578,6 +6603,48 @@ function adminContractFill(){
     row('Cod poștal, oraș', ((e.codPostal||'')+' '+(e.oras||'')).trim()) +
     `<div class="row"><span>Datele greșite sau lipsă se corectează în fișă</span><button class="ct-edit" onclick="openModal('${e.id}')">✎ Editează fișa</button></div>`;
   ctRenderPreview();
+}
+/* ---------- tipărire în masă ---------- */
+const ctBulkSel = new Set(), ctBulkAnrede = {};
+function ctReady(e){
+  const miss = [];
+  if(!((e.prenume||'')+(e.numeFamilie||'')).trim()) miss.push('nume');
+  if(!e.dataNasterii) miss.push('data nașterii');
+  if(!e.strada) miss.push('stradă');
+  if(!((e.codPostal||'')+(e.oras||'')).trim()) miss.push('cod poștal/oraș');
+  if(!e.dataAngajare) miss.push('data angajării');
+  return miss;
+}
+function ctBulkRender(){
+  const host = document.getElementById('ctBulkList'); if(!host) return;
+  const q = (document.getElementById('ctBulkQ').value||'').toLowerCase().trim();
+  const list = employees.filter(e=>isLive(e) && (!q || (e.numeComplet||'').toLowerCase().includes(q)))
+    .sort((a,b)=>(a.numeComplet||'').localeCompare(b.numeComplet||'','ro'));
+  const ready = list.filter(e=>!ctReady(e).length), notReady = list.filter(e=>ctReady(e).length);
+  host.innerHTML = (ready.map(e=>`<label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid #EEF4F1;cursor:pointer;">
+      <input type="checkbox" ${ctBulkSel.has(e.id)?'checked':''} onchange="ctBulkToggle('${e.id}',this.checked)">
+      <span style="flex:1;font-weight:600;font-size:13px;">${escapeHtml(e.numeComplet||'')}</span>
+      <select onchange="ctBulkAnrede['${e.id}']=this.value" style="padding:3px 6px;font-size:12px;border:1px solid var(--border);border-radius:8px;"><option ${ctBulkAnrede[e.id]!=='Frau'?'selected':''}>Herrn</option><option ${ctBulkAnrede[e.id]==='Frau'?'selected':''}>Frau</option></select></label>`).join('')
+    || '<div style="padding:14px;color:var(--text-muted);font-size:13px;">Niciun angajat cu datele complete.</div>')
+    + (notReady.length ? `<div style="padding:8px 12px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);background:#F7FBF9;">Nu pot fi tipăriți încă (${notReady.length})</div>` + notReady.map(e=>`<div style="display:flex;align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid #EEF4F1;opacity:.75;font-size:12.5px;"><span style="flex:1;">${escapeHtml(e.numeComplet||'')}</span><span style="color:var(--amber);">lipsește: ${escapeHtml(ctReady(e).join(', '))}</span><button class="ct-edit" onclick="openModal('${e.id}')">✎</button></div>`).join('') : '');
+  ctBulkCount();
+}
+function ctBulkToggle(id, on){ if(on) ctBulkSel.add(id); else ctBulkSel.delete(id); ctBulkCount(); }
+function ctBulkAll(on){
+  const q = (document.getElementById('ctBulkQ').value||'').toLowerCase().trim();
+  employees.filter(e=>isLive(e) && !ctReady(e).length && (!q || (e.numeComplet||'').toLowerCase().includes(q))).forEach(e=>{ if(on) ctBulkSel.add(e.id); else ctBulkSel.delete(e.id); });
+  ctBulkRender();
+}
+function ctBulkCount(){ const n=[...ctBulkSel].filter(id=>{const e=employees.find(x=>x.id===id); return e && isLive(e) && !ctReady(e).length;}).length; const el=document.getElementById('ctBulkInfoTxt'); if(el) el.textContent = n ? n+' selectați' : 'Niciunul selectat'; }
+function ctBulkPrint(){
+  if(!ctTpl){ alert('Contractul nu e încărcat încă.'); return; }
+  const chosen = employees.filter(e=>ctBulkSel.has(e.id) && isLive(e) && !ctReady(e).length)
+    .sort((a,b)=>(a.numeComplet||'').localeCompare(b.numeComplet||'','ro'));
+  if(!chosen.length){ alert('Bifează cel puțin un angajat.'); return; }
+  const list = chosen.map(e=>({ nume:e.numeComplet, status:'previzualizare',
+    blocks: ctPlainBlocks(ctValsFor(e, ctBulkAnrede[e.id]||'Herrn', e.locNasterii||'Rumänien', e.dataAngajare)),
+    vals:{ ort:(ctFirma||{}).ort||'' }, semnaturaAngajator: ctSigImg, semnatura:'' }));
+  ctOpenPrint(list);
 }
 function adminContractSaveSig(ev){
   const f = ev.target.files[0], msg = document.getElementById('ctSigMsg'); if(!f) return;
@@ -6656,9 +6723,10 @@ async function adminContractDelSig(){
     msg.style.color = 'var(--green)'; msg.textContent = '✓ Semnătura a fost ștearsă.';
   }catch(err){ console.error(err); msg.style.color = 'var(--red)'; msg.textContent = 'Nu am putut șterge.'; }
 }
-function ctPlainBlocks(){
-  const v = ctVals();
-  const sub = t => String(t||'').replace(/\{\{(\w+)\}\}/g, (_,k)=> v[k]||'');
+function ctPlainBlocks(v){
+  v = v || ctVals();
+  // datele angajatului sunt înconjurate de marcaje (\u0001…\u0002) ca să iasă îngroșate la tipărire
+  const sub = t => String(t||'').replace(/\{\{(\w+)\}\}/g, (_,k)=> (k.indexOf('firma')===0||k==='anrede') ? (v[k]||'') : '\u0001'+(v[k]||'')+'\u0002');
   return (ctTpl||[]).map(b=>Object.assign({}, b, b.x?{x:sub(b.x)}:{}, b.k?{k:sub(b.k)}:{}, b.b?{b:sub(b.b)}:{}));
 }
 function ctPrintPreview(){
@@ -6671,27 +6739,31 @@ function ctOpenPrint(list){
   const pdIso = document.getElementById('ctPrintDate').value;
   const w = window.open('', '_blank');
   if(!w){ alert('Permite ferestrele pop-up pentru a deschide contractele.'); return; }
-  const e = escapeHtml, dt = i => i ? new Date(i).toLocaleString('ro-RO',{timeZone:'Europe/Berlin'}) : '', dd = i => i ? new Date(i).toLocaleDateString('de-DE',{timeZone:'Europe/Berlin'}) : '';
+  const e = escapeHtml, em0 = t => e(t||'').replace(/\u0001/g,'<strong class="f">').replace(/\u0002/g,'</strong>'), dt = i => i ? new Date(i).toLocaleString('ro-RO',{timeZone:'Europe/Berlin'}) : '', dd = i => i ? new Date(i).toLocaleDateString('de-DE',{timeZone:'Europe/Berlin'}) : '';
   const sig = (img, who) => `<div><div class="ln">${img?`<img src="${img}">`:''}</div>${who}</div>`;
   const one = c => {
     const semnat = c.status==='semnat';
     const dateTxt = pdIso ? ctIsoToDe(pdIso) : (semnat ? dd(c.semnatAt) : '');
     const showSig = !noSig;
+    let afterUnd = false;
     return `<section class="ct">` + (c.blocks||[]).map(b=>{
+      if(b.t==='p' && String(b.x||'').trim()==='und') afterUnd = true;
       if(b.t==='title') return `<div class="ti">${e(b.x)}</div>`;
-      if(b.t==='kv') return `<div class="kv"><b>${e(b.k)}</b> <span class="f">${e(b.x)}</span></div>`;
-      if(b.t==='h') return (b.pb?'<div class="pb"></div>':'') + `<div class="h">${e(b.x)}</div>`;
-      if(b.t==='sign') return `<div class="p" style="margin-top:18px">Ort, Datum: <span class="f">${e((c.vals||{}).ort||'')}, ${e(dateTxt)}</span></div><div class="sg">${sig(showSig?c.semnaturaAngajator:'','Arbeitgeber')}${sig(showSig&&semnat?c.semnatura:'','Arbeitnehmer')}</div>`;
-      return `<div class="p">${b.b?`<b>${e(b.b)}</b> `:''}${e(b.x)}</div>`;
+      if(b.t==='kv'){ const em = afterUnd || /\u0001/.test(b.x||''); return `<div class="kv"><b>${em0(b.k)}</b><span class="${em?'f':'g'}">${em0(b.x)}</span></div>`; }
+      if(b.t==='h') return (b.pb?'<div class="pb"></div>':'') + `<div class="h">${em0(b.x)}</div>`;
+      if(b.t==='sign') return `<div class="p" style="margin-top:18px">Ort, Datum: <span class="f">${e((c.vals||{}).ort||'')}${dateTxt?', '+e(dateTxt):''}</span></div><div class="sg">${sig(showSig?c.semnaturaAngajator:'','Arbeitgeber')}${sig(showSig&&semnat?c.semnatura:'','Arbeitnehmer')}</div>`;
+      return `<div class="p">${b.b?`<b>${em0(b.b)}</b> `:''}${em0(b.x)}</div>`;
     }).join('') + (semnat && showSig ? `<div class="ev">Digital signiert von ${e(c.nume)} am ${dt(c.semnatAt)} · Dokument-Hash (SHA-256): ${e(c.hash)} · Lesedauer ${Math.round((c.activMs||0)/1000)} s · IP ${e(c.ip)}</div>` : '') + `</section>`;
   };
   w.document.open();
   w.document.write(`<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Arbeitsverträge</title>
-    <style>body{font-family:Georgia,"Times New Roman",serif;color:#111;font-size:12.5px;line-height:1.5;margin:0}
-    .bar{position:sticky;top:0;background:#1f3a5f;padding:10px 16px}.bar button{padding:8px 14px;font-size:14px;cursor:pointer}
-    section.ct{max-width:760px;margin:20px auto;padding:0 28px;page-break-after:always}
-    .ti{text-align:center;font-weight:700;font-size:20px;letter-spacing:.06em;margin:6px 0 14px}.h{font-weight:700;margin:16px 0 5px;font-size:13.5px;page-break-after:avoid}
-    .p{margin:0 0 6px;text-align:justify}.kv{margin:0 0 3px}.kv b{display:inline-block;min-width:96px}.f{border-bottom:1px solid #999;padding:0 4px;font-weight:600}
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>body{font-family:'Figtree','Segoe UI',Calibri,Arial,sans-serif;color:#14201d;font-size:12px;line-height:1.55;margin:0}
+    .bar{position:sticky;top:0;background:#0F2A26;padding:10px 16px}.bar button{padding:8px 14px;font-size:14px;cursor:pointer;border-radius:8px;border:0;font-family:inherit;font-weight:600}
+    section.ct{max-width:760px;margin:20px auto;padding:0 30px;page-break-after:always}
+    .ti{text-align:center;font-weight:700;font-size:21px;letter-spacing:.14em;margin:6px 0 20px;padding-bottom:12px;background:linear-gradient(#10B981,#10B981) no-repeat center bottom/64px 3px}
+    .h{font-weight:700;margin:17px 0 5px;font-size:12.5px;color:#0A6F5A;border-left:3px solid #10B981;padding-left:8px;page-break-after:avoid}
+    .p{margin:0 0 6px;text-align:justify}.kv{margin:0 0 3px;display:flex;gap:10px}.kv b{display:inline-block;min-width:118px;font-weight:600;color:#4b5d58}.kv .g{font-weight:400}.f{font-weight:700;color:#0F2A26}
     .sg{display:flex;gap:30px;margin:22px 0 6px;page-break-inside:avoid}.sg>div{flex:1;text-align:center;font-size:11px;color:#444}
     .ln{border-bottom:1px solid #333;height:58px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:3px}.ln img{max-height:56px;max-width:100%}
     .pb{page-break-before:always}.ev{margin-top:20px;font-size:9.5px;color:#666;border-top:1px solid #ccc;padding-top:6px;word-break:break-all}
