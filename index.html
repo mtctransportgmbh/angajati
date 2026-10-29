@@ -812,6 +812,10 @@ input[type=text]:focus, select:focus, .field input:focus, .field select:focus, .
           <option value="Polling">Polling</option>
           <option value="Altul">Altul</option>
         </select>
+        <select id="filterFirma" onchange="renderBoard()">
+          <option value="">Toate firmele</option>
+          <option>DPD</option><option>DHL</option><option>HERMES</option><option>HINTERBERGER</option><option>RHENUS</option>
+        </select>
         <select id="filterRol" onchange="renderBoard()">
           <option value="">Toate rolurile</option>
           <option value="Șofer camion">Șofer camion</option>
@@ -821,7 +825,7 @@ input[type=text]:focus, select:focus, .field input:focus, .field select:focus, .
           <option value="Mecanic">Mecanic</option>
           <option value="Altul">Altul</option>
         </select>
-        <label class="checkbtn"><input type="checkbox" id="filterArhivat" onchange="renderBoard()"> Arată arhivați</label>
+        <label class="checkbtn"><input type="checkbox" id="filterArhivat" onchange="renderBoard()"> Arată foști angajați</label>
       </div>
       <button class="btn btn-primary btn-new" onclick="openModal()">+ Angajat nou</button>
       <div class="toolbar-actions" style="display:flex; gap:10px;">
@@ -1388,6 +1392,10 @@ gcloud firestore backups schedules create --database="(default)" --recurrence=da
           <label>Rol (poți bifa mai multe — ex. Șofer + Dispecer)</label>
           <div class="cat-grid" id="rolGrid"></div>
         </div>
+        <div class="field full">
+          <label>Firmă / client (poți bifa mai multe)</label>
+          <div class="cat-grid" id="firmeGrid"></div>
+        </div>
         <div class="field"><label>Locații (poți bifa mai multe)</label>
           <div class="loc-grid"><label class="loc-opt"><input type="checkbox" class="locEmp" value="Ruhstorf"> Ruhstorf</label><label class="loc-opt"><input type="checkbox" class="locEmp" value="Eiselfing"> Eiselfing</label><label class="loc-opt"><input type="checkbox" class="locEmp" value="Polling"> Polling</label><label class="loc-opt"><input type="checkbox" class="locEmp" value="Altul"> Altul</label></div>
         </div>
@@ -1413,6 +1421,16 @@ gcloud firestore backups schedules create --database="(default)" --recurrence=da
           </select>
         </div>
         <div class="field" id="terminareField"><label>Data încetării</label><input type="date" id="f_dataIncetare"></div>
+      </div>
+      <div id="perioadeBox" style="display:none;margin:4px 0 14px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface-alt);">
+        <div style="font-size:12px;font-weight:700;margin-bottom:6px;">Perioade de angajare</div>
+        <div id="perioadeList" style="font-size:12.5px;line-height:1.7;"></div>
+        <div id="rehireRow" style="display:none;margin-top:8px;gap:8px;align-items:center;flex-wrap:wrap;">
+          <label style="font-size:12px;">Reangajat de la</label>
+          <input type="date" id="f_reangajare" style="width:auto;">
+          <button type="button" class="btn btn-secondary" style="width:auto;padding:5px 12px;" onclick="applyRehire()">🔁 Reangajează</button>
+          <span style="font-size:11px;color:var(--text-muted);">Se păstrează istoricul; apasă apoi Salvează.</span>
+        </div>
       </div>
 
       <div class="section-label">Concediu — coordonator</div>
@@ -4169,6 +4187,8 @@ const firebaseConfig = window.FIREBASE_CONFIG;
 // PIN-ul de admin NU mai stă în client — e verificat server-side în funcția checkAdminPin.
 const CATEGORII_PERMIS = ["AM","A1","A2","A","B","BE","C1","C1E","C","CE","D1","D1E","D","DE"];
 const ROLURI_DISPONIBILE = ["Șofer camion","Șofer pachete","Dispecer","Administrativ","Mecanic","Altul"];
+const FIRME = ["DPD","DHL","HERMES","HINTERBERGER","RHENUS"];
+const FIRME_CAMION = ["HINTERBERGER","RHENUS"]; // apar doar la cei cu rolul „Șofer camion”
 
 // Boardul de admin folosește o instanță Firebase separată de cea din
 // portal.html ("adminBoard" în loc de aplicația implicită). Dacă ar folosi
@@ -4407,6 +4427,7 @@ let approvingProposalId = null; // id-ul propunerii aprobate curent, în timp ce
 function initBoard(){
   buildCatGrid();
   buildRolGrid();
+  buildFirmeGrid();
   loadAdminAlertSettings();
   if(unsub) return;
   unsubFixedPoints = db.collection('puncte_fixe').onSnapshot(snap=>{
@@ -4456,9 +4477,25 @@ function buildRolGrid(){
     `<div class="cat-check" data-cat="${r}" onclick="toggleCat(this)">${r}</div>`
   ).join('');
 }
+function buildFirmeGrid(){
+  const grid = document.getElementById('firmeGrid');
+  grid.innerHTML = FIRME.map(c=>`<div class="cat-check" data-cat="${c}" onclick="toggleCat(this)">${c}</div>`).join('');
+  updateFirmeVisibility();
+}
+function updateFirmeVisibility(){
+  const camion = getCheckedIn('rolGrid').includes('Șofer camion');
+  document.querySelectorAll('#firmeGrid .cat-check').forEach(el=>{
+    if(FIRME_CAMION.includes(el.dataset.cat)) el.style.display = camion ? '' : 'none';
+  });
+}
+function getSelectedFirme(){
+  const camion = getCheckedIn('rolGrid').includes('Șofer camion');
+  return getCheckedIn('firmeGrid').filter(f=>camion || !FIRME_CAMION.includes(f));
+}
 function toggleCat(el){
   el.classList.toggle('active');
   const gridId = el.parentElement.id;
+  if(gridId==='rolGrid') updateFirmeVisibility();
   if(gridId==='catGrid') updateCamionFieldsVisibility('f');
   if(gridId==='coordCatGrid') updateCamionFieldsVisibility('coord');
 }
@@ -4525,12 +4562,65 @@ function setCheckedIn(gridId, vals){
 function getSelectedCats(){ return getCheckedIn('catGrid'); }
 function setCats(cats){ setCheckedIn('catGrid', cats); }
 function getSelectedRoluri(){ return getCheckedIn('rolGrid'); }
-function setRoluri(roluri){ setCheckedIn('rolGrid', roluri); }
+function setRoluri(roluri){ setCheckedIn('rolGrid', roluri); if(typeof updateFirmeVisibility==='function') updateFirmeVisibility(); }
 function toggleTahoFields(){
   document.getElementById('tahoFields').classList.toggle('show', document.getElementById('f_areTahograf').checked);
 }
 function toggleTerminareField(){
   document.getElementById('terminareField').classList.toggle('show', document.getElementById('f_status').value!=='Activ');
+  if(typeof renderPerioadeBox==='function') renderPerioadeBox();
+}
+/* ===== Perioade de angajare (reangajare) ===== */
+let pendingRehire = '';
+function perioadeOf(e){
+  if(e && Array.isArray(e.perioade) && e.perioade.length) return e.perioade.map(x=>({start:x.start||'', end:x.end||''}));
+  if(e && e.dataAngajare) return [{start:e.dataAngajare, end:(e.status && e.status!=='Activ') ? (e.dataIncetare||'') : ''}];
+  return [];
+}
+const fmtRo = d => d ? d.split('-').reverse().join('.') : '…';
+function renderPerioadeBox(){
+  const box = document.getElementById('perioadeBox'); if(!box) return;
+  const e = editingId ? employees.find(x=>x.id===editingId) : null;
+  if(!e){ box.style.display='none'; return; }
+  const p = perioadeOf(e);
+  if(pendingRehire){
+    if(p.length && !p[p.length-1].end) p[p.length-1].end = e.dataIncetare || pendingRehire;
+    p.push({start:pendingRehire, end:''});
+  }
+  box.style.display = 'block';
+  document.getElementById('perioadeList').innerHTML = p.length ? p.map((x,i)=>`${i+1}. ${fmtRo(x.start)} → ${x.end?fmtRo(x.end):'<b>în prezent</b>'}`).join('<br>') : '<span style="color:var(--text-muted);">fără date</span>';
+  document.getElementById('rehireRow').style.display = (document.getElementById('f_status').value!=='Activ' && !pendingRehire) ? 'flex' : 'none';
+}
+function applyRehire(){
+  const e = employees.find(x=>x.id===editingId); if(!e) return;
+  const d = document.getElementById('f_reangajare').value;
+  if(!d){ alert('Alege data reangajării.'); return; }
+  const last = perioadeOf(e).slice(-1)[0];
+  const lastEnd = (document.getElementById('f_dataIncetare').value) || (last && last.end) || '';
+  if(lastEnd && d < lastEnd){ alert('Data reangajării trebuie să fie după data încetării ('+fmtRo(lastEnd)+').'); return; }
+  pendingRehire = d;
+  document.getElementById('f_status').value = 'Activ';
+  document.getElementById('f_dataAngajare').value = d;
+  document.getElementById('f_dataIncetare').value = '';
+  toggleTerminareField();
+}
+function startRehire(id){
+  openModal(id);
+  setTimeout(()=>{ const i=document.getElementById('f_reangajare'); if(i){ i.scrollIntoView({block:'center'}); i.focus(); } }, 150);
+}
+function buildPerioade(e, dataAngajare, dataIncetare, status){
+  let p = perioadeOf(e);
+  const ended = status!=='Activ';
+  const endVal = ended ? (dataIncetare || new Date().toISOString().slice(0,10)) : '';
+  if(pendingRehire){
+    if(p.length && !p[p.length-1].end) p[p.length-1].end = (e && e.dataIncetare) || pendingRehire;
+    p.push({start:pendingRehire, end:''});
+  } else if(p.length){
+    p[p.length-1] = {start: dataAngajare || p[p.length-1].start, end: endVal};
+  } else if(dataAngajare){
+    p = [{start:dataAngajare, end:endVal}];
+  }
+  return p;
 }
 function toggleCopiiField(){
   document.getElementById('copiiField').classList.toggle('show', document.getElementById('f_areCopii').value==='da');
@@ -4687,11 +4777,13 @@ function renderBoard(){
   const q = document.getElementById('searchInput').value.toLowerCase().trim();
   const fDepot = document.getElementById('filterDepot').value;
   const fRol = document.getElementById('filterRol').value;
+  const fFirma = document.getElementById('filterFirma').value;
   const showArhivat = document.getElementById('filterArhivat').checked;
 
   let list = employees.filter(e=>{
-    if(!showArhivat && e.status==='Arhivat') return false;
+    if(!showArhivat && (e.status==='Arhivat' || e.status==='Inactiv')) return false;
     if(fDepot && !employeeLocs(e).includes(fDepot)) return false;
+    if(fFirma && !(e.firme||[]).includes(fFirma)) return false;
     if(fRol && !(e.roluri && e.roluri.length ? e.roluri.includes(fRol) : e.rol===fRol)) return false;
     if(q){
       const hay = [e.numeComplet,e.telefon,e.email,e.employeeId].filter(Boolean).join(' ').toLowerCase();
@@ -4744,7 +4836,7 @@ function renderBoard(){
           </div>
         </div>
       </td>
-      <td>${rolesText(e)} <span style="color:var(--text-muted);">· ${escapeHtml(employeeLocs(e).join(', ')||'—')}</span></td>
+      <td>${rolesText(e)} <span style="color:var(--text-muted);">· ${escapeHtml(employeeLocs(e).join(', ')||'—')}</span>${(e.firme&&e.firme.length)?`<div style="font-size:11px;color:var(--text-muted);">${escapeHtml(e.firme.join(' · '))}</div>`:''}</td>
       <td>${vehicleCell(e)}</td>
       <td>${expiryChip(e.dataExpirarePermis)}</td>
       <td>${accessChip(e)}</td>
@@ -4754,6 +4846,7 @@ function renderBoard(){
       <td onclick="event.stopPropagation()">
         <div class="row-actions">
           <div class="icon-btn" onclick="openAccessModal('${e.id}')" title="Acces cont">🔑</div>
+          ${(e.status==='Inactiv'||e.status==='Arhivat')?`<div class="icon-btn" onclick="startRehire('${e.id}')" title="Reangajează">🔁</div>`:''}
           <div class="icon-btn" onclick="openModal('${e.id}')" title="Editează">✎</div>
           <div class="icon-btn danger" onclick="openDeleteModal('${e.id}')" title="Șterge">🗑</div>
         </div>
@@ -4824,6 +4917,7 @@ function buildViewHtml(p, isCoord){
 
   let angajare = viewRow('Data angajării', p.dataAngajare) + viewRow('Status', p.status);
   if(!isCoord && p.dataIncetare) angajare += viewRow('Data încetării', p.dataIncetare);
+  { const _pp = perioadeOf(p); if(_pp.length>1) angajare += viewRow('Perioade de angajare', _pp.map(x=>fmtRo(x.start)+' → '+(x.end?fmtRo(x.end):'prezent')).join('; ')); }
   angajare += viewRow('Coordonator (aprobă concediul)', COORD_GROUP_LABELS[p.coordonator]||p.coordonator);
   if(!isCoord && p.rolAprobator) angajare += viewRow('E coordonator pentru', COORD_GROUP_LABELS[p.rolAprobator]||p.rolAprobator);
   html += viewSection('Angajare', angajare);
@@ -5074,7 +5168,9 @@ function openModal(id){
   fillAsigurareMedicala('f_asigurareMedicala','f_asigurareMedicalaAlta','');
   setCats([]);
   setRoluri([]);
+  setCheckedIn('firmeGrid', []);
   camionCatExpiryValues = {};
+  pendingRehire = '';
   toggleTahoFields();
   toggleTerminareField();
   toggleCopiiField();
@@ -5092,6 +5188,7 @@ function openModal(id){
       document.getElementById('f_prenume').value = e.prenume || displayPrenume(e);
       document.getElementById('f_numarPersonal').value = e.numarPersonal||'';
       setRoluri(e.roluri && e.roluri.length ? e.roluri : (e.rol ? [e.rol] : []));
+      setCheckedIn('firmeGrid', e.firme||[]);
       setLocs('locEmp', employeeLocs(e));
       document.getElementById('f_dataNasterii').value = e.dataNasterii||'';
       document.getElementById('f_telefon').value = e.telefon||'';
@@ -5103,6 +5200,7 @@ function openModal(id){
       document.getElementById('f_dataAngajare').value = e.dataAngajare||'';
       document.getElementById('f_status').value = e.status||'Activ';
       document.getElementById('f_dataIncetare').value = e.dataIncetare||'';
+      setTimeout(()=>{ if(typeof renderPerioadeBox==='function') renderPerioadeBox(); }, 0);
       document.getElementById('f_coordonator').value = e.coordonator||'';
       document.getElementById('f_rolAprobator').value = e.rolAprobator||'';
       document.getElementById('f_esteAdmin').checked = e.esteAdmin === true;
@@ -5166,6 +5264,9 @@ async function saveEmployee(){
     if(dup){ alert(`Numărul personal "${numarPersonalVal}" e deja folosit de ${dup.numeComplet}. Fiecare angajat are nevoie de un cod unic de login.`); return; }
   }
   const rolurileSelectate = getSelectedRoluri();
+  const _st = document.getElementById('f_status').value;
+  const _end0 = document.getElementById('f_dataIncetare').value || (_st!=='Activ' ? new Date().toISOString().slice(0,10) : '');
+  const _per = buildPerioade(editingId ? employees.find(x=>x.id===editingId) : null, document.getElementById('f_dataAngajare').value, _end0, _st);
 
   const data = {
     prenume,
@@ -5176,6 +5277,7 @@ async function saveEmployee(){
     numeComplet: (numeFamilie + ' ' + prenume).trim(),
     numarPersonal: document.getElementById('f_numarPersonal').value.trim(),
     roluri: rolurileSelectate,
+    firme: getSelectedFirme(),
     // "rol" rămâne un string (rolurile unite prin virgulă) pentru orice cod
     // vechi/alte ecrane care mai citesc acest câmp ca text simplu.
     rol: rolurileSelectate.join(', '),
@@ -5190,7 +5292,9 @@ async function saveEmployee(){
     tara: document.getElementById('f_tara').value.trim(),
     dataAngajare: document.getElementById('f_dataAngajare').value,
     status: document.getElementById('f_status').value,
-    dataIncetare: document.getElementById('f_dataIncetare').value,
+    dataIncetare: _st!=='Activ' ? _end0 : '',
+    perioade: _per,
+    dataPrimaAngajare: (_per[0] && _per[0].start) || document.getElementById('f_dataAngajare').value,
     coordonator: document.getElementById('f_coordonator').value,
     rolAprobator: document.getElementById('f_rolAprobator').value,
     esteAdmin: document.getElementById('f_esteAdmin').checked,
