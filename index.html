@@ -786,6 +786,7 @@ input[type=text]:focus, select:focus, .field input:focus, .field select:focus, .
     <button class="view-tab-btn" id="tabBtn-protocoale" onclick="switchView('protocoale')" title="Protocoale"><span class="ti">📝</span><span class="tl">Protocoale</span></button>
     <button class="view-tab-btn" id="tabBtn-contracte" onclick="switchView('contracte')" title="Contracte"><span class="ti">📄</span><span class="tl">Contracte</span></button>
     <button class="view-tab-btn" id="tabBtn-backup" onclick="switchView('backup')" title="Backup"><span class="ti">💾</span><span class="tl">Backup</span></button>
+    <button class="view-tab-btn" id="tabBtn-backupgen" onclick="switchView('backupgen')" title="Starea backup-urilor din toate aplicațiile"><span class="ti">🛰️</span><span class="tl">Backup general</span></button>
     <button class="view-tab-btn" id="tabBtn-propuneri" style="display:none;" onclick="switchView('propuneri')" title="Angajați propuși"><span class="ti">🆕</span><span class="tl">Propuși</span><span class="badge-count" id="propuneriBadge" style="display:none;"></span></button>
     <div class="vt-sep"></div>
     <button class="view-tab-btn" id="tabBtn-2fa" title="Autentificare în doi pași pentru Admin și coordonatori" onclick="openTotpAdmin()"><span class="ti">🔐</span><span class="tl">2FA</span></button>
@@ -1050,6 +1051,32 @@ gcloud firestore databases update --database="(default)" --enable-pitr
 gcloud firestore backups schedules create --database="(default)" --recurrence=daily --retention=14w</pre>
       <button class="btn btn-secondary" style="width:auto;" onclick="bkCopyCmds()">📋 Copiază comenzile</button>
       <div style="color:var(--text-muted); font-size:12px; margin-top:8px;">Cere planul Blaze (cel de acum, dacă folosești deja funcțiile) și costă foarte puțin la o bază de date de mărimea asta. Aceleași comenzi, cu alt proiect, se pot rula și pentru celelalte aplicații (concedii, reclamații).</div>
+    </div>
+  </main>
+
+  <main id="view-backupgen" style="display:none;">
+    <style>
+      .bkg-top{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+      .bkg-sum{flex:1;min-width:220px;padding:10px 14px;border-radius:8px;font-size:13.5px;background:var(--surface-alt);}
+      .bkg-sum.ok{background:#E3F4E8;color:#14602F;} .bkg-sum.warn{background:#FFF1D6;color:#8a5a00;} .bkg-sum.bad{background:#FBE4E0;color:#B3261E;font-weight:600;}
+      .bkg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px;}
+      .bkg-card{border:1px solid var(--border);border-radius:10px;padding:12px 14px;background:var(--surface);}
+      .bkg-h{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:4px;}
+      .bkg-h b{font-size:15px;} .bkg-badge{font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;}
+      .bkg-badge.ok{background:#E3F4E8;color:#14602F;} .bkg-badge.warn{background:#FFF1D6;color:#8a5a00;} .bkg-badge.bad{background:#FBE4E0;color:#B3261E;} .bkg-badge.na{background:var(--surface-alt);color:var(--text-muted);}
+      .bkg-m{font-size:12.5px;color:var(--text-muted);line-height:1.55;}
+      .bkg-m b{color:var(--text);font-weight:600;}
+      .bkg-days{display:grid;grid-template-columns:34px repeat(14,1fr);gap:3px;margin-top:10px;align-items:center;font-size:10px;color:var(--text-muted);}
+      .bkg-c{height:16px;border-radius:4px;background:var(--surface-alt);}
+      .bkg-c.ok{background:#2F855A;} .bkg-c.miss{background:#C0392B;} .bkg-c.wait{background:#E0A030;} .bkg-c.na{background:var(--surface-alt);opacity:.5;}
+      .bkg-dl{text-align:center;}
+    </style>
+    <div class="dist-panel">
+      <h3 style="margin:0 0 4px;">🛰️ Backup general — toate aplicațiile</h3>
+      <div style="color:var(--text-muted); font-size:12.5px; margin-bottom:10px;">Starea backup-urilor automate (06:00, 14:00, 22:00) din fiecare aplicație: când s-a făcut ultimul, dacă au rulat toate cele de azi și ultimele 14 zile. Se citesc doar manifestele (numere de documente), nu și datele. Restaurarea o faci din managerul fiecărei aplicații.</div>
+      <div class="bkg-top"><div class="bkg-sum" id="bkgSum">Se încarcă...</div><button class="btn btn-secondary" style="width:auto;" onclick="bkgLoad()">↻ Reîmprospătează</button></div>
+      <div class="bkg-grid" id="bkgGrid"></div>
+      <div id="bkgChecked" style="font-size:11.5px;color:var(--text-muted);margin-top:10px;"></div>
     </div>
   </main>
 
@@ -5532,6 +5559,74 @@ async function printSelectedSheets(){
 }
 
 /* ================= EXPORT CSV ================= */
+
+/* ================= BACKUP GENERAL (starea backup-urilor din toate aplicațiile) ================= */
+const BKG_SLOTS=[6,14,22];
+const bkgEsc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function bkgParts(d){
+  const f=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
+  const o={}; f.formatToParts(d).forEach(x=>{o[x.type]=x.value;});
+  return {date:o.year+'-'+o.month+'-'+o.day,h:+o.hour,m:+o.minute,dec:+o.hour+(+o.minute)/60};
+}
+function bkgDaysBack(n){                       // ultimele n zile (data Berlin), cea mai veche prima
+  const out=[]; const now=new Date();
+  for(let i=n-1;i>=0;i--){ out.push(bkgParts(new Date(now.getTime()-i*86400000)).date); }
+  return out;
+}
+function bkgAgo(ms){ const m=Math.round(ms/60000); if(m<60) return m+' min'; const h=Math.floor(m/60); return h+' h '+(m%60?(m%60)+' min':''); }
+function bkgFmt(iso){ const d=new Date(iso); return d.toLocaleString('ro-RO',{timeZone:'Europe/Berlin',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
+function bkgCard(p){
+  const head=(cls,txt)=>'<div class="bkg-h"><b>'+bkgEsc(p.label)+'</b><span class="bkg-badge '+cls+'">'+txt+'</span></div>';
+  if(!p.configured) return {cls:'na',html:'<div class="bkg-card">'+head('na','în pregătire')+'<div class="bkg-m">Managerul de backup nu e instalat încă în această aplicație.</div></div>'};
+  if(p.error) return {cls:'bad',html:'<div class="bkg-card">'+head('bad','nu pot citi')+'<div class="bkg-m">Nu pot citi bucket-ul de backup: <b>'+bkgEsc(p.error)+'</b><br>Verifică dacă bucket-ul există și dacă i s-a dat acces acestui proiect (pașii din instrucțiuni).</div></div>'};
+  const runs=p.runs.slice().sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));
+  const autos=runs.filter(r=>r.label==='auto'), manuals=runs.filter(r=>r.label==='manual');
+  const now=Date.now(), last=autos[0];
+  let cls='bad',txt='niciun backup automat';
+  if(last){ const age=now-new Date(last.createdAt).getTime(); if(age<=9*36e5){cls='ok';txt='la zi';} else if(age<=12*36e5){cls='warn';txt='întârziat';} else {cls='bad';txt='nu a rulat';} }
+  const lastAny=runs[0];
+  const sumDocs=r=>Object.values(r.counts||{}).reduce((a,b)=>a+b,0), sumBytes=r=>Object.values(r.bytes||{}).reduce((a,b)=>a+b,0);
+  const skipped=lastAny&&Object.keys(lastAny.skipped||{}).length;
+  // grila: 14 zile × 3 sloturi
+  const days=bkgDaysBack(14), nowP=bkgParts(new Date());
+  const first=runs.length?runs[runs.length-1]:null, firstMs=first?new Date(first.createdAt).getTime():null;
+  const map={}; autos.forEach(r=>{ const pp=bkgParts(new Date(r.createdAt)); BKG_SLOTS.forEach(h=>{ if(Math.abs(pp.dec-h)<=2) map[pp.date+'|'+h]=r; }); });
+  let cells='<div></div>'+days.map(d=>'<div class="bkg-dl" title="'+d+'">'+d.slice(8)+'</div>').join('');
+  BKG_SLOTS.forEach(h=>{
+    cells+='<div>'+String(h).padStart(2,'0')+':00</div>';
+    days.forEach(d=>{
+      const r=map[d+'|'+h]; let c='na', title=d+' '+String(h).padStart(2,'0')+':00';
+      const future=(d>nowP.date)||(d===nowP.date&&h>nowP.dec);
+      const recent=(d===nowP.date&&nowP.dec-h<1);
+      if(r){ c='ok'; title+=' · rulat '+bkgFmt(r.createdAt); }
+      else if(future){ c='na'; title+=' · încă nu e ora'; }
+      else if(firstMs===null||d<bkgParts(new Date(firstMs)).date||(d===bkgParts(new Date(firstMs)).date&&h<bkgParts(new Date(firstMs)).dec-2)){ c='na'; title+=' · înainte de primul backup'; }
+      else if(recent){ c='wait'; title+=' · se așteaptă rularea'; }
+      else { c='miss'; title+=' · NU a rulat'; }
+      cells+='<div class="bkg-c '+c+'" title="'+bkgEsc(title)+'"></div>';
+    });
+  });
+  const html='<div class="bkg-card">'+head(cls,txt)+
+    '<div class="bkg-m">Ultimul automat: <b>'+(last?bkgEsc(bkgFmt(last.createdAt)):'—')+'</b>'+(last?' · acum '+bkgAgo(now-new Date(last.createdAt).getTime()):'')+'<br>'+
+    'Ultimul manual: <b>'+(manuals[0]?bkgEsc(bkgFmt(manuals[0].createdAt)):'—')+'</b><br>'+
+    (lastAny?('Ultima copie: <b>'+sumDocs(lastAny)+'</b> documente · <b>'+(sumBytes(lastAny)/1024).toFixed(1)+' KB</b> · '+(lastAny.tookMs/1000).toFixed(1)+' s<br>'):'')+
+    'Copii păstrate: <b>'+p.total+'</b>'+(skipped?'<br><span style="color:var(--red)">⚠ module sărite (prea multe documente): '+bkgEsc(Object.keys(lastAny.skipped).join(', '))+'</span>':'')+'</div>'+
+    '<div class="bkg-days">'+cells+'</div></div>';
+  return {cls,html};
+}
+async function bkgLoad(){
+  const sum=document.getElementById('bkgSum'), grid=document.getElementById('bkgGrid');
+  sum.className='bkg-sum'; sum.textContent='Se încarcă...'; grid.innerHTML='';
+  try{
+    const r=(await functionsRef.httpsCallable('backupOverview')({})).data;
+    const cards=r.projects.map(bkgCard); grid.innerHTML=cards.map(c=>c.html).join('');
+    const conf=cards.filter(c=>c.cls!=='na'), ok=cards.filter(c=>c.cls==='ok').length, bad=cards.filter(c=>c.cls==='bad').length, warn=cards.filter(c=>c.cls==='warn').length;
+    if(bad){ sum.className='bkg-sum bad'; sum.textContent='⚠ '+bad+' din '+conf.length+' aplicații cu probleme la backup'+(warn?' (și '+warn+' întârziate)':''); }
+    else if(warn){ sum.className='bkg-sum warn'; sum.textContent=warn+' aplicații întârziate, restul la zi ('+ok+'/'+conf.length+')'; }
+    else { sum.className='bkg-sum ok'; sum.textContent='✅ Toate cele '+ok+' aplicații configurate sunt la zi'+(cards.length>conf.length?' ('+(cards.length-conf.length)+' în pregătire)':''); }
+    document.getElementById('bkgChecked').textContent='Verificat: '+bkgFmt(r.checkedAt)+' · pătrat verde = a rulat, roșu = nu a rulat, gri = încă nu e ora sau înainte de primul backup';
+  }catch(e){ sum.className='bkg-sum bad'; sum.textContent='Nu pot citi starea: '+(e.message||e); }
+}
 /* ================= TAB-URI ================= */
 function switchView(name){
   currentView = name;
@@ -5543,7 +5638,7 @@ function switchView(name){
   document.getElementById('view-distante').style.display = name==='distante' ? 'block' : 'none';
   document.getElementById('view-aprobari').style.display = name==='aprobari' ? 'block' : 'none';
   document.getElementById('view-propuneri').style.display = name==='propuneri' ? 'block' : 'none';
-  ['mesaje','anunturi','protocoale','contracte','backup'].forEach(v=>{
+  ['mesaje','anunturi','protocoale','contracte','backup','backupgen'].forEach(v=>{
     document.getElementById('view-'+v).style.display = name===v ? 'block' : 'none';
     document.getElementById('tabBtn-'+v).classList.toggle('active', name===v);
   });
@@ -5558,6 +5653,7 @@ function switchView(name){
   if(name==='protocoale'){ adminLoadProtTargets(); adminLoadProtStatus(); }
   if(name==='contracte'){ adminContractInit(); }
   if(name==='backup'){ bkInit(); }
+  if(name==='backupgen'){ bkgLoad(); }
   if(name==='propuneri'){ renderPropuneri(); }
 }
 
@@ -7401,7 +7497,7 @@ setInterval(tickCoordClock, 1000); tickCoordClock();
 </script>
 <!--MTC-UPDATE-START-->
 <script id="mtc-update">
-/*MTC_VERSION*/const MTC_APP_VERSION='20261030-112228';
+/*MTC_VERSION*/const MTC_APP_VERSION='20261030-213842';
 (function(){
   var V=MTC_APP_VERSION, busy=false, shown=false, lastIdx=0;
   window.MTC_APP_VERSION=V;
@@ -7487,6 +7583,7 @@ setInterval(tickCoordClock, 1000); tickCoordClock();
 })();
 </script>
 <!--MTC-UPDATE-END-->
+
 
 </body>
 </html>
