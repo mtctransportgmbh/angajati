@@ -1040,20 +1040,27 @@ input[type=text]:focus, select:focus, .field input:focus, .field select:focus, .
     </div>
 
     <div class="dist-panel" style="margin-top:16px;">
-      <h3 style="margin:0 0 4px;">☁️ Backup automat în Firestore (Google)</h3>
-      <div style="color:var(--text-muted); font-size:12.5px; margin-bottom:10px;">Google poate face singur un backup zilnic al bazei de date, păstrat 14 săptămâni, plus restaurare la orice moment din ultimele 7 zile. Se activează o singură dată, din browser, fără să instalezi nimic:</div>
-      <ol style="font-size:13px; line-height:1.6; padding-left:20px; margin:0 0 10px;">
-        <li>Deschide <b>console.cloud.google.com</b>, alege proiectul <b>angajati-f1b01</b> și apasă pe iconița <b>„Activate Cloud Shell"</b> (>_) din dreapta sus.</li>
-        <li>Lipește comenzile de mai jos, una câte una, și apasă Enter.</li>
-      </ol>
-      <pre class="bk-code" id="bkCmds">gcloud config set project angajati-f1b01
-gcloud firestore databases update --database="(default)" --enable-pitr
-gcloud firestore backups schedules create --database="(default)" --recurrence=daily --retention=14w</pre>
-      <button class="btn btn-secondary" style="width:auto;" onclick="bkCopyCmds()">📋 Copiază comenzile</button>
-      <div style="color:var(--text-muted); font-size:12px; margin-top:8px;">Cere planul Blaze (cel de acum, dacă folosești deja funcțiile) și costă foarte puțin la o bază de date de mărimea asta. Aceleași comenzi, cu alt proiect, se pot rula și pentru celelalte aplicații (concedii, reclamații).</div>
+      <h3 style="margin:0 0 4px;">🧩 Backup automat pe module (server)</h3>
+      <div style="color:var(--text-muted); font-size:12.5px; margin-bottom:10px;">Se face singur la 06:00, 14:00 și 22:00 (ora Berlin), pe module: angajați, contracte, protocoale cu semnături, vehicule, notificări, propuneri, setări. Poți restaura un modul întreg sau o singură persoană/un singur document, cu previzualizare înainte. Starea tuturor aplicațiilor o vezi în «Backup general».</div>
+      <button class="btn btn-primary" style="width:auto;" onclick="openBackupManager()">🧩 Deschide managerul de backup</button>
+      <div style="color:var(--text-muted); font-size:12px; margin-top:8px;">Nu se salvează PIN-urile și datele 2FA (credentials). Pentru ele rămâne backup-ul criptat de mai sus.</div>
     </div>
   </main>
 
+  <div id="bm-overlay" style="display:none;position:fixed;inset:0;z-index:100000;background:rgba(15,23,42,.55);align-items:flex-start;justify-content:center;padding:4vh 12px;overflow:auto;" onclick="if(event.target===this)bmClose()">
+    <style>
+      #bm-overlay .bm-box{background:var(--surface);border-radius:12px;max-width:720px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.3);}
+      #bm-overlay .bm-head{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border);font-weight:700;font-size:15px;}
+      #bm-overlay .bm-x{background:none;border:0;font-size:18px;cursor:pointer;color:var(--text-muted);}
+      #bm-overlay #bm-body{padding:16px 18px;font-size:14px;color:var(--text);}
+      #bm-overlay button{cursor:pointer;border:0;border-radius:8px;font:inherit;font-weight:600;padding:8px 14px;}
+      #bm-overlay button:disabled{opacity:.55;cursor:default;}
+      #bm-overlay .btn-secondary{background:var(--surface-alt);color:var(--text);}
+      #bm-overlay .btn-action{background:var(--primary);color:#fff;}
+      #bm-overlay .btn-danger{background:var(--red);color:#fff;}
+    </style>
+    <div class="bm-box"><div class="bm-head"><span>💾 MANAGER BACKUP (pe module)</span><button class="bm-x" onclick="bmClose()">✕</button></div><div id="bm-body"></div></div>
+  </div>
   <main id="view-backupgen" style="display:none;">
     <style>
       .bkg-top{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
@@ -5561,6 +5568,149 @@ async function printSelectedSheets(){
 
 /* ================= EXPORT CSV ================= */
 
+/* ======================= MANAGER BACKUP (doar admin) ======================= */
+const BM = { runs:[], cfg:null, runId:null, scope:null, list:[], plan:null };
+const bmLabels = { auto:"automat", manual:"manual", "pre-restore":"înainte de restaurare" };
+const bmEsc = v => String(v==null?"":v).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const bmWhen = iso => new Date(iso).toLocaleString("ro-RO",{timeZone:"Europe/Berlin",day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+const bmDay = iso => new Date(iso).toLocaleDateString("ro-RO",{timeZone:"Europe/Berlin",weekday:"long",day:"2-digit",month:"long",year:"numeric"});
+const bmTime = iso => new Date(iso).toLocaleTimeString("ro-RO",{timeZone:"Europe/Berlin",hour:"2-digit",minute:"2-digit"});
+const BM_BTN = 'style="text-align:left;padding:12px;width:100%"';
+function bmShow(html){ document.getElementById("bm-body").innerHTML = html; document.getElementById("bm-overlay").style.display='flex'; }
+function bmClose(){ document.getElementById("bm-overlay").style.display='none'; }
+const bmCall = (name, data) => functionsRef.httpsCallable(name)(data).then(r => r.data);
+function bmErr(e){ return '<div style="padding:10px;background:#cc33331a;border:1px solid var(--red);border-radius:4px;font-size:13px;color:var(--red)">'+bmEsc(e && e.message || e)+'</div>'; }
+const bmBack = (to) => '<button class="btn-secondary" onclick="'+to+'">← Înapoi</button>';
+window.openBackupManager = async function(){
+  bmShow('<div style="color:var(--text-muted);font-size:13px">Se încarcă lista de backup-uri...</div>');
+  try{
+    const r = await bmCall("backupList", {});
+    BM.runs = r.runs||[]; BM.cfg = r.config; bmRenderRuns();
+  }catch(e){
+    bmShow(bmErr(e)+'<div style="font-size:12.5px;color:var(--text-muted);margin-top:10px">Dacă e prima dată: funcțiile de backup trebuie publicate, iar bucket-ul creat (vezi instrucțiunile primite).</div><div style="margin-top:14px"><button class="btn-secondary" onclick="bmClose()">Închide</button></div>');
+  }
+};
+function bmRenderRuns(){
+  const days = new Map();
+  BM.runs.forEach(r=>{ const d=bmDay(r.createdAt); if(!days.has(d)) days.set(d,[]); days.get(d).push(r); });
+  const sumCounts = c => Object.entries(c||{}).map(([k,v])=>v+" "+((BM.cfg.modules.find(m=>m.id===k)||{}).label||k)).join(" · ");
+  const body = BM.runs.length ? Array.from(days.entries()).map(([d,list])=>
+    '<div style="font-size:12px;font-weight:700;color:var(--text-muted);margin:12px 0 4px;text-transform:capitalize">'+bmEsc(d)+'</div>'+
+    list.map(r=>'<div style="display:flex;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--border);border-radius:4px;margin-bottom:5px">'+
+      '<div style="min-width:48px;font-weight:700">'+bmEsc(bmTime(r.createdAt))+'</div>'+
+      '<div style="flex:1;min-width:0;font-size:12px;color:var(--text-muted)"><span style="font-weight:600;color:var(--text)">'+bmEsc(bmLabels[r.label]||r.label)+'</span>'+
+        (r.skipped&&Object.keys(r.skipped).length?' <span style="color:var(--red)">⚠ module sărite (prea multe documente)</span>':'')+'<br>'+bmEsc(sumCounts(r.counts))+'</div>'+
+      '<button class="btn-action" style="padding:6px 14px;font-size:14px" onclick="bmPick(\''+bmEsc(r.id)+'\')">Alege</button></div>').join("")
+  ).join("") : '<div style="font-size:13px;color:var(--text-muted);padding:12px 0">Încă nu există backup-uri. Apasă „Fă backup acum”.</div>';
+  bmShow('<div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px">Se face automat la 06:00, 14:00 și 22:00. Se păstrează toate copiile 14 zile, apoi câte una pe zi până la '+BM.cfg.retention.dailyDays+' de zile. Înainte de orice restaurare se face automat o copie a stării de acum.</div>'+
+    '<button class="btn-action" id="bm-now" onclick="bmNow()">Fă backup acum</button> <button class="btn-secondary" id="bm-mail" onclick="bmTestMail()">✉ Trimite email de test</button>'+
+    '<div style="max-height:46vh;overflow-y:auto;margin-top:6px">'+body+'</div>'+
+    '<div style="margin-top:14px"><button class="btn-secondary" onclick="bmClose()">Închide</button></div>');
+}
+window.bmTestMail = async function(){
+  const b=document.getElementById("bm-mail"); if(b){ b.disabled=true; b.textContent="Se trimite..."; }
+  try{ await bmCall("backupTestAlert",{}); bmToast("Email de test trimis. Verifică inbox-ul."); }
+  catch(e){ bmToast("Eroare: "+(e.message||e), true); }
+  if(b){ b.disabled=false; b.textContent="✉ Trimite email de test"; }
+};
+window.bmNow = async function(){
+  const b=document.getElementById("bm-now"); if(b){ b.disabled=true; b.textContent="Se face backup..."; }
+  try{ await bmCall("backupRunNow",{}); bmToast("Backup făcut"); openBackupManager(); }
+  catch(e){ if(b){ b.disabled=false; b.textContent="Fă backup acum"; } bmToast("Eroare: "+(e.message||e), true); }
+};
+window.bmPick = function(id){
+  BM.runId = id;
+  const r = BM.runs.find(x=>x.id===id);
+  const quick = (BM.cfg.quick||[]);
+  bmShow('<div style="font-size:13px;margin-bottom:12px">Backup din <b>'+bmEsc(bmWhen(r.createdAt))+'</b> ('+bmEsc(bmLabels[r.label]||r.label)+'). Ce vrei să restaurezi?</div>'+
+    '<div style="display:grid;gap:8px">'+
+      '<button class="btn-secondary" '+BM_BTN+' onclick="bmStartModule()"><b>📦 Un modul</b><br><span style="font-size:12px;color:var(--text-muted)">Fișele angajaților, contracte, protocoale, vehicule etc.: tot modulul sau doar anumite elemente (de ex. o singură persoană sau un singur document).</span></button>'+
+      quick.map((q,i)=>'<button class="btn-secondary" '+BM_BTN+' onclick="bmQuick('+i+')"><b>🔗 '+bmEsc(q.label)+'</b><br><span style="font-size:12px;color:var(--text-muted)">'+bmEsc(q.hint)+'</span></button>').join("")+
+    '</div><div style="margin-top:14px">'+bmBack('bmRenderRuns()')+'</div>');
+};
+window.bmQuick = function(i){ bmPreview({multi:BM.cfg.quick[i].multi}); };
+window.bmRenderRuns = bmRenderRuns;
+window.bmFilterList = function(){
+  const q=(document.getElementById("bm-q").value||"").toLowerCase();
+  document.querySelectorAll("#bm-list [data-l]").forEach(el=>{ el.style.display = el.dataset.l.includes(q)?"flex":"none"; });
+};
+function bmListHtml(){
+  return '<input id="bm-q" placeholder="Caută..." oninput="bmFilterList()" style="width:100%;padding:9px 12px;background:var(--bg);border:1px solid var(--border);border-radius:3px;color:var(--text);margin-bottom:8px">'+
+    '<div id="bm-list" style="max-height:36vh;overflow-y:auto;border:1px solid var(--border);border-radius:4px">'+
+    BM.list.map((x,i)=>'<label data-l="'+bmEsc((x.label||"").toLowerCase())+'" style="display:flex;gap:10px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px">'+
+      '<input type="checkbox" name="bm-sel" value="'+i+'"> <span>'+bmEsc(x.label)+'</span></label>').join("")+'</div>';
+}
+const bmField = (label, inner) => '<div style="margin-bottom:12px"><label style="display:block;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px">'+label+'</label>'+inner+'</div>';
+const bmSel = 'style="width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:14px"';
+window.bmStartModule = function(){
+  bmShow(bmField('Modul','<select id="bm-mod" '+bmSel+' onchange="bmModChanged()">'+BM.cfg.modules.map(m=>'<option value="'+bmEsc(m.id)+'">'+bmEsc(m.label)+'</option>').join("")+'</select><div id="bm-hint" style="font-size:12px;color:var(--text-muted);margin-top:4px"></div>')+
+    bmField('Ce restaurezi din el','<select id="bm-mode" '+bmSel+' onchange="bmModeChanged()"></select>')+
+    '<div id="bm-items"></div>'+
+    '<div style="display:flex;gap:8px;margin-top:14px">'+bmBack('bmPick(BM.runId)')+'<button class="btn-action" style="padding:8px 18px;font-size:15px" onclick="bmGoModule()">Previzualizează</button></div>');
+  bmModChanged();
+};
+window.bmModChanged = function(){
+  const m = BM.cfg.modules.find(x=>x.id===document.getElementById("bm-mod").value);
+  document.getElementById("bm-hint").textContent = m.hint||"";
+  document.getElementById("bm-mode").innerHTML = '<option value="all">Tot modulul (toate elementele)</option><option value="items">Doar anumite elemente</option>'+m.fieldsets.map(f=>'<option value="fs:'+bmEsc(f.id)+'">'+bmEsc(f.label)+' (toate elementele)</option>').join("");
+  document.getElementById("bm-items").innerHTML = "";
+};
+window.bmModeChanged = async function(){
+  const box=document.getElementById("bm-items");
+  if(document.getElementById("bm-mode").value!=="items"){ box.innerHTML=""; return; }
+  box.innerHTML='<div style="color:var(--text-muted);font-size:13px">Se încarcă...</div>';
+  try{
+    const r = await bmCall("backupItems",{runId:BM.runId, moduleId:document.getElementById("bm-mod").value}); BM.list=r.items;
+    box.innerHTML = bmListHtml();
+  }catch(e){ box.innerHTML = bmErr(e); }
+};
+window.bmGoModule = function(){
+  const mod=document.getElementById("bm-mod").value, mode=document.getElementById("bm-mode").value;
+  if(mode==="all") return bmPreview({module:mod, mode:"all"});
+  if(mode.startsWith("fs:")) return bmPreview({module:mod, mode:"fieldset", fieldset:mode.slice(3)});
+  const sel=Array.from(document.querySelectorAll('input[name="bm-sel"]:checked')).map(i=>BM.list[+i.value]);
+  if(!sel.length){ bmToast("Alege cel puțin un element", true); return; }
+  bmPreview({module:mod, mode:"items", ids:sel.map(x=>({c:x.c,id:x.id}))});
+};
+async function bmPreview(scope){
+  BM.scope = scope;
+  bmShow('<div style="color:var(--text-muted);font-size:13px">Se compară backup-ul cu starea de acum...</div>');
+  try{
+    const p = await bmCall("backupPreview",{runId:BM.runId, scope}); BM.plan = p;
+    const s = p.summary, anyChange = s.create+s.update+s.delete>0;
+    const act = {create:"se recreează", update:"se modifică", delete:"se șterge", skip:"sărit"};
+    const rows = p.items.map(x=>'<div style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:12.5px"><b>'+bmEsc(x.label)+'</b> <span style="color:var(--text-muted)">· '+bmEsc(act[x.action]||x.action)+'</span>'+
+      (x.note?'<div style="color:var(--text-muted)">'+bmEsc(x.note)+'</div>':'')+
+      (x.changes||[]).map(c=>'<div style="color:var(--text-muted);margin-top:2px"><code>'+bmEsc(c.field)+'</code>: acum <b style="color:var(--text)">'+bmEsc(c.current==null?"(gol)":c.current)+'</b> → în backup <b style="color:var(--primary)">'+bmEsc(c.backup==null?"(gol)":c.backup)+'</b></div>').join("")+'</div>').join("");
+    bmShow('<div style="font-size:13px;margin-bottom:10px">Din backup-ul <b>'+bmEsc(bmWhen(BM.runs.find(x=>x.id===BM.runId).createdAt))+'</b>:</div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;font-size:12.5px"><span style="padding:3px 9px;border-radius:4px;background:#c9a92e22">'+s.update+' de modificat</span><span style="padding:3px 9px;border-radius:4px;background:#c9a92e22">'+s.create+' de recreat</span><span style="padding:3px 9px;border-radius:4px;background:var(--surface-alt)">'+s.same+' identice</span>'+(s.skipped?'<span style="padding:3px 9px;border-radius:4px;background:var(--surface-alt)">'+s.skipped+' sărite</span>':'')+'</div>'+
+      (p.warnings.length?'<div style="padding:8px 10px;background:var(--surface-alt);border-radius:4px;font-size:12.5px;margin-bottom:10px">'+p.warnings.map(w=>'<div>⚠️ '+bmEsc(w)+'</div>').join("")+'</div>':'')+
+      (rows?'<div style="max-height:34vh;overflow-y:auto;border:1px solid var(--border);border-radius:4px">'+rows+'</div>':'<div style="font-size:13px;color:var(--text-muted)">Nu e nicio diferență: starea de acum e identică cu backup-ul.</div>')+
+      (p.truncated?'<div style="font-size:12px;color:var(--text-muted);margin-top:4px">Se afișează primele elemente; restaurarea le include pe toate.</div>':'')+
+      (scope.mode==="all"&&s.delete>0?'<label style="display:flex;gap:8px;align-items:flex-start;margin-top:12px;font-size:12.5px;cursor:pointer"><input type="checkbox" id="bm-del"> <span><b style="color:var(--red)">Șterge și cele '+s.delete+' elemente create după acest backup</b> (implicit rămân neatinse)</span></label>':'')+
+      '<div style="font-size:12px;color:var(--text-muted);margin-top:12px">Înainte de restaurare se face automat un backup al stării de acum, ca să poți reveni.</div>'+
+      '<div style="display:flex;gap:8px;margin-top:14px">'+bmBack('bmPick(BM.runId)')+(anyChange?'<button class="btn-danger" style="padding:9px 18px;font-size:14px" id="bm-go" onclick="bmConfirm()">Restaurează</button>':'')+'</div>');
+  }catch(e){ bmShow(bmErr(e)+'<div style="margin-top:14px">'+bmBack('bmPick(BM.runId)')+'</div>'); }
+}
+let _bmArmed=false;
+window.bmConfirm = async function(){
+  const b=document.getElementById("bm-go");
+  if(!_bmArmed){ _bmArmed=true; b.textContent="Apasă încă o dată pentru a confirma"; setTimeout(()=>{ _bmArmed=false; const x=document.getElementById("bm-go"); if(x) x.textContent="Restaurează"; },5000); return; }
+  _bmArmed=false; b.disabled=true; b.textContent="Se restaurează...";
+  try{
+    const del = !!(document.getElementById("bm-del")&&document.getElementById("bm-del").checked);
+    const r = await bmCall("backupRestore",{runId:BM.runId, scope:BM.scope, confirm:true, deleteExtra:del});
+    const x=r.result;
+    bmShow('<div style="font-size:14px;margin-bottom:8px">✅ Restaurare terminată.</div><div style="font-size:13px;color:var(--text-muted)">'+x.updated+' modificate · '+x.created+' recreate · '+x.deleted+' șterse'+(x.skipped?' · '+x.skipped+' sărite':'')+'.<br>Starea de dinainte e salvată automat în backup-ul „înainte de restaurare”, deci poți reveni.</div><div style="margin-top:14px"><button class="btn-action" style="padding:8px 18px;font-size:15px" onclick="openBackupManager()">Gata</button></div>');
+  }catch(e){ bmShow(bmErr(e)+'<div style="margin-top:14px">'+bmBack('bmPick(BM.runId)')+'</div>'); }
+};
+
+
+function bmToast(msg,isErr){
+  let t=document.getElementById('bm-toast'); if(!t){ t=document.createElement('div'); t.id='bm-toast'; t.style.cssText='position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:100001;padding:10px 16px;border-radius:8px;font-size:13.5px;color:#fff;max-width:90vw;box-shadow:0 4px 16px rgba(0,0,0,.25)'; document.body.appendChild(t); }
+  t.style.background=isErr?'#C0392B':'#1E3A5F'; t.textContent=msg; t.style.display='block'; clearTimeout(t._h); t._h=setTimeout(()=>{ t.style.display='none'; },3500);
+}
+
 /* ================= BACKUP GENERAL (starea backup-urilor din toate aplicațiile) ================= */
 const BKG_SLOTS=[6,14,22];
 const bkgEsc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -7177,7 +7327,6 @@ async function bkRestore(){
     msg.style.color='var(--green)'; msg.textContent = '✓ Gata. ' + scrise + ' documente scrise, ' + sarite + ' sărite (existau deja).';
   }catch(e){ console.error(e); msg.style.color='var(--red)'; msg.textContent = 'Eroare: ' + (e.message||e) + '\n(' + scrise + ' scrise până acum)'; }
 }
-function bkCopyCmds(){ const t = document.getElementById('bkCmds').textContent; (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>alert('Comenzile au fost copiate.')).catch(()=>{ const r = document.createRange(); r.selectNode(document.getElementById('bkCmds')); getSelection().removeAllRanges(); getSelection().addRange(r); }); }
 
 /* =====================================================================
    REDESIGN 2026 — completare fișe, adrese din hartă, documente, ceas coordonator
@@ -7515,7 +7664,7 @@ setInterval(tickCoordClock, 1000); tickCoordClock();
 </script>
 <!--MTC-UPDATE-START-->
 <script id="mtc-update">
-/*MTC_VERSION*/const MTC_APP_VERSION='20261101-110108';
+/*MTC_VERSION*/const MTC_APP_VERSION='20261101-110853';
 (function(){
   var V=MTC_APP_VERSION, busy=false, shown=false, lastIdx=0;
   window.MTC_APP_VERSION=V;
@@ -7601,6 +7750,7 @@ setInterval(tickCoordClock, 1000); tickCoordClock();
 })();
 </script>
 <!--MTC-UPDATE-END-->
+
 
 
 
