@@ -1075,6 +1075,7 @@ gcloud firestore backups schedules create --database="(default)" --recurrence=da
       <h3 style="margin:0 0 4px;">🛰️ Backup general — toate aplicațiile</h3>
       <div style="color:var(--text-muted); font-size:12.5px; margin-bottom:10px;">Starea backup-urilor automate (06:00, 14:00, 22:00) din fiecare aplicație: când s-a făcut ultimul, dacă au rulat toate cele de azi și ultimele 14 zile. Se citesc doar manifestele (numere de documente), nu și datele. Restaurarea o faci din managerul fiecărei aplicații.</div>
       <div class="bkg-top"><div class="bkg-sum" id="bkgSum">Se încarcă...</div><button class="btn btn-secondary" style="width:auto;" onclick="bkgLoad()">↻ Reîmprospătează</button></div>
+      <div id="bkgCost" style="font-size:13px;padding:8px 12px;border-radius:8px;background:var(--surface-alt);margin-bottom:12px;"></div>
       <div class="bkg-grid" id="bkgGrid"></div>
       <div id="bkgChecked" style="font-size:11.5px;color:var(--text-muted);margin-top:10px;"></div>
     </div>
@@ -5575,6 +5576,19 @@ function bkgDaysBack(n){                       // ultimele n zile (data Berlin),
 }
 function bkgAgo(ms){ const m=Math.round(ms/60000); if(m<60) return m+' min'; const h=Math.floor(m/60); return h+' h '+(m%60?(m%60)+' min':''); }
 function bkgFmt(iso){ const d=new Date(iso); return d.toLocaleString('ro-RO',{timeZone:'Europe/Berlin',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
+const BKG_USD_EUR=0.92;
+function bkgCost(p){   // estimare la regim stabil (118 copii: 14 zile x 3 + 76 zilnice), din ultima copie
+  const runs=(p.runs||[]).slice().sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));
+  const last=runs[0]; if(!last) return null;
+  const docs=Object.values(last.counts||{}).reduce((a,b)=>a+b,0), bytes=Object.values(last.bytes||{}).reduce((a,b)=>a+b,0);
+  const mods=Object.keys(last.counts||{}).length+1;
+  const readsDay=docs*3, readsOver=Math.max(0,readsDay-50000)*30;
+  const cRead=readsOver/1e5*0.038, stored=bytes*118, cStore=stored/1e9*0.023;
+  const opsA=mods*3*30, cOps=opsA/1e4*0.05;
+  const eur=(cRead+cStore+cOps)*BKG_USD_EUR;
+  return {eur,docs,readsDay,stored,opsA,pct:readsDay/50000*100};
+}
+function bkgEur(x){ return x<0.005?'< 0,01 €':'≈ '+x.toFixed(2).replace('.',',')+' €'; }
 function bkgCard(p){
   const head=(cls,txt)=>'<div class="bkg-h"><b>'+bkgEsc(p.label)+'</b><span class="bkg-badge '+cls+'">'+txt+'</span></div>';
   if(!p.configured) return {cls:'na',html:'<div class="bkg-card">'+head('na','în pregătire')+'<div class="bkg-m">Managerul de backup nu e instalat încă în această aplicație.</div></div>'};
@@ -5610,7 +5624,7 @@ function bkgCard(p){
     '<div class="bkg-m">Ultimul automat: <b>'+(last?bkgEsc(bkgFmt(last.createdAt)):'—')+'</b>'+(last?' · acum '+bkgAgo(now-new Date(last.createdAt).getTime()):'')+'<br>'+
     'Ultimul manual: <b>'+(manuals[0]?bkgEsc(bkgFmt(manuals[0].createdAt)):'—')+'</b><br>'+
     (lastAny?('Ultima copie: <b>'+sumDocs(lastAny)+'</b> documente · <b>'+(sumBytes(lastAny)/1024).toFixed(1)+' KB</b> · '+(lastAny.tookMs/1000).toFixed(1)+' s<br>'):'')+
-    'Copii păstrate: <b>'+p.total+'</b>'+(skipped?'<br><span style="color:var(--red)">⚠ module sărite (prea multe documente): '+bkgEsc(Object.keys(lastAny.skipped).join(', '))+'</span>':'')+'</div>'+
+    'Copii păstrate: <b>'+p.total+'</b>'+(function(){const c=bkgCost(p); return c?('<br>Cost estimat/lună: <b>'+bkgEur(c.eur)+'</b> <span title="Citiri Firestore ≈ 3 × documente pe zi (50.000/zi gratuite per proiect), stocare la regim complet (118 copii), operații Cloud Storage. Prețuri aprox., fără Scheduler.">· citiri '+c.readsDay.toLocaleString('ro-RO')+'/zi ('+c.pct.toFixed(0)+'% din gratuit) · stocare ~'+(c.stored/1048576).toFixed(1)+' MB</span>'):'';})()+(skipped?'<br><span style="color:var(--red)">⚠ module sărite (prea multe documente): '+bkgEsc(Object.keys(lastAny.skipped).join(', '))+'</span>':'')+'</div>'+
     '<div class="bkg-days">'+cells+'</div></div>';
   return {cls,html};
 }
@@ -5624,6 +5638,10 @@ async function bkgLoad(){
     if(bad){ sum.className='bkg-sum bad'; sum.textContent='⚠ '+bad+' din '+conf.length+' aplicații cu probleme la backup'+(warn?' (și '+warn+' întârziate)':''); }
     else if(warn){ sum.className='bkg-sum warn'; sum.textContent=warn+' aplicații întârziate, restul la zi ('+ok+'/'+conf.length+')'; }
     else { sum.className='bkg-sum ok'; sum.textContent='✅ Toate cele '+ok+' aplicații configurate sunt la zi'+(cards.length>conf.length?' ('+(cards.length-conf.length)+' în pregătire)':''); }
+    const costs=r.projects.map(bkgCost).filter(Boolean), nApps=costs.length;
+    const sched=Math.max(0,nApps-3)*0.10*BKG_USD_EUR, tot=costs.reduce((a,c)=>a+c.eur,0)+sched;
+    const cb=document.getElementById('bkgCost');
+    if(cb) cb.innerHTML='💶 Cost estimat total/lună: <b>'+bkgEur(tot)+'</b> <span style="color:var(--text-muted)">(aplicații: '+bkgEur(tot-sched)+' · programări Cloud Scheduler: '+bkgEur(sched)+', primele 3 sunt gratuite per cont de facturare). Estimare orientativă din manifeste; costul real îl vezi în Billing.</span>';
     document.getElementById('bkgChecked').textContent='Verificat: '+bkgFmt(r.checkedAt)+' · pătrat verde = a rulat, roșu = nu a rulat, gri = încă nu e ora sau înainte de primul backup';
   }catch(e){ sum.className='bkg-sum bad'; sum.textContent='Nu pot citi starea: '+(e.message||e); }
 }
@@ -7497,7 +7515,7 @@ setInterval(tickCoordClock, 1000); tickCoordClock();
 </script>
 <!--MTC-UPDATE-START-->
 <script id="mtc-update">
-/*MTC_VERSION*/const MTC_APP_VERSION='20261030-213842';
+/*MTC_VERSION*/const MTC_APP_VERSION='20261101-110108';
 (function(){
   var V=MTC_APP_VERSION, busy=false, shown=false, lastIdx=0;
   window.MTC_APP_VERSION=V;
@@ -7583,6 +7601,9 @@ setInterval(tickCoordClock, 1000); tickCoordClock();
 })();
 </script>
 <!--MTC-UPDATE-END-->
+
+
+
 
 
 </body>
