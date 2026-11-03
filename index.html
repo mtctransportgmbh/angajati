@@ -785,6 +785,7 @@ input[type=text]:focus, select:focus, .field input:focus, .field select:focus, .
     <button class="view-tab-btn" id="tabBtn-anunturi" onclick="switchView('anunturi')" title="Anunțuri"><span class="ti">📢</span><span class="tl">Anunțuri</span></button>
     <button class="view-tab-btn" id="tabBtn-protocoale" onclick="switchView('protocoale')" title="Protocoale"><span class="ti">📝</span><span class="tl">Protocoale</span></button>
     <button class="view-tab-btn" id="tabBtn-contracte" onclick="switchView('contracte')" title="Contracte"><span class="ti">📄</span><span class="tl">Contracte</span></button>
+    <button class="view-tab-btn" id="tabBtn-devices" onclick="mtcOpenDevices()" title="Device-uri și profiluri"><span class="ti">💻</span><span class="tl">Device-uri</span></button>
     <button class="view-tab-btn" id="tabBtn-backup" onclick="switchView('backup')" title="Backup"><span class="ti">💾</span><span class="tl">Backup</span></button>
     <button class="view-tab-btn" id="tabBtn-backupgen" onclick="switchView('backupgen')" title="Starea backup-urilor din toate aplicațiile"><span class="ti">🛰️</span><span class="tl">Backup general</span></button>
     <button class="view-tab-btn" id="tabBtn-propuneri" style="display:none;" onclick="switchView('propuneri')" title="Angajați propuși"><span class="ti">🆕</span><span class="tl">Propuși</span><span class="badge-count" id="propuneriBadge" style="display:none;"></span></button>
@@ -4252,15 +4253,15 @@ const authReady = auth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
 
 // Conexiune separată către Concedii — doar pentru tabul de aprobări.
 const CONCEDII_CONFIG = {
-  apiKey: "AIzaSyCaWrQnIAcquK71N_EwKT45lwcUW5RyDK0",
-  authDomain: "concedii-test.firebaseapp.com",
-  projectId: "concedii-test",
-  storageBucket: "concedii-test.firebasestorage.app",
-  messagingSenderId: "212982580101",
-  appId: "1:212982580101:web:5a41c6816a6893e5423aec"
+  apiKey: "AIzaSyBb0IFuofRG4vRlcnd9eMBuA8MyK_z0PRc",
+  authDomain: "calendar-f2589.firebaseapp.com",
+  projectId: "calendar-f2589",
+  storageBucket: "calendar-f2589.firebasestorage.app",
+  messagingSenderId: "124144206277",
+  appId: "1:124144206277:web:dc813e88dd100a0443cbac"
 };
 const concediiApp = firebase.initializeApp(CONCEDII_CONFIG, 'concedii');
-const concediiFunctions = firebase.functions(concediiApp);
+const concediiFunctions = concediiApp.functions('europe-west1');   // Concedii producție (calendar-f2589), aceeași regiune ca restul funcțiilor
 
 /* ================= LOGIN GATES (admin ȘI coordonator, pe aceeași pagină) =================
    Boardul are acum DOUĂ moduri de login, complet separate:
@@ -4296,7 +4297,7 @@ async function checkPin(){
     const codeEl = document.getElementById('pinCode');
     const codeShown = codeEl.style.display!=='none';
     let trustTok = ''; try{ trustTok = localStorage.getItem('mtc_trust_admin')||''; }catch(e){}
-    const result = await callCheckAdminPin({ pin: val, code: codeShown ? codeEl.value.trim() : '', trustToken: trustTok || undefined, trust: codeShown && document.getElementById('pinTrust').checked });
+    const result = await callCheckAdminPin({ deviceId: window.mtcDeviceId(), pin: val, code: codeShown ? codeEl.value.trim() : '', trustToken: trustTok || undefined, trust: codeShown && document.getElementById('pinTrust').checked });
     try{
       if(result.data.trustToken) localStorage.setItem('mtc_trust_admin', result.data.trustToken);
     }catch(e){}
@@ -4361,7 +4362,7 @@ async function coordLogin(){
     const cShown = codeWrap.style.display!=='none';
     const tkey = 'mtc_trust_' + numarPersonal.toUpperCase();
     let trustTok = ''; try{ trustTok = localStorage.getItem(tkey)||''; }catch(e){}
-    const result = await login({ numarPersonal, pin, code: cShown ? document.getElementById('coordCode').value.trim() : '', trustToken: trustTok || undefined, trust: cShown && document.getElementById('coordTrust').checked });
+    const result = await login({ deviceId: window.mtcDeviceId(), numarPersonal, pin, code: cShown ? document.getElementById('coordCode').value.trim() : '', trustToken: trustTok || undefined, trust: cShown && document.getElementById('coordTrust').checked });
     try{ if(result.data.trustToken) localStorage.setItem(tkey, result.data.trustToken); }catch(e){}
     sessionStorage.setItem('mtc_login_mode','coord');
     try{
@@ -4380,6 +4381,8 @@ async function coordLogin(){
     }
     errEl.textContent = err.code === 'functions/resource-exhausted'
       ? 'Prea multe încercări. Așteaptă câteva minute.'
+      : err.code === 'functions/unavailable'
+      ? 'Conectarea nu este disponibilă momentan. Încearcă din nou mai târziu.'
       : (document.getElementById('coordCodeWrap').style.display==='none' ? 'Număr personal sau PIN incorect.' : 'Număr personal, PIN sau cod 2FA incorect.');
   }
 }
@@ -6192,7 +6195,7 @@ function renderDistanceTable(){
    Concedii (același proiect ca CONCEDII_CONFIG). Aplicația Concedii o citește și adaugă
    singură persoanele noi. Nu se scrie nimic dacă lista e goală sau neschimbată. */
 // Proiectul în care rulează aplicația Concedii (USE_TEST=false în Concedii => producție calendar-f2589).
-// Dacă pui Concedii înapoi pe test, schimbă aici cu concedii-test.
+
 const CONCEDII_SYNC_URL = 'https://europe-west1-calendar-f2589.cloudfunctions.net/syncAngajati';
 let _syncLastHash = '';
 let _syncTimer = null;
@@ -6765,7 +6768,7 @@ async function adminSendAnnouncement(){
   const err = document.getElementById('aAnnErr'); err.style.color = 'var(--red)'; err.textContent = '';
   const text = document.getElementById('aAnnText').value.trim();
   if(text.length < 5){ err.textContent = 'Scrie anunțul.'; return; }
-  if(!aAnnSel || !aAnnSel.size){ err.textContent = 'Lista de destinatari nu s-a încărcat (verifică funcțiile din concedii-test) sau nu ai ales pe nimeni.'; return; }
+  if(!aAnnSel || !aAnnSel.size){ err.textContent = 'Lista de destinatari nu s-a încărcat (verifică funcțiile din Concedii) sau nu ai ales pe nimeni.'; return; }
   const btn = document.getElementById('aAnnSendBtn');
   aAnnBusy = true; btn.disabled = true; btn.textContent = 'Se trimite…';
   try{
@@ -7664,7 +7667,7 @@ setInterval(tickCoordClock, 1000); tickCoordClock();
 </script>
 <!--MTC-UPDATE-START-->
 <script id="mtc-update">
-/*MTC_VERSION*/const MTC_APP_VERSION='20261101-110853';
+/*MTC_VERSION*/const MTC_APP_VERSION='20261102-041110';
 (function(){
   var V=MTC_APP_VERSION, busy=false, shown=false, lastIdx=0;
   window.MTC_APP_VERSION=V;
@@ -7756,5 +7759,101 @@ setInterval(tickCoordClock, 1000); tickCoordClock();
 
 
 
+
+
+<script>
+window.MTC_DEV_CALL = async (n,d)=> (await functionsRef.httpsCallable(n)(d||{})).data;
+/* ===== MTC Device-uri (client) — același cod în Concedii și Angajați =====
+   Aplicația definește window.MTC_DEV_CALL(name, data) -> Promise (apelează funcția cu autentificarea ei). */
+(function(){
+  function rnd(){ try{ const a=new Uint8Array(24); crypto.getRandomValues(a); return Array.from(a,b=>b.toString(16).padStart(2,"0")).join(""); }catch(e){ return (Date.now().toString(16)+Math.random().toString(16).slice(2)+Math.random().toString(16).slice(2)).padEnd(32,"0"); } }
+  function readCookie(){ try{ const m=document.cookie.match(/(?:^|; )mtc_did=([A-Za-z0-9_-]{16,80})/); return m?m[1]:""; }catch(e){ return ""; } }
+  window.mtcDeviceId = function(){
+    let id="";
+    try{ id=localStorage.getItem("mtc_did")||""; }catch(e){}
+    if(!/^[A-Za-z0-9_-]{16,80}$/.test(id)) id=readCookie();
+    if(!/^[A-Za-z0-9_-]{16,80}$/.test(id)) id=rnd();
+    try{ localStorage.setItem("mtc_did",id); }catch(e){}
+    try{ document.cookie="mtc_did="+id+"; max-age=63072000; path=/; SameSite=Lax; Secure"; }catch(e){}
+    return id;
+  };
+  const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const fd=t=>{ if(!t) return "—"; const d=new Date(t); return d.toLocaleDateString("ro-RO",{day:"2-digit",month:"short"})+" "+d.toLocaleTimeString("ro-RO",{hour:"2-digit",minute:"2-digit"}); };
+  let st={devices:[],cfg:{},view:"profil"};
+  const call=(n,d)=>window.MTC_DEV_CALL(n,d);
+
+  function ensureModal(){
+    if(document.getElementById("mtcDevModal")) return;
+    const m=document.createElement("div");
+    m.id="mtcDevModal";
+    m.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:flex-start;justify-content:center;z-index:100000;overflow:auto;padding:20px 10px";
+    m.innerHTML='<div style="background:#14171f;color:#e5e7eb;border:1px solid #2a2f3a;border-radius:12px;max-width:860px;width:100%;padding:16px 18px;font:14px system-ui,sans-serif">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h3 style="margin:0;font-size:17px">💻📱 Device-uri și profiluri</h3><button id="mtcDevX" style="background:none;border:0;color:#9ca3af;font-size:22px;cursor:pointer">×</button></div>'+
+      '<div id="mtcDevBody" style="margin-top:10px">Se încarcă…</div></div>';
+    document.body.appendChild(m);
+    m.addEventListener("click",e=>{ if(e.target===m) m.style.display="none"; });
+    m.querySelector("#mtcDevX").onclick=()=>{ m.style.display="none"; };
+  }
+  window.mtcOpenDevices=async function(){
+    ensureModal(); document.getElementById("mtcDevModal").style.display="flex";
+    document.getElementById("mtcDevBody").textContent="Se încarcă…";
+    await load();
+  };
+  async function load(){
+    try{ const r=await call("deviceAdminList",{}); st.devices=r.devices||[]; st.cfg=r.cfg||{}; render(); }
+    catch(e){ document.getElementById("mtcDevBody").innerHTML='<div style="color:#f87171">Eroare: '+esc(e&&e.message||e)+'</div>'; }
+  }
+  async function act(d){ try{ await call("deviceAdminAct",d); await load(); }catch(e){ alert("Eroare: "+(e&&e.message||e)); } }
+  window.mtcDevAct=act;
+  const btn="background:#1f2937;color:#e5e7eb;border:1px solid #374151;border-radius:6px;padding:4px 9px;font-size:12px;cursor:pointer";
+  function chip(dv,p){
+    const ok=p.approved;
+    return '<span style="display:inline-flex;align-items:center;gap:5px;margin:2px 4px 2px 0;padding:2px 8px;border-radius:12px;font-size:12px;border:1px '+(ok?'solid #15803d;background:rgba(34,197,94,.14)':'dashed #b45309;background:rgba(245,158,11,.12)')+'">'+
+      esc(p.name)+' <span style="color:#9ca3af">· '+p.count+'×</span>'+(p.blockedCount?' <b style="color:#f87171" title="Încercări blocate">⛔'+p.blockedCount+'</b>':'')+
+      ' <a href="#" data-dv="'+dv.id+'" data-pk="'+esc(p.key)+'" data-op="'+(ok?'unapprove':'approve')+'" style="color:'+(ok?'#fca5a5':'#86efac')+';text-decoration:none">'+(ok?'retrage':'✓ aprobă')+'</a></span>';
+  }
+  function dvLine(d){
+    return (d.type==="telefon"?"📱":"💻")+' <b>'+esc(d.label||"(fără nume)")+'</b> <span style="color:#9ca3af;font-size:12px">'+esc(d.os)+' · '+esc(d.browser)+(d.noCode?' · fără cod':'')+' · văzut '+fd(d.lastSeen)+'</span>';
+  }
+  function render(){
+    const c=st.cfg||{}, ds=st.devices;
+    let h='<div style="padding:10px;border-radius:8px;background:'+(c.enforcedNow?'rgba(239,68,68,.12);border:1px solid #b91c1c':'rgba(59,130,246,.10);border:1px solid #1d4ed8')+'">'+
+      '<b>'+(c.enforcedNow?'ETAPA 2 ACTIVĂ — device-urile neaprobate sunt blocate în liniște':'ETAPA 1 — doar învață (nu blochează pe nimeni)')+'</b>'+
+      '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px">Blocare automată de la data: <input type="date" id="mtcDevFrom" value="'+esc(c.enforceFrom||"")+'" style="background:#0b0e14;color:#e5e7eb;border:1px solid #374151;border-radius:6px;padding:3px 6px">'+
+      '<label><input type="checkbox" id="mtcDevNow" '+(c.enforce?'checked':'')+'> activ ACUM</label><button id="mtcDevSave" style="'+btn+'">Salvează</button>'+
+      '<button id="mtcDevAll" style="'+btn+'" title="Aprobă toate profilurile văzute până acum, pe toate device-urile">✓ Aprobă tot ce e în listă</button></div></div>';
+    h+='<div style="margin:12px 0 6px;display:flex;gap:6px"><button data-view="profil" style="'+btn+(st.view==="profil"?';border-color:#60a5fa':'')+'">După profil</button><button data-view="device" style="'+btn+(st.view==="device"?';border-color:#60a5fa':'')+'">După device</button></div>';
+    if(!ds.length) h+='<div style="color:#9ca3af;padding:12px">Încă nu s-a înregistrat nimic. Apare după următoarele conectări.</div>';
+    else if(st.view==="device"){
+      h+=ds.map(d=>'<div style="border:1px solid #2a2f3a;border-radius:8px;padding:8px 10px;margin:6px 0">'+dvLine(d)+
+        '<div style="margin-top:4px">'+d.profiles.map(p=>chip(d,p)).join("")+'</div>'+
+        '<div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap"><input data-lab="'+d.id+'" value="'+esc(d.label)+'" placeholder="Nume device (ex: PC birou)" maxlength="60" style="flex:1;min-width:160px;background:#0b0e14;color:#e5e7eb;border:1px solid #374151;border-radius:6px;padding:3px 7px;font-size:12px"><button data-del="'+d.id+'" style="'+btn+'">Șterge device</button></div></div>').join("");
+    } else {
+      const by={};
+      ds.forEach(d=>d.profiles.forEach(p=>{ (by[p.key]=by[p.key]||{name:p.name,list:[]}).list.push({d,p}); }));
+      h+=Object.keys(by).sort().map(k=>{
+        const g=by[k], tel=g.list.filter(x=>x.d.type==="telefon").length, pc=g.list.length-tel;
+        const warn=(k!=="admin"&&(tel>1||pc>1))?'<span style="color:#fbbf24;font-size:12px"> ⚠ '+pc+' PC / '+tel+' telefon</span>':(k==="admin"&&tel>1?'<span style="color:#fbbf24;font-size:12px"> ⚠ '+tel+' telefoane</span>':'<span style="color:#9ca3af;font-size:12px"> '+pc+' PC / '+tel+' telefon</span>');
+        return '<div style="border:1px solid #2a2f3a;border-radius:8px;padding:8px 10px;margin:6px 0"><b style="font-size:15px">👤 '+esc(g.name)+'</b>'+warn+
+          g.list.sort((a,b)=>b.d.lastSeen-a.d.lastSeen).map(x=>'<div style="margin-top:5px;padding-top:5px;border-top:1px solid #1f2430">'+dvLine(x.d)+'<div>'+chip(x.d,x.p)+
+            '<a href="#" data-dv="'+x.d.id+'" data-pk="'+esc(x.p.key)+'" data-op="rmprof" style="color:#9ca3af;font-size:12px">scoate profil</a></div></div>').join("")+'</div>';
+      }).join("");
+    }
+    const b=document.getElementById("mtcDevBody"); b.innerHTML=h;
+    b.querySelectorAll("[data-view]").forEach(x=>x.onclick=()=>{ st.view=x.dataset.view; render(); });
+    b.querySelectorAll("a[data-op]").forEach(a=>a.onclick=e=>{ e.preventDefault();
+      const op=a.dataset.op; if(op==="rmprof"){ if(confirm("Scoți acest profil de pe device?")) act({op:"removeProfile",id:a.dataset.dv,profile:a.dataset.pk}); }
+      else act({op:"approve",id:a.dataset.dv,profile:a.dataset.pk,value:op==="approve"}); });
+    b.querySelectorAll("input[data-lab]").forEach(i=>i.onchange=()=>act({op:"label",id:i.dataset.lab,label:i.value}));
+    b.querySelectorAll("button[data-del]").forEach(x=>x.onclick=()=>{ if(confirm("Ștergi device-ul și tot ce știm despre el?")) act({op:"remove",id:x.dataset.del}); });
+    const sv=document.getElementById("mtcDevSave"); if(sv) sv.onclick=()=>{
+      const now=document.getElementById("mtcDevNow").checked;
+      if(now&&!confirm("Activezi blocarea ACUM? Orice profil pe device neaprobat nu va mai putea intra.")) return;
+      act({op:"cfg",enforce:now,enforceFrom:document.getElementById("mtcDevFrom").value}); };
+    const al=document.getElementById("mtcDevAll"); if(al) al.onclick=()=>{ if(confirm("Aprobi TOATE profilurile și device-urile din listă? Verifică mai întâi lista.")) act({op:"approveAll"}); };
+  }
+})();
+
+</script>
 </body>
 </html>
