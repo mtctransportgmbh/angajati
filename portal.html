@@ -18,6 +18,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
+<script src="foaie.js" defer></script>
 <style>
 :root{
   --bg:#F6F7F9; --surface:#FFFFFF; --surface-alt:#EEF1F5; --text:#1B2430; --text-muted:#5B6472;
@@ -612,6 +613,9 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
       <button class="tab-btn sidebar-btn" data-tab="concediu" onclick="switchTab('concediu')">
         <span class="ic">🌴</span><span class="lbl">Concediu</span>
       </button>
+      <button class="tab-btn sidebar-btn" data-tab="foaie" id="tabBtnFoaieSidebar" style="display:none;" onclick="switchTab('foaie')">
+        <span class="ic">🚛</span><span class="lbl">Foaie de parcurs</span>
+      </button>
       <button class="tab-btn sidebar-btn" data-tab="reclamatii" id="tabBtnReclamatiiSidebar" style="display:none;" onclick="switchTab('reclamatii')">
         <span class="ic">📋</span><span class="lbl">Reclamații</span>
       </button>
@@ -854,6 +858,8 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
         </div>
       </section>
 
+      <section id="tab-foaie" class="tab-panel fpw"><div id="fpRoot"><div class="vac-empty">Se încarcă...</div></div></section>
+
       <section id="tab-masini" class="tab-panel">
         <div class="sub-head"><button class="ph-icon-btn" onclick="switchTab('echipa')" aria-label="Înapoi">←</button><span>🚗 Mașini echipă</span></div>
         <div class="section" style="margin-top:0;">
@@ -904,6 +910,9 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
       </button>
       <button class="tab-btn" data-tab="concediu" onclick="switchTab('concediu')">
         <span class="ic">🌴</span><span class="lbl">Concediu</span>
+      </button>
+      <button class="tab-btn" data-tab="foaie" id="tabBtnFoaie" style="display:none;" onclick="switchTab('foaie')">
+        <span class="ic">🚛</span><span class="lbl">Foaie</span>
       </button>
       <button class="tab-btn" data-tab="reclamatii" id="tabBtnReclamatii" style="display:none;" onclick="switchTab('reclamatii')">
         <span class="ic">📋</span><span class="lbl">Reclamații</span>
@@ -1070,6 +1079,7 @@ function switchTab(name){
   closeRequestOverlay();
   refreshAllData(false);
   if(name === 'masini' || name === 'echipa') loadTeamVehicles();
+  if(name === 'foaie' && window.fpOpen) fpOpen();
   const content = document.getElementById('phContent');
   if(content) content.scrollTop = 0;
 }
@@ -2148,7 +2158,7 @@ function updateFreshness(){
 async function loadProfile(){
   const uid = auth.currentUser.uid;
   const cachedProfile = cacheGet(uid, 'profile');
-  const started = { recl:false, appr:false };
+  const started = { recl:false, appr:false, fp:false };
 
   function applyProfile(e){
     document.getElementById('welcomeName').textContent = e.numeComplet || '—';
@@ -2176,6 +2186,7 @@ async function loadProfile(){
     return { isCoordonator, poateVedeaReclamatii };
   }
   function startRoleDependentLoads(flags){
+    if(window.fpBoot && !started.fp){ started.fp = true; fpBoot(flags); }
     if(flags.poateVedeaReclamatii && !started.recl){ started.recl = true; loadReclamatiiData(); }
     if(flags.isCoordonator && !started.appr){ started.appr = true; loadApprovalQueue(); loadCoordMessages(); loadAnnTargets(); loadAnnStatus(); loadProtTargets(); loadProtStatus(); }
   }
@@ -2951,7 +2962,7 @@ init();
 <div class="toast-n" id="toastN" onclick="toastClick()"><div style="font-size:20px" id="toastIc">🔔</div><div><div class="tt" id="toastT"></div><div class="tx" id="toastX"></div></div></div>
 <!--MTC-UPDATE-START-->
 <script id="mtc-update">
-/*MTC_VERSION*/const MTC_APP_VERSION='20261103-211857';
+/*MTC_VERSION*/const MTC_APP_VERSION='20261106-163440';
 (function(){
   var V=MTC_APP_VERSION, busy=false, shown=false, lastIdx=0;
   window.MTC_APP_VERSION=V;
@@ -3037,6 +3048,7 @@ init();
 })();
 </script>
 <!--MTC-UPDATE-END-->
+
 
 
 
